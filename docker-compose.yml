@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ofertascl-postgres${CONTAINER_SUFFIX:-}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ofertas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD es obligatoria}
+      POSTGRES_DB: ${POSTGRES_DB:-ofertas}
+    ports:
+      # Puerto propio: no toca el :5434 del stack de trading ni el :5432 legacy.
+      - "${POSTGRES_HOST_PORT:-5436}:5432"
+    volumes:
+      - ${POSTGRES_DATA_DIR:-./data/postgres}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ofertas}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Corre las migraciones pendientes y sale. Todo lo demás lo espera.
+  db-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ofertascl-db-migrate${CONTAINER_SUFFIX:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    command: ["python", "migrate.py"]
+    restart: "no"
+
+  scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ofertascl-scraper${CONTAINER_SUFFIX:-}
+    restart: unless-stopped
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Dos pasadas diarias. No hace falta más y baja el riesgo de bloqueo.
+      SCRAPE_INTERVAL_HOURS: ${SCRAPE_INTERVAL_HOURS:-12}
+    command: ["python", "-m", "scrapers.runner"]
