@@ -1,0 +1,323 @@
+{
+  "data": {
+    "products": {
+      "totalCount": 86,
+      "pageInfo": {
+        "endCursor": "WyJIUCBaQm9vayA4IEcxaSAxNFwiIFdVWEdBIElQUyBJbnRlbCBDb3JlIFVsdHJhIDcgMjU1SCBOVklESUEgUlRYIDUwMCBBZGEgMzJHQiBERFI1IDFUQiBTU0QgSUEgVzExUHJvIiwgImhwLXpib29rLTgtZzFpLTE0LXd1eGdhLWlwcy1pbnRlbC1jb3JlLXVsdHJhLTctMjU1aC1udmlkaWEtcnR4LTUwMC1hZGEtMzJnYi1kZHI1LTF0Yi1zc2QtaWEtdzExcHJvIl0=",
+        "hasNextPage": true
+      },
+      "edges": [
+        {
+          "node": {
+            "id": "UHJvZHVjdDo5NzA4OA==",
+            "name": "Chromebook ASUS CR1100CKA-GJ0250 11.6\" HD, Intel Celeron N4500, 4GB RAM, 64GB eMMC, Chrome OS",
+            "slug": "asus-notebook-116-intel-celeron-n4500-90nx03v1-m008j0",
+            "metadata": [
+              {
+                "key": "gtin",
+                "value": ""
+              },
+              {
+                "key": "mpn",
+                "value": "90NX03V1-M008J0"
+              },
+              {
+                "key": "pricing",
+                "value": "{\"sp-digital\":{\"cash\":415280,\"other\":433970}}"
+              }
+            ],
+            "defaultVariant": {
+              "sku": "NA0000093994",
+              "quantityAvailable": 1
+            },
+            "media": [
+              {
+                "url": "https://media.spdigital.cl/thumbnails/products/1761664046498-93047308_8697180390_f8fdbed0_64748f0a_thumbnail_4096.jpg"
+              }
+            ],
+            "attributes": [
+              {
+                "attribute": {
+                  "slug": "brand"
+                },
+                "values": [
+                  {
+                    "name": "ASUS"
+                  }
+                ]
+              },
+              {
+                "attribute": {
+                  "slug": "condition"
+                },
+                "values": [
+                  {
+                    "name": "Nuevo"
+                  }
+                ]
+              }
+            ],
+            "pricing": {
+              "priceRange": {
+                "start": {
+                  "gross": {
+                    "amount": 370958.0,
+                    "currency": "CLP"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "node": {
+            "id": "UHJvZHVjdDo5ODM1Ng==",
+            "name": "Dell Pro 16 PC16250 16 FHD plus Intel Core Ultra 7 255U 16GB DDR5 512GB SSD Wi Fi 6E Win 11 Pro",
+            "slug": "dell-pro-notebook-16-intel-core-ultra-7-255u-42-ghz-16-gb-ddr5-sdram-512-gb-ssd-i",
+            "metadata": [
+              {
+                "key": "gtin",
+                "value": "884116671206"
+              },
+              {
+                "key": "mpn",
+                "value": "XF5PC"
+              },
+              {
+                "key": "pricing",
+                "value": "{\"sp-digital\":{\"cash\":2162430,\"other\":2259740}}"
+              }
+            ],
+            "defaultVariant": {
+              "sku": "NA0000095239",
+              "quantityAvailable": 20
+            },
+            "media": [
+              {
+                "url": "https://media.spdigital.cl/thumbnails/products/1766429476799-0cca92d3cf3e728d070c1aecf5299b9fceaac0d1_196091f9_d6b7ec4a_thu.jpg"
+              }
+            ],
+            "attributes": [
+              {
+                "attribute": {
+                  "slug": "brand"
+                },
+                "values": [
+                  {
+                    "name": "DELL"
+                  }
+                ]
+              },
+              {
+                "attribute": {
+                  "slug": "condition"
+                },
+                "values": [
+                  {
+                    "name": "Nuevo"
+                  }
+                ]
+              }
+            ],
+            "pricing": {
+              "priceRange": {
+                "start": {
+                  "gross": {
+                    "amount": 1829711.0,
+                    "currency": "CLP"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "node": {
+            "id": "UHJvZHVjdDoxMDAzNDU=",
+            "name": "HP EliteBook 8 G1i 14\", Next Gen AI, Intel Core Ultra 7 256V,16GB RAM,1TB SSD,Copilot+ PC, W11Pro",
+            "slug": "hp-elitebook-8-g1i-14-next-gen-ai-intel-core-ultra-7-256v16gb-ram1tb-ssdcopilot-pc-w11pro",
+            "metadata": [
+              {
+                "key": "gtin",
+                "value": ""
+              },
+              {
+                "key": "mpn",
+                "value": "D6UG6AT#ABM"
+              },
+              {
+                "key": "pricing",
+                "value": "{\"sp-digital\":{\"cash\":2413910,\"other\":2522540}}"
+              }
+            ],
+            "defaultVariant": {
+              "sku": "NA0000097289",
+              "quantityAvailable": 20
+            },
+            "media": [
+              {
+                "url": "https://media.spdigital.cl/thumbnails/products/1774552942802-D6UG6AT-1_e800c718_45da0599_thumbnail_4096.jpg"
+              }
+            ],
+            "attributes": [
+              {
+                "attribute": {
+                  "slug": "brand"
+                },
+                "values": [
+                  {
+                    "name": "HP"
+                  }
+                ]
+              },
+              {
+                "attribute": {
+                  "slug": "condition"
+                },
+                "values": [
+                  {
+                    "name": "Nuevo"
+                  }
+                ]
+              }
+            ],
+            "pricing": {
+              "priceRange": {
+                "start": {
+                  "gross": {
+                    "amount": 2042501.0,
+                    "currency": "CLP"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "node": {
+            "id": "UHJvZHVjdDoxMDE1MjU=",
+            "name": "HP OmniBook 3 Next Gen AI 15-fn0053la 15.6 Copilot+ PC AMD Ryzen AI 5 330 16GB DDR5 SSD 512GB IA W11",
+            "slug": "15-fn0053la-amd-r5-330-16g-512g-156-w11",
+            "metadata": [
+              {
+                "key": "gtin",
+                "value": "199764542946"
+              },
+              {
+                "key": "mpn",
+                "value": "CU9S3LA#ABM"
+              },
+              {
+                "key": "pricing",
+                "value": "{\"sp-digital\":{\"cash\":891340,\"other\":931450}}"
+              }
+            ],
+            "defaultVariant": {
+              "sku": "NA0000098749",
+              "quantityAvailable": 50
+            },
+            "media": [
+              {
+                "url": "https://media.spdigital.cl/thumbnails/products/1781017993527-CU9S3LA-1_c16bf9b4_427eb52e_thumbnail_4096.jpg"
+              }
+            ],
+            "attributes": [
+              {
+                "attribute": {
+                  "slug": "brand"
+                },
+                "values": [
+                  {
+                    "name": "HP"
+                  }
+                ]
+              },
+              {
+                "attribute": {
+                  "slug": "condition"
+                },
+                "values": [
+                  {
+                    "name": "Nuevo"
+                  }
+                ]
+              }
+            ],
+            "pricing": {
+              "priceRange": {
+                "start": {
+                  "gross": {
+                    "amount": 754195.0,
+                    "currency": "CLP"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "node": {
+            "id": "UHJvZHVjdDoxMDA3MTI=",
+            "name": "HP ZBook 8 G1i 14\" WUXGA IPS Intel Core Ultra 7 255H NVIDIA RTX 500 Ada 32GB DDR5 1TB SSD IA W11Pro",
+            "slug": "hp-zbook-8-g1i-14-wuxga-ips-intel-core-ultra-7-255h-nvidia-rtx-500-ada-32gb-ddr5-1tb-ssd-ia-w11pro",
+            "metadata": [
+              {
+                "key": "gtin",
+                "value": ""
+              },
+              {
+                "key": "mpn",
+                "value": "D5HH8LT#ABM"
+              },
+              {
+                "key": "pricing",
+                "value": "{\"sp-digital\":{\"cash\":3501300,\"other\":3658860}}"
+              }
+            ],
+            "defaultVariant": {
+              "sku": "NA0000097713",
+              "quantityAvailable": 47
+            },
+            "media": [
+              {
+                "url": "https://media.spdigital.cl/thumbnails/products/1775828213454-D5HH8LT-1_690c9057_bcbfed1b_thumbnail_4096.jpg"
+              }
+            ],
+            "attributes": [
+              {
+                "attribute": {
+                  "slug": "brand"
+                },
+                "values": [
+                  {
+                    "name": "HP"
+                  }
+                ]
+              },
+              {
+                "attribute": {
+                  "slug": "condition"
+                },
+                "values": [
+                  {
+                    "name": "Nuevo"
+                  }
+                ]
+              }
+            ],
+            "pricing": {
+              "priceRange": {
+                "start": {
+                  "gross": {
+                    "amount": 2962579.0,
+                    "currency": "CLP"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

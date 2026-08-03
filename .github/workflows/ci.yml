@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Los contract tests de los scrapers corren contra fixtures grabados: no tocan
+  # la red. Esa es la gracia — si una tienda cambia su front, lo detecta el
+  # canario del runner en produccion, no el CI; el CI protege contra romper el
+  # parser nosotros.
+  #
+  # Los tests de suscripciones (gate, PayPal, trial) SI necesitan Postgres: su
+  # logica vive en SQL (locks, CHECKs, ON CONFLICT, orden de eventos) y mockearla
+  # solo probaria el mock. Sin TEST_DATABASE_URL se saltean, asi que el service
+  # de abajo es lo unico que los mantiene cubiertos.
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ofertas
+          POSTGRES_PASSWORD: ofertas
+          POSTGRES_DB: ofertas_test
+        options: >-
+          --health-cmd "pg_isready -U ofertas"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      TEST_DATABASE_URL: postgresql://ofertas:ofertas@localhost:5432/ofertas_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: pytest
+        run: python -m pytest -q
+
+  # Las migraciones son idempotentes por contrato: se aplican dos veces seguidas
+  # contra una DB limpia y la segunda pasada no puede fallar ni cambiar nada.
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ofertas
+          POSTGRES_PASSWORD: ofertas
+          POSTGRES_DB: ofertas
+        options: >-
+          --health-cmd "pg_isready -U ofertas"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: postgresql://ofertas:ofertas@localhost:5432/ofertas
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Aplicar migraciones
+        run: python migrate.py
+
+      - name: Re-aplicar (idempotencia)
+        run: python migrate.py

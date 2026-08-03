@@ -1,0 +1,564 @@
+{
+  "statusCode": 200,
+  "total": 1108,
+  "limit": 40,
+  "offset": 0,
+  "count": 6,
+  "results": [
+    {
+      "id": "40850df2-b5f1-4171-a101-f4169cf54cae",
+      "version": 202,
+      "key": "422530999",
+      "name": {
+        "es-CL": "Smartphone Redmi Note 15 Pro 5G 256GB 6.83'' Negro Liberado"
+      },
+      "slug": {
+        "es-CL": "smartphone-redmi-note-15-pro-5g-256gb-683-negro-liberado-422530999"
+      },
+      "categories": [
+        {
+          "id": "64082d9d-3822-4ab3-917f-e50f7dd39327"
+        },
+        {
+          "id": "71a8aed3-b92a-4130-b77e-b55767cbb69e"
+        },
+        {
+          "id": "c7230cfe-693b-45c9-b6a9-e3f48b7019dd"
+        },
+        {
+          "id": "689fd27f-c29b-4824-9067-1f0f55ca862e"
+        }
+      ],
+      "hasStagedChanges": false,
+      "published": true,
+      "brand": "Xiaomi",
+      "isMarketplace": false,
+      "departmentId": "704",
+      "subdepartmentId": "030",
+      "classId": "005",
+      "familyId": "af515d6b-6af8-11ef-b268-0a82757268fb",
+      "sellers": [
+        "Paris"
+      ],
+      "masterVariant": {
+        "id": 1,
+        "key": "422530999",
+        "sku": "422530999",
+        "prices": {
+          "regular": {
+            "id": "16fe7047-8767-46f3-a0c2-ad53b6574e52",
+            "key": "c750b737-60c2-4444-b422-83f7362ce85e",
+            "value": {
+              "type": "centPrecision",
+              "centAmount": 399990,
+              "currencyCode": "CLP",
+              "fractionDigits": 0
+            },
+            "custom": {
+              "type": {
+                "id": "8daf0df0-14d2-4418-b0cd-6882b8d7f815"
+              },
+              "fields": {}
+            }
+          },
+          "offer": {
+            "id": "041cc6e3-06bf-4c07-aa9d-7d16824f1ced",
+            "value": {
+              "type": "centPrecision",
+              "currencyCode": "CLP",
+              "centAmount": 319990,
+              "fractionDigits": 0
+            },
+            "discountOnRegular": 0.20000500012500314
+          },
+          "paymentMethod": {
+            "discountOnRegular": 0.2500062501562539,
+            "id": "0eaba02c-1330-4365-a159-f0dffccacec7",
+            "key": "c52a3c09-23df-4697-9d5a-facc69e8ab8a",
+            "value": {
+              "type": "centPrecision",
+              "currencyCode": "CLP",
+              "centAmount": 299990,
+              "fractionDigits": 0
+            },
+            "custom": {
+              "type": {
+                "typeId": "type",
+                "id": "8daf0df0-14d2-4418-b0cd-6882b8d7f815"
+              },
+              "fields": {}
+            },
+            "method": "cencosudCard"
+          }
+        },
+        "ean": "6932554471736",
+        "images": [
+          {
+            "url": "https://cl-dam-resizer.ecomm.cencosud.com/unsafe/adaptive-fit-in/792x1068/cl/paris/422530999/variant/69a6fb98a2929fffffebf6ba/images/a369624b-d79d-4ece-a784-2253c17cbe9f/422530999-0000-001.jpg",
+            "dimensions": {
+              "w": 1,
+              "h": 1
+            }
+          }
+        ],
+        "isMatchingVariant": true
+      },
+      "averageRating": 4.85714,
+      "countRating": 7
+    },
+    {
+      "id": "3d6386b1-e090-4fe0-929a-349cd723cd41",
+      "version": 197,
+      "key": "422533999",
+      "name": {
+        "es-CL": "Smartphone Redmi Note 15 Pro 5G 256GB 6.83'' Azul Liberado"
+      },
+      "slug": {
+        "es-CL": "smartphone-redmi-note-15-pro-5g-256gb-683-azul-liberado-422533999"
+      },
+      "categories": [
+        {
+          "id": "64082d9d-3822-4ab3-917f-e50f7dd39327"
+        },
+        {
+          "id": "71a8aed3-b92a-4130-b77e-b55767cbb69e"
+        },
+        {
+          "id": "c7230cfe-693b-45c9-b6a9-e3f48b7019dd"
+        },
+        {
+          "id": "689fd27f-c29b-4824-9067-1f0f55ca862e"
+        }
+      ],
+      "hasStagedChanges": false,
+      "published": true,
+      "brand": "Xiaomi",
+      "isMarketplace": false,
+      "departmentId": "704",
+      "subdepartmentId": "030",
+      "classId": "005",
+      "familyId": "af515d6b-6af8-11ef-b268-0a82757268fb",
+      "sellers": [
+        "Paris"
+      ],
+      "masterVariant": {
+        "id": 1,
+        "key": "422533999",
+        "sku": "422533999",
+        "prices": {
+          "regular": {
+            "id": "d06fb56a-9902-4cc1-8e35-bfbca19fba87",
+            "key": "f3092ad3-ccf2-4b7d-a883-79edd48082f6",
+            "value": {
+              "type": "centPrecision",
+              "centAmount": 399990,
+              "currencyCode": "CLP",
+              "fractionDigits": 0
+            },
+            "custom": {
+              "type": {
+                "id": "8daf0df0-14d2-4418-b0cd-6882b8d7f815"
+              },
+              "fields": {}
+            }
+          },
+          "offer": {
+            "id": "970767d2-0101-4e16-9484-9f91eb3cbf72",
+            "value": {
+              "type": "centPrecision",
+              "currencyCode": "CLP",
+              "centAmount": 319990,
+              "fractionDigits": 0
+            },
+            "discountOnRegular": 0.20000500012500314
+          },
+          "paymentMethod": {
+            "discountOnRegular": 0.2500062501562539,
+            "id": "e084563d-dec8-4f10-ba37-947b9f237f42",
+            "key": "0eb1375d-778f-435f-b9e6-ef74227cdeb7",
+            "value": {
+              "type": "centPrecision",
+              "currencyCode": "CLP",
+              "centAmount": 299990,
+              "fractionDigits": 0
+            },
+            "custom": {
+              "type": {
+                "typeId": "type",
+                "id": "8daf0df0-14d2-4418-b0cd-6882b8d7f815"
+              },
+              "fields": {}
+            },
+            "method": "cencosudCard"
+          }
+        },
+        "ean": "6932554470371",
+        "images": [
+          {
+            "url": "https://cl-dam-resizer.ecomm.cencosud.com/unsafe/adaptive-fit-in/792x1068/cl/paris/422533999/variant/69a70309e093fa98f3b47b63/images/012eff91-e710-412b-aa88-6c8020f927a9/422533999-0000-001.jpg",
+            "dimensions": {
+              "w": 1,
+              "h": 1
+            }
+          }
+        ],
+        "isMatchingVariant": true
+      },
+      "averageRating": 4.85714,
+      "countRating": 7
+    },
+    {
+      "id": "ce25c81b-ca8d-47fa-a6b6-35a875a800de",
+      "version": 391,
+      "key": "279029999",
+      "name": {
+        "es-CL": "Smartphone Redmi 15C 4G 128GB 6.9' Negro Liberado"
+      },
+      "slug": {
+        "es-CL": "smartphone-redmi-15c-4g-128gb-69-negro-liberado-279029999"
+      },
+      "categories": [
+        {
+          "id": "64082d9d-3822-4ab3-917f-e50f7dd39327"
+        },
+        {
+          "id": "c7230cfe-693b-45c9-b6a9-e3f48b7019dd"
+        },
+        {
+          "id": "689fd27f-c29b-4824-9067-1f0f55ca862e"
+        },
+        {
+          "id": "9555c39d-c5e3-4844-9921-73890649fc79"
+        },
+        {
+          "id": "71a8aed3-b92a-4130-b77e-b55767cbb69e"
+        }
+      ],
+      "hasStagedChanges": false,
+      "published": true,
+      "brand": "Xiaomi",
+      "isMarketplace": false,
+      "departmentId": "704",
+      "subdepartmentId": "030",
+      "classId": "005",
+      "familyId": "af515d6b-6af8-11ef-b268-0a82757268fb",
+      "sellers": [
+        "Paris"
+      ],
+      "masterVariant": {
+        "id": 1,
+        "key": "279029999",
+        "sku": "279029999",
+        "prices": {
+          "regular": {
+            "id": "f7d837bc-c986-4f10-b249-849729970340",
+            "key": "c1b3861f-131b-404d-9ed9-96998688bfbc",
+            "value": {
+              "type": "centPrecision",
+              "centAmount": 159990,
+              "currencyCode": "CLP",
+              "fractionDigits": 0
+            },
+            "custom": {
+              "type": {
+                "id": "8daf0df0-14d2-4418-b0cd-6882b8d7f815"
+              },
+              "fields": {}
+            }
+          },
+          "offer": {
+            "id": "39c34917-3fb2-4294-a06e-87aa40133bf5",
+            "value": {
+              "type": "centPrecision",
+              "currencyCode": "CLP",
+              "centAmount": 139990,
+              "fractionDigits": 0
+            },
+            "discountOnRegular": 0.12500781298831176
+          },
+          "paymentMethod": {
+            "discountOnRegular": 0.18751171948246764,
+            "id": "9ea7b4bb-b3c8-429c-872c-d88812d5c9aa",
+            "key": "20389fd8-5917-4b9c-aaa7-a84b2a6f9a15",
+            "value": {
+              "type": "centPrecision",
+              "currencyCode": "CLP",
+              "centAmount": 129990,
+              "fractionDigits": 0
+            },
+            "custom": {
+              "type": {
+                "typeId": "type",
+                "id": "8daf0df0-14d2-4418-b0cd-6882b8d7f815"
+              },
+              "fields": {}
+            },
+            "method": "cencosudCard"
+          }
+        },
+        "ean": "6932554447106",
+        "images": [
+          {
+            "url": "https://cl-dam-resizer.ecomm.cencosud.com/unsafe/adaptive-fit-in/792x1068/cl/paris/279029999/variant/69907207213b26f50199e65c/images/e36db40e-8f57-48c6-9d4f-d1ece096f217/279029999-0000-001.jpg",
+            "dimensions": {
+              "w": 1,
+              "h": 1
+            }
+          }
+        ],
+        "isMatchingVariant": true
+      }
+    },
+    {
+      "id": "1378f6a0-0736-40f1-90ff-8cf37a87df52",
+      "version": 357,
+      "key": "988139999",
+      "name": {
+        "es-CL": "Smartphone Redmi A5 128GB 6.88'' Negro Liberado"
+      },
+      "slug": {
+        "es-CL": "smartphone-redmi-a5-128gb-688-negro-liberado-988139999"
+      },
+      "categories": [
+        {
+          "id": "64082d9d-3822-4ab3-917f-e50f7dd39327"
+        },
+        {
+          "id": "a1381b6e-a378-4222-8c1f-199612aa42b6"
+        },
+        {
+          "id": "c7230cfe-693b-45c9-b6a9-e3f48b7019dd"
+        },
+        {
+          "id": "689fd27f-c29b-4824-9067-1f0f55ca862e"
+        },
+        {
+          "id": "dbce509a-f497-4b44-b612-90e44e7f35f2"
+        },
+        {
+          "id": "9555c39d-c5e3-4844-9921-73890649fc79"
+        },
+        {
+          "id": "71a8aed3-b92a-4130-b77e-b55767cbb69e"
+        }
+      ],
+      "hasStagedChanges": false,
+      "published": true,
+      "brand": "Xiaomi",
+      "isMarketplace": false,
+      "departmentId": "704",
+      "subdepartmentId": "030",
+      "classId": "005",
+      "familyId": "af515d6b-6af8-11ef-b268-0a82757268fb",
+      "sellers": [
+        "Paris"
+      ],
+      "masterVariant": {
+        "id": 1,
+        "key": "988139999",
+        "sku": "988139999",
+        "prices": {
+          "regular": {
+            "id": "0d46c7e7-0d8a-4a2f-818f-82e7f126c71b",
+            "key": "8dc16fd2-06bc-41c3-a0ac-0b14d20979bd",
+            "value": {
+              "type": "centPrecision",
+              "centAmount": 129990,
+              "currencyCode": "CLP",
+              "fractionDigits": 0
+            },
+            "custom": {
+              "type": {
+                "id": "8daf0df0-14d2-4418-b0cd-6882b8d7f815"
+              },
+              "fields": {}
+            }
+          },
+          "offer": {
+            "id": "3dc55709-f063-4898-b034-5dd1633bfcb0",
+            "value": {
+              "type": "centPrecision",
+              "currencyCode": "CLP",
+              "centAmount": 99990,
+              "fractionDigits": 0
+            },
+            "discountOnRegular": 0.23078698361412417
+          }
+        },
+        "ean": "6932554430221",
+        "images": [
+          {
+            "url": "https://cl-dam-resizer.ecomm.cencosud.com/unsafe/adaptive-fit-in/792x1068/cl/paris/988139999/variant/6994dc03317b3163dec9398e/images/5528e581-e80c-416c-9cad-62578b336750/988139999-0000-001.jpg",
+            "dimensions": {
+              "w": 1,
+              "h": 1
+            }
+          }
+        ],
+        "isMatchingVariant": true
+      },
+      "averageRating": 4.66667,
+      "countRating": 3
+    },
+    {
+      "id": "c43ec589-c890-4976-85b2-9c40552b146b",
+      "version": 188,
+      "key": "382373999",
+      "name": {
+        "es-CL": "Smartphone Honor 400 Smart 5G 256GB 6.77'' Gris Liberado"
+      },
+      "slug": {
+        "es-CL": "smartphone-honor-400-smart-5g-256gb-677-gris-liberado-382373999"
+      },
+      "categories": [
+        {
+          "id": "64082d9d-3822-4ab3-917f-e50f7dd39327"
+        },
+        {
+          "id": "b7325c10-764e-44b9-9848-f7091f9b3e9a"
+        },
+        {
+          "id": "5b4b5ba1-0223-4fb7-b2ee-78e3762c3498"
+        },
+        {
+          "id": "689fd27f-c29b-4824-9067-1f0f55ca862e"
+        }
+      ],
+      "hasStagedChanges": false,
+      "published": true,
+      "brand": "Honor",
+      "isMarketplace": false,
+      "departmentId": "704",
+      "subdepartmentId": "030",
+      "classId": "005",
+      "familyId": "af515d6b-6af8-11ef-b268-0a82757268fb",
+      "sellers": [
+        "Paris"
+      ],
+      "masterVariant": {
+        "id": 1,
+        "key": "382373999",
+        "sku": "382373999",
+        "prices": {
+          "regular": {
+            "id": "a353c009-dff6-4c82-999b-c5b490ea2829",
+            "key": "15e1d222-e999-4307-9e19-214e82791492",
+            "value": {
+              "type": "centPrecision",
+              "centAmount": 249990,
+              "currencyCode": "CLP",
+              "fractionDigits": 0
+            },
+            "custom": {
+              "type": {
+                "id": "8daf0df0-14d2-4418-b0cd-6882b8d7f815"
+              },
+              "fields": {}
+            }
+          },
+          "offer": {
+            "id": "318429ea-080b-4b5e-a74e-d29262bd9564",
+            "value": {
+              "type": "centPrecision",
+              "currencyCode": "CLP",
+              "centAmount": 189990,
+              "fractionDigits": 0
+            },
+            "discountOnRegular": 0.24000960038401536
+          }
+        },
+        "ean": "6936520888900",
+        "images": [
+          {
+            "url": "https://cl-dam-resizer.ecomm.cencosud.com/unsafe/adaptive-fit-in/792x1068/cl/paris/382373999/variant/696e82f3bcb643dd71f10321/images/d373dea2-8fa8-487b-bf51-ddb499440851/382373999-0000-001.jpg",
+            "dimensions": {
+              "w": 1,
+              "h": 1
+            }
+          }
+        ],
+        "isMatchingVariant": true
+      }
+    },
+    {
+      "id": "e2052e61-d3ff-4f11-bc8a-a03635dd6b51",
+      "version": 88,
+      "key": "461479999",
+      "name": {
+        "es-CL": "Smartphone Redmi A7 Pro 4G 64GB 6.9'' Black Liberado"
+      },
+      "slug": {
+        "es-CL": "smartphone-redmi-a7-pro-4g-64gb-69-black-liberado-461479999"
+      },
+      "categories": [
+        {
+          "id": "64082d9d-3822-4ab3-917f-e50f7dd39327"
+        },
+        {
+          "id": "71a8aed3-b92a-4130-b77e-b55767cbb69e"
+        },
+        {
+          "id": "c7230cfe-693b-45c9-b6a9-e3f48b7019dd"
+        },
+        {
+          "id": "689fd27f-c29b-4824-9067-1f0f55ca862e"
+        }
+      ],
+      "hasStagedChanges": false,
+      "published": true,
+      "brand": "Xiaomi",
+      "isMarketplace": false,
+      "departmentId": "704",
+      "subdepartmentId": "030",
+      "classId": "005",
+      "familyId": "af515d6b-6af8-11ef-b268-0a82757268fb",
+      "sellers": [
+        "Paris"
+      ],
+      "masterVariant": {
+        "id": 1,
+        "key": "461479999",
+        "sku": "461479999",
+        "prices": {
+          "regular": {
+            "id": "d9d90d24-73c2-4e15-a297-7b2baeb305eb",
+            "key": "b6d90e19-c030-4908-8606-d6f7cc5a90d4",
+            "value": {
+              "type": "centPrecision",
+              "centAmount": 179990,
+              "currencyCode": "CLP",
+              "fractionDigits": 0
+            },
+            "custom": {
+              "type": {
+                "id": "8daf0df0-14d2-4418-b0cd-6882b8d7f815"
+              },
+              "fields": {}
+            }
+          },
+          "offer": {
+            "id": "e854013c-682e-426c-88c9-8f0c09d57486",
+            "value": {
+              "type": "centPrecision",
+              "currencyCode": "CLP",
+              "centAmount": 89990,
+              "fractionDigits": 0
+            },
+            "discountOnRegular": 0.5000277793210733
+          }
+        },
+        "ean": "6932554493646",
+        "images": [
+          {
+            "url": "https://cl-dam-resizer.ecomm.cencosud.com/unsafe/adaptive-fit-in/792x1068/cl/paris/461479999/variant/69f8def7106ac7ef6880504f/images/2ce00614-adc8-446d-91e7-03243b654284/461479999-0000-001.jpg",
+            "dimensions": {
+              "w": 1,
+              "h": 1
+            }
+          }
+        ],
+        "isMatchingVariant": true
+      }
+    }
+  ]
+}

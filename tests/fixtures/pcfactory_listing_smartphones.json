@@ -1,0 +1,157 @@
+{
+  "content": {
+    "items": [
+      {
+        "id": 56783,
+        "nombre": "Celular Moto G86 Power 256GB/8GB 5G Verde Liberado",
+        "marca": "Motorola",
+        "categoria": {
+          "id": 5,
+          "nombre": "Smartphones",
+          "metaTitle": "Smartphones Oferta: Retiro Inmediato - pcfactory.cl",
+          "metaDescription": "Compra tu Smartphone hoy con retiro inmediato GRATIS en tienda asegurando el precio más bajo. Descubre lo último de Samsung, Apple, Xiaomi y más.",
+          "metaKeywords": null
+        },
+        "stock": "+100",
+        "thumbnail": "/public/foto/56783/1_200.jpg",
+        "precio": {
+          "efectivo": 289990.0,
+          "normal": 298990.0,
+          "referencia": 419990.0,
+          "bancoEstado": 0,
+          "promocion": true
+        },
+        "slug": "56783-motorola-celular-moto-g86-power-256gb-8gb-5g-verde-liberado",
+        "digital": false,
+        "outlet": false
+      },
+      {
+        "id": 55290,
+        "nombre": "Celular ZTE A76 128GB/4G 5G Negro Liberado",
+        "marca": "ZTE",
+        "categoria": {
+          "id": 5,
+          "nombre": "Smartphones",
+          "metaTitle": "Smartphones Oferta: Retiro Inmediato - pcfactory.cl",
+          "metaDescription": "Compra tu Smartphone hoy con retiro inmediato GRATIS en tienda asegurando el precio más bajo. Descubre lo último de Samsung, Apple, Xiaomi y más.",
+          "metaKeywords": null
+        },
+        "stock": "+100",
+        "thumbnail": "/public/foto/55290/1_200.jpg",
+        "precio": {
+          "efectivo": 99990.0,
+          "normal": 103090.0,
+          "referencia": 199990.0,
+          "bancoEstado": 0,
+          "promocion": true
+        },
+        "slug": "55290-zte-celular-zte-a76-128gb-4g-5g-negro-liberado",
+        "digital": false,
+        "outlet": false
+      },
+      {
+        "id": 56455,
+        "nombre": "Celular ZTE Neo 5 256GB/8GB 5G Negro Liberado",
+        "marca": "ZTE",
+        "categoria": {
+          "id": 5,
+          "nombre": "Smartphones",
+          "metaTitle": "Smartphones Oferta: Retiro Inmediato - pcfactory.cl",
+          "metaDescription": "Compra tu Smartphone hoy con retiro inmediato GRATIS en tienda asegurando el precio más bajo. Descubre lo último de Samsung, Apple, Xiaomi y más.",
+          "metaKeywords": null
+        },
+        "stock": "+100",
+        "thumbnail": "/public/foto/56455/1_200.jpg",
+        "precio": {
+          "efectivo": 239990.0,
+          "normal": 247390.0,
+          "referencia": 499990.0,
+          "bancoEstado": 0,
+          "promocion": true
+        },
+        "slug": "56455-zte-celular-zte-neo-5-256gb-8gb-5g-negro-liberado",
+        "digital": false,
+        "outlet": false
+      },
+      {
+        "id": 55288,
+        "nombre": "Celular Moto G06 256GB/4GB Azul Liberado",
+        "marca": "Motorola",
+        "categoria": {
+          "id": 5,
+          "nombre": "Smartphones",
+          "metaTitle": "Smartphones Oferta: Retiro Inmediato - pcfactory.cl",
+          "metaDescription": "Compra tu Smartphone hoy con retiro inmediato GRATIS en tienda asegurando el precio más bajo. Descubre lo último de Samsung, Apple, Xiaomi y más.",
+          "metaKeywords": null
+        },
+        "stock": "+100",
+        "thumbnail": "/public/foto/55288/1_200.jpg",
+        "precio": {
+          "efectivo": 107990.0,
+          "normal": 111290.0,
+          "referencia": 149990.0,
+          "bancoEstado": 0,
+          "promocion": true
+        },
+        "slug": "55288-motorola-celular-moto-g06-256gb-4gb-azul-liberado",
+        "digital": false,
+        "outlet": false
+      },
+      {
+        "id": 50037,
+        "nombre": "Celular ZTE A54 128GB/ 4GB Gris/Negro Liberado",
+        "marca": "ZTE",
+        "categoria": {
+          "id": 5,
+          "nombre": "Smartphones",
+          "metaTitle": "Smartphones Oferta: Retiro Inmediato - pcfactory.cl",
+          "metaDescription": "Compra tu Smartphone hoy con retiro inmediato GRATIS en tienda asegurando el precio más bajo. Descubre lo último de Samsung, Apple, Xiaomi y más.",
+          "metaKeywords": null
+        },
+        "stock": "1",
+        "thumbnail": "/public/foto/50037/1_200.jpg",
+        "precio": {
+          "efectivo": 92490.0,
+          "normal": 97390.0,
+          "referencia": 0,
+          "bancoEstado": 0,
+          "promocion": false
+        },
+        "slug": "50037-zte-celular-zte-a54-128gb-4gb-gris-negro-liberado",
+        "digital": false,
+        "outlet": false
+      },
+      {
+        "id": 47713,
+        "nombre": "Celular Samsung Galaxy S23 Ultra 256GB/8GB Green Liberado",
+        "marca": "Samsung",
+        "categoria": {
+          "id": 5,
+          "nombre": "Smartphones",
+          "metaTitle": "Smartphones Oferta: Retiro Inmediato - pcfactory.cl",
+          "metaDescription": "Compra tu Smartphone hoy con retiro inmediato GRATIS en tienda asegurando el precio más bajo. Descubre lo último de Samsung, Apple, Xiaomi y más.",
+          "metaKeywords": null
+        },
+        "stock": "1",
+        "thumbnail": "/public/foto/47713/1_200.jpg",
+        "precio": {
+          "efectivo": 1490990.0,
+          "normal": 1569490.0,
+          "referencia": 0,
+          "bancoEstado": 0,
+          "promocion": false
+        },
+        "slug": "47713-samsung-celular-samsung-galaxy-s23-ultra-256gb-8gb-green-liberado",
+        "digital": false,
+        "outlet": false
+      }
+    ],
+    "pageable": {
+      "totalElements": 38,
+      "totalPages": 1,
+      "pageElements": 38,
+      "pageNumber": 0,
+      "pageSize": 48
+    }
+  }
+}

@@ -54,13 +54,20 @@ async def upsert_listing(
     return await conn.fetchval(
         """
         INSERT INTO listings (store_id, category_id, store_sku, url, name_raw,
-                              brand_raw, image_url, last_seen_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+                              brand_raw, image_url, gtin_raw, model_raw,
+                              last_seen_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
         ON CONFLICT (store_id, store_sku) DO UPDATE
                 SET url          = EXCLUDED.url,
                     name_raw     = EXCLUDED.name_raw,
                     brand_raw    = EXCLUDED.brand_raw,
                     image_url    = COALESCE(EXCLUDED.image_url, listings.image_url),
+                    -- Identidad: COALESCE en ese orden, igual que la imagen. Una
+                    -- pasada que llega sin GTIN (la tienda lo omite en el listado
+                    -- o le cambia el nombre al campo) NO puede borrar el que ya
+                    -- teníamos — el dato es irrecuperable hacia atrás.
+                    gtin_raw     = COALESCE(EXCLUDED.gtin_raw, listings.gtin_raw),
+                    model_raw    = COALESCE(EXCLUDED.model_raw, listings.model_raw),
                     -- La categoría NO se pisa. Las búsquedas de una tienda se
                     -- solapan (un mismo SKU cae en "celular" y en "smart tv"), y
                     -- si la última pasada mandara, el listing rebotaría de
@@ -78,6 +85,8 @@ async def upsert_listing(
         product.name,
         product.brand,
         product.image_url,
+        product.gtin,
+        product.model,
     )
 
 
@@ -143,13 +152,58 @@ async def sweep_stale_runs(conn: asyncpg.Connection) -> int:
 
 
 async def start_run(
-    conn: asyncpg.Connection, *, store_id: int, category_id: int | None
+    conn: asyncpg.Connection,
+    *,
+    store_id: int,
+    category_id: int | None,
+    store_key: str | None = None,
 ) -> int:
     return await conn.fetchval(
-        "INSERT INTO scrape_runs (store_id, category_id) VALUES ($1, $2) RETURNING id",
+        """
+        INSERT INTO scrape_runs (store_id, category_id, store_key)
+             VALUES ($1, $2, $3)
+          RETURNING id
+        """,
         store_id,
         category_id,
+        store_key,
     )
+
+
+async def recent_items_seen(
+    conn: asyncpg.Connection,
+    *,
+    store_id: int,
+    category_id: int | None,
+    store_key: str | None,
+    window: int = 7,
+) -> list[int]:
+    """`items_seen` de las últimas `window` corridas sanas del MISMO target.
+
+    Solo `status='ok'`: una corrida rota no puede ser referencia de lo que es
+    volumen normal, y si lo fuera el canario se autoanestesiaría (dos pasadas
+    degradadas seguidas bajarían la vara para la tercera).
+
+    El target incluye `store_key` porque un mismo (tienda, categoría) puede
+    tener varias — con volúmenes que difieren en un orden de magnitud.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT items_seen
+          FROM scrape_runs
+         WHERE store_id = $1
+           AND category_id IS NOT DISTINCT FROM $2
+           AND store_key   IS NOT DISTINCT FROM $3
+           AND status = 'ok'
+         ORDER BY started_at DESC
+         LIMIT $4
+        """,
+        store_id,
+        category_id,
+        store_key,
+        window,
+    )
+    return [int(r["items_seen"]) for r in rows]
 
 
 async def finish_run(

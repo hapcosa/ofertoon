@@ -24,6 +24,20 @@ DEFAULT_USER_AGENT = (
     "Chrome/126.0.0.0 Safari/537.36 (+ofertascl-bot)"
 )
 
+#: Mismo UA sin el sufijo identificable, para las tiendas que hacen UA-sniffing.
+#:
+#: Easy es el caso verificado (2026-07-31): con `DEFAULT_USER_AGENT` responde
+#: **HTTP 200 con la home** (`__NEXT_DATA__.page == "/"`) en vez del listado. No
+#: es un bloqueo — es una degradación silenciosa, que es peor: sin el guard de
+#: `NotAListingPage` habríamos ingerido cero productos sin un solo error.
+#:
+#: Se usa **por adaptador**, nunca como default: las tiendas que respetan el UA
+#: identificable lo siguen recibiendo.
+BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/126.0.0.0 Safari/537.36"
+)
+
 RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 
@@ -110,7 +124,35 @@ class HttpClient:
         rps: float | None = None,
         headers: dict[str, str] | None = None,
     ) -> str:
-        cached = self._cache_path(url)
+        return await self._request("GET", url, rps=rps, headers=headers)
+
+    async def post_json(
+        self,
+        url: str,
+        payload: object,
+        *,
+        rps: float | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> str:
+        """POST con cuerpo JSON. Devuelve el texto crudo de la respuesta.
+
+        Existe porque no todas las tiendas exponen su catálogo por GET: Paris lo
+        sirve con un POST cuyo cuerpo lleva filtros y paginación. La caché de
+        fixtures se saltea acá a propósito — la clave sería la URL, y dos POST a
+        la misma URL con cuerpos distintos colisionarían.
+        """
+        return await self._request("POST", url, rps=rps, headers=headers, json=payload)
+
+    async def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        rps: float | None,
+        headers: dict[str, str] | None,
+        json: object | None = None,
+    ) -> str:
+        cached = self._cache_path(url) if method == "GET" else None
         if cached is not None and cached.exists():
             return cached.read_text(encoding="utf-8")
 
@@ -120,7 +162,9 @@ class HttpClient:
         for attempt in range(self._max_retries + 1):
             await self._limiter(host, rps).acquire()
             try:
-                response = await self._client.get(url, headers=headers)
+                response = await self._client.request(
+                    method, url, headers=headers, json=json
+                )
             except httpx.HTTPError as exc:
                 last_exc = exc
             else:

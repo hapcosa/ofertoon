@@ -1,0 +1,14 @@
+# El bind mount de Postgres vive en ./data y es propiedad de root: sin esta linea
+# el `docker build` ni siquiera puede leer el contexto ("can't stat data/postgres").
+data/
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.github/
+.env
+
+# Los fixtures y tests no van a la imagen de runtime: la suite corre en CI.
+tests/

@@ -22,11 +22,13 @@ import importlib
 import logging
 import os
 import signal
+import statistics
 import sys
 from collections.abc import Sequence
 from typing import Any
 
 import db
+from alerts import RunOutcome, format_summary, send_alert
 from scrapers.base import CategoryRef, RawProduct, StoreAdapter
 from scrapers.http import HttpClient
 
@@ -36,9 +38,50 @@ logger = logging.getLogger("runner")
 #: una categoría larga no tire a la basura lo ya scrapeado.
 BATCH_SIZE = 100
 
-#: Si una categoría devuelve menos que esto, el adaptador probablemente se rompió.
-#: Es el canario: no aborta nada, pero deja la corrida marcada para que se mire.
+#: Piso absoluto: por debajo de esto no hay categoría viva que valga. Cubre el
+#: caso "todavía no hay historia" y el "devolvió cero".
 CANARY_MIN_ITEMS = 5
+
+#: El modo de falla real de un adaptador no es "cero items", es "muchos menos".
+#: Una categoría de Falabella devuelve 942: un parser roto a medias que entregue
+#: 60 pasa cualquier umbral absoluto y envenena la baseline en silencio. Por eso
+#: la vara es relativa a lo que ESE target viene devolviendo.
+CANARY_DROP_RATIO = 0.40
+
+#: Cuántas corridas sanas se miran hacia atrás. 7 ≈ 3,5 días a 2 pasadas/día:
+#: suficiente para promediar el ruido de paginación, corto para seguir un
+#: catálogo que crece o se achica de verdad.
+CANARY_WINDOW = 7
+
+#: Mínimo de corridas para que la mediana signifique algo. Con menos, solo rige
+#: el piso absoluto — mejor ciego que gritando por ruido.
+CANARY_MIN_HISTORY = 3
+
+
+def canary_verdict(seen: int, history: Sequence[int]) -> tuple[str, str | None]:
+    """`('ok'|'partial', motivo)` para una corrida que no lanzó excepción.
+
+    `history` son los `items_seen` de las últimas corridas sanas del mismo
+    target, más reciente primero.
+    """
+    if seen < CANARY_MIN_ITEMS:
+        return "partial", f"canario: solo {seen} items (piso {CANARY_MIN_ITEMS})"
+
+    if len(history) < CANARY_MIN_HISTORY:
+        return "ok", None
+
+    median = statistics.median(history)
+    if median <= 0:
+        return "ok", None
+
+    floor = median * (1 - CANARY_DROP_RATIO)
+    if seen < floor:
+        drop = round((1 - seen / median) * 100)
+        return "partial", (
+            f"canario: {seen} items vs mediana {median:g} de las últimas "
+            f"{len(history)} corridas ({drop}% menos)"
+        )
+    return "ok", None
 
 
 def resolve_adapter(path: str) -> type:
@@ -103,15 +146,31 @@ async def scrape_target(
     *,
     store_id: int,
     dry_run: bool,
-) -> None:
+) -> RunOutcome:
     """Una categoría de una tienda: discover → persistir → cerrar el run."""
     category: CategoryRef = target["category"]
     category_id: int = target["category_id"]
 
     run_id: int | None = None
+    history: list[int] = []
     if not dry_run:
         async with pool.acquire() as conn:
-            run_id = await db.start_run(conn, store_id=store_id, category_id=category_id)
+            # La historia se lee ANTES de abrir la corrida: la fila propia entra
+            # en 'running', no en 'ok', pero pedirla primero deja la intención
+            # explícita y no depende de ese detalle.
+            history = await db.recent_items_seen(
+                conn,
+                store_id=store_id,
+                category_id=category_id,
+                store_key=category.store_key,
+                window=CANARY_WINDOW,
+            )
+            run_id = await db.start_run(
+                conn,
+                store_id=store_id,
+                category_id=category_id,
+                store_key=category.store_key,
+            )
 
     seen = 0
     written = 0
@@ -136,15 +195,14 @@ async def scrape_target(
         error = f"{type(exc).__name__}: {exc}"[:500]
         logger.exception("fallo %s/%s", adapter.slug, category.slug)
     else:
-        if seen < CANARY_MIN_ITEMS:
-            status = "partial"
-            error = f"canario: solo {seen} items"
+        status, error = canary_verdict(seen, history)
+        if status == "partial":
             logger.warning(
-                "canario %s/%s devolvió %d items (<%d) — revisar el adaptador",
+                "canario %s/%s [%s] — %s",
                 adapter.slug,
                 category.slug,
-                seen,
-                CANARY_MIN_ITEMS,
+                category.store_key,
+                error,
             )
 
     logger.info(
@@ -162,6 +220,16 @@ async def scrape_target(
                 conn, run_id, status=status, items_seen=seen, items_ok=written, error=error
             )
 
+    return RunOutcome(
+        store_slug=adapter.slug,
+        category_slug=category.slug,
+        store_key=category.store_key,
+        status=status,
+        items_seen=seen,
+        items_ok=written,
+        error=error,
+    )
+
 
 async def run_once(
     pool: Any,
@@ -169,7 +237,8 @@ async def run_once(
     only_store: str | None = None,
     only_category: str | None = None,
     dry_run: bool = False,
-) -> None:
+) -> list[RunOutcome]:
+    outcomes: list[RunOutcome] = []
     async with pool.acquire() as conn:
         if not dry_run:
             stale = await db.sweep_stale_runs(conn)
@@ -182,7 +251,7 @@ async def run_once(
         stores = {k: v for k, v in stores.items() if k == only_store}
         if not stores:
             logger.error("tienda %r no está activa o no existe", only_store)
-            return
+            return outcomes
 
     async with HttpClient() as http:
         for store_slug, store in stores.items():
@@ -196,13 +265,31 @@ async def run_once(
                 adapter_cls = resolve_adapter(store["adapter"])
             except (ImportError, AttributeError, ValueError) as exc:
                 logger.error("adaptador de %s no cargó: %s", store_slug, exc)
+                # Se reporta una vez por target: una tienda que no carga es
+                # exactamente lo que la alerta tiene que gritar, no tragarse.
+                outcomes.extend(
+                    RunOutcome(
+                        store_slug=store_slug,
+                        category_slug=t["category"].slug,
+                        store_key=t["category"].store_key,
+                        status="failed",
+                        items_seen=0,
+                        items_ok=0,
+                        error=f"adaptador no cargó: {exc}",
+                    )
+                    for t in targets
+                )
                 continue
 
             adapter = adapter_cls(http, [t["category"] for t in targets])
             for target in targets:
-                await scrape_target(
-                    pool, adapter, target, store_id=store["store_id"], dry_run=dry_run
+                outcomes.append(
+                    await scrape_target(
+                        pool, adapter, target, store_id=store["store_id"], dry_run=dry_run
+                    )
                 )
+
+    return outcomes
 
 
 async def main() -> int:
@@ -232,12 +319,14 @@ async def main() -> int:
     pool = await db.create_pool(dsn)
     try:
         while True:
-            await run_once(
+            outcomes = await run_once(
                 pool,
                 only_store=args.store,
                 only_category=args.category,
                 dry_run=args.dry_run,
             )
+            if not args.dry_run:
+                await send_alert(format_summary(outcomes))
             if args.once or stopping.is_set():
                 break
             try:
