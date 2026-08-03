@@ -3,3 +3,5 @@ asyncpg>=0.29
 aiogram>=3.13
 python-dotenv>=1.0
 selectolax>=0.3.21
+aiohttp>=3.10
+cryptography>=42.0

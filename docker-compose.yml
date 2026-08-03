@@ -46,4 +46,83 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # Dos pasadas diarias. No hace falta más y baja el riesgo de bloqueo.
       SCRAPE_INTERVAL_HOURS: ${SCRAPE_INTERVAL_HOURS:-12}
+      # Aviso post-pasada de corridas failed/partial. Opcional: sin token ni
+      # chat, el resumen queda solo en el log.
+      ALERT_BOT_TOKEN: ${ALERT_BOT_TOKEN:-}
+      ALERT_CHAT_ID: ${ALERT_CHAT_ID:-}
     command: ["python", "-m", "scrapers.runner"]
+
+  # Bot de onboarding: menú de canales, trial con verificación de email y
+  # checkout PayPal. Es el único proceso que hace getUpdates contra este token.
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ofertascl-bot${CONTAINER_SUFFIX:-}
+    restart: unless-stopped
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ONBOARDING_BOT_TOKEN: ${ONBOARDING_BOT_TOKEN:?ONBOARDING_BOT_TOKEN es obligatoria}
+      ONBOARDING_BOT_USERNAME: ${ONBOARDING_BOT_USERNAME:-}
+      ONBOARDING_ADMIN_IDS: ${ONBOARDING_ADMIN_IDS:-}
+      ONBOARDING_TRIAL_DAYS: ${ONBOARDING_TRIAL_DAYS:-7}
+      ONBOARDING_DM_POLL_SECONDS: ${ONBOARDING_DM_POLL_SECONDS:-5}
+      ONBOARDING_EMAIL_VERIFICATION: ${ONBOARDING_EMAIL_VERIFICATION:-true}
+      ONBOARDING_EMAIL_CODE_TTL_MINUTES: ${ONBOARDING_EMAIL_CODE_TTL_MINUTES:-15}
+      ONBOARDING_EMAIL_CODE_MAX_ATTEMPTS: ${ONBOARDING_EMAIL_CODE_MAX_ATTEMPTS:-5}
+      ONBOARDING_PAYPAL_RETURN_URL: ${ONBOARDING_PAYPAL_RETURN_URL:-}
+      ONBOARDING_PAYPAL_CANCEL_URL: ${ONBOARDING_PAYPAL_CANCEL_URL:-}
+      PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      FROM_EMAIL: ${FROM_EMAIL:-}
+    command: ["python", "-m", "subscriptions.bot.main"]
+
+  # Gate de canales: invita a quien pagó y expulsa a quien dejó de pagar.
+  # Inerte mientras GATE_ENABLED sea false (default).
+  gate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ofertascl-gate${CONTAINER_SUFFIX:-}
+    restart: unless-stopped
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GATE_ENABLED: ${GATE_ENABLED:-false}
+      GATE_POLL_SECONDS: ${GATE_POLL_SECONDS:-30}
+      GATE_GRACE_DAYS: ${GATE_GRACE_DAYS:-3}
+      GATE_INVITE_TTL_HOURS: ${GATE_INVITE_TTL_HOURS:-24}
+      # El gate administra los canales con el bot de onboarding (tiene que ser
+      # admin de ambos). GATE_BOT_TOKEN los separa si hiciera falta.
+      ONBOARDING_BOT_TOKEN: ${ONBOARDING_BOT_TOKEN:?ONBOARDING_BOT_TOKEN es obligatoria}
+      GATE_BOT_TOKEN: ${GATE_BOT_TOKEN:-}
+    command: ["python", "-m", "subscriptions.gate_daemon"]
+
+  # Webhook de PayPal. Único servicio con puerto expuesto: necesita ser
+  # alcanzable desde internet (túnel/reverse proxy) para recibir los eventos.
+  paypal-webhook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ofertascl-paypal-webhook${CONTAINER_SUFFIX:-}
+    restart: unless-stopped
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
+      PAYPAL_WEBHOOK_PORT: 8080
+    ports:
+      - "${PAYPAL_WEBHOOK_HOST_PORT:-8086}:8080"
+    command: ["python", "-m", "subscriptions.paypal.webhook"]

@@ -1,0 +1,16 @@
+# Dominios de email desechable. Lista ampliable: un dominio por línea.
+mailinator.com
+10minutemail.com
+guerrillamail.com
+guerrillamailblock.com
+tempmail.com
+temp-mail.org
+throwaway.email
+yopmail.com
+getnada.com
+trashmail.com
+maildrop.cc
+sharklasers.com
+dispostable.com
+fakeinbox.com
+mintemail.com
