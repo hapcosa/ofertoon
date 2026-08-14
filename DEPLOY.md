@@ -195,6 +195,54 @@ precios y se la quiere conservar, hay que migrar el volumen de Postgres
 (`pg_dump` / `pg_restore`); si no, la historia arranca de cero y **F1 no se
 puede calibrar hasta 45 días después** de la primera pasada.
 
+Cerrada cada pasada, el mismo proceso corre la **fase de pricing** (baselines +
+detector). No es un servicio aparte a propósito: el trigger de una baseline es
+"llegaron observaciones nuevas", y este proceso es el único que sabe cuándo pasó
+eso. Se ve en el log como una línea por pasada:
+
+```
+docker compose logs scraper | grep "pipeline:"
+# pipeline: baselines[10697 listings, 10697 baselines escritas, 0 con historia
+#           suficiente, 0 con rampa] detector[0 evaluados, 0 aceptados (…)]
+```
+
+**Esa línea es la que hay que mirar durante el cold-start.** Hasta que el
+catálogo tenga 30 días calendario de historia, el detector rechaza el 100% por
+`history` y esos rechazos NO se persisten — o sea que una `deal_candidates`
+vacía no distingue "el job no corrió" de "corrió y descartó todo". El log sí.
+
+Para correr la fase a mano sin esperar la pasada:
+`docker compose exec scraper python -m pricing.pipeline`.
+
+## 10. Publisher — se prende cuando haya qué publicar
+
+```bash
+docker compose up -d publisher      # arranca inerte
+```
+
+Igual que el gate, nace apagado (`PUBLISHER_ENABLED=false`) porque publicar en
+un canal es irreversible. Postea con `GATE_BOT_TOKEN`, que ya es administrator
+con `can_post_messages`.
+
+La política de publicación —cuota diaria, topes por tienda y categoría,
+espaciado y ventana horaria— vive entera en `curation/ranker.py`, no en env
+vars: son decisiones de producto y cambiarlas debería quedar en el historial de
+git, no en un `.env` que nadie revisa. Los valores están en las constantes del
+módulo.
+
+Prenderlo **no tiene sentido antes de ~2026-09-02**: hasta entonces no hay
+baselines con historia suficiente y el ranker no va a tener nada que elegir.
+Cuando llegue el momento:
+
+```bash
+# .env → PUBLISHER_ENABLED=true
+docker compose up -d publisher
+docker compose logs -f publisher
+```
+
+Apagado de urgencia: `PUBLISHER_ENABLED=false` + `docker compose up -d
+publisher`. Los mensajes ya publicados quedan; se dejan de emitir nuevos.
+
 ---
 
 ## Verificación final

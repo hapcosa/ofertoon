@@ -147,12 +147,27 @@ def evaluate(
 #: upsert le asigna una en la primera pasada que lo ve).
 DEFAULT_THRESHOLD = Decimal("0.20")
 
+#: Vencimiento de la observación. Un listing que dejó de aparecer en el catálogo
+#: conserva para siempre su último `price_point`, y sin este corte el detector lo
+#: re-evaluaría en cada corrida como si fuera el precio de hoy — publicando una
+#: oferta de un producto que ya nadie vende. Dos ciclos de scraping (12 h) más
+#: margen: una pasada que falla no descarta el catálogo entero, dos sí.
+PRICE_MAX_AGE_HOURS = 26
+
 
 async def _load_candidates(conn: asyncpg.Connection) -> list[dict[str, Any]]:
-    """Último precio observado de cada listing que ya tiene baseline.
+    """Observaciones frescas todavía sin evaluar, de listings con baseline.
 
     El detector corre después del job de baselines, sobre la foto más reciente:
     la observación de hoy contra la referencia de los 60 días previos.
+
+    Dos filtros que hacen al job re-ejecutable. El de edad descarta la foto
+    vieja de un listing que ya no se raspa (ver `PRICE_MAX_AGE_HOURS`). El
+    `NOT EXISTS` descarta lo ya decidido: cada observación se evalúa una sola
+    vez, así correr el pipeline dos veces seguidas no duplica candidatos ni
+    infla las stats. Los rechazos por `history` sí se re-evalúan en cada
+    corrida, porque no dejan fila — y son justamente los que hay que seguir
+    contando para saber cuánto falta para tener catálogo publicable.
     """
     rows = await conn.fetch(
         """
@@ -171,8 +186,15 @@ async def _load_candidates(conn: asyncpg.Connection) -> list[dict[str, Any]]:
                 LIMIT 1
           ) AS pp ON TRUE
          WHERE l.is_active
+           AND pp.observed_at >= NOW() - ($2 || ' hours')::INTERVAL
+           AND NOT EXISTS (
+               SELECT 1 FROM deal_candidates AS dc
+                WHERE dc.listing_id  = l.id
+                  AND dc.detected_at = pp.observed_at
+           )
         """,
         DEFAULT_THRESHOLD,
+        str(PRICE_MAX_AGE_HOURS),
     )
     return [dict(r) for r in rows]
 
@@ -214,6 +236,7 @@ async def _persist(
         INSERT INTO deal_candidates (listing_id, detected_at, price, p50_60d,
                                      discount_real, score, verdict, reject_reason)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (listing_id, detected_at) DO NOTHING
         """,
         listing_id,
         detected_at,
@@ -248,21 +271,25 @@ class DetectorStats:
         return f"{self.evaluated} evaluados, {self.accepted} aceptados ({reasons})"
 
 
-async def run(
-    pool: asyncpg.Pool, *, now: datetime | None = None, persist_rejects: bool = True
-) -> DetectorStats:
-    """Evalúa la foto actual y persiste los candidatos.
+async def run(pool: asyncpg.Pool, *, persist_rejects: bool = True) -> DetectorStats:
+    """Evalúa las observaciones frescas sin decidir y persiste los candidatos.
+
+    Cada observación se evalúa **a su propia fecha** (`observed_at`), no a la
+    hora en que corre el job: es la misma convención que usa
+    `pricing/backtest.py` al hacer replay, y es lo que hace que el resultado no
+    dependa de cuándo se disparó el pipeline. `detected_at` guarda esa fecha, y
+    con el UNIQUE de la migración 14 correr el job dos veces es un no-op.
 
     `persist_rejects=False` existe solo para corridas exploratorias: en
     producción los rechazos SON el dato que permite calibrar.
     """
-    now = now or datetime.now(timezone.utc)
     rejected_by: dict[str, int] = {}
     evaluated = accepted = 0
 
     async with pool.acquire() as conn:
         rows = await _load_candidates(conn)
         for row in rows:
+            observed_at = row["observed_at"]
             baseline = Baseline(
                 p50=row["p50_60d"],
                 p10=row["p10_60d"],
@@ -277,7 +304,7 @@ async def run(
                 baseline=baseline,
                 threshold=Decimal(str(row["threshold"])),
                 prior_post=await _prior_post(conn, row["listing_id"]),
-                now=now,
+                now=observed_at,
             )
             evaluated += 1
             if decision.accepted:
@@ -294,7 +321,7 @@ async def run(
                 price=row["price_effective"],
                 p50=row["p50_60d"],
                 decision=decision,
-                detected_at=now,
+                detected_at=observed_at,
             )
 
     stats = DetectorStats(evaluated, accepted, rejected_by)

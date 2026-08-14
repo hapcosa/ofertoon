@@ -88,13 +88,23 @@ class TelegramClient:
             return None
 
     async def send_message(
-        self, chat_id: int | None, text: str, parse_mode: str | None = None
+        self,
+        chat_id: int | None,
+        text: str,
+        parse_mode: str | None = None,
+        *,
+        disable_web_page_preview: bool = True,
     ) -> int | None:
         """Publica un mensaje y devuelve `message_id`; falla como no-op.
 
         `parse_mode` es opcional: sin él el texto va plano (poster VIP/Cornix),
         con `"HTML"` Telegram interpreta el formato (canal informativo). Sólo se
         agrega a la request cuando viene, para no tocar el contrato del VIP.
+
+        `disable_web_page_preview` mantiene el default del port (True: una
+        alerta o un DM no quieren card). El publisher de ofertas lo pone en
+        False a propósito — la card del link ES la foto del producto, y así no
+        hay que subir una imagen que puede fallar.
         """
         if chat_id is None:
             logger.warning("telegram_send_skipped — tier channel_id missing")
@@ -102,7 +112,7 @@ class TelegramClient:
         payload: dict[str, Any] = {
             "chat_id": chat_id,
             "text": text,
-            "disable_web_page_preview": True,
+            "disable_web_page_preview": disable_web_page_preview,
         }
         if parse_mode is not None:
             payload["parse_mode"] = parse_mode

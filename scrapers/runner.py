@@ -8,10 +8,15 @@ Cada par (tienda, categoría) es una unidad de trabajo independiente con su fila
 `scrape_runs`. Si una tienda cambia el HTML y su adaptador revienta, se degrada esa
 tienda y las demás siguen — nunca se cae la pasada entera.
 
+Cerrada la pasada corre la fase de pricing (`pricing/pipeline.py`): baselines y
+detector sobre las observaciones recién escritas. Vive acá porque el trigger de
+una baseline es "hay dato nuevo", no una hora del reloj.
+
 Uso:
     python -m scrapers.runner                      # loop cada SCRAPE_INTERVAL_HOURS
     python -m scrapers.runner --once               # una pasada y sale
     python -m scrapers.runner --once --dry-run     # imprime, no escribe
+    python -m scrapers.runner --once --skip-pricing
     python -m scrapers.runner --once --store sodimac --category ferre-jardin
 """
 from __future__ import annotations
@@ -292,12 +297,37 @@ async def run_once(
     return outcomes
 
 
+async def run_pricing(pool: Any) -> None:
+    """Fase de pricing post-pasada: baselines + detector sobre lo recién escrito.
+
+    Va acá y no en un servicio aparte porque el trigger correcto es "llegaron
+    observaciones nuevas", y este proceso es el único que sabe cuándo pasó eso
+    (ver el docstring de `pricing/pipeline.py`).
+
+    Envuelto porque la ingesta es lo irreversible: una pasada perdida es historia
+    que no se recupera, mientras que una corrida de pricing salteada se rehace
+    sola en la siguiente. Un bug en el detector NO puede tumbar el scraper. Es el
+    mismo criterio con el que un adaptador roto degrada su tienda y nada más.
+    """
+    from pricing.pipeline import run as run_pipeline  # import perezoso, como alerts
+
+    try:
+        await run_pipeline(pool)
+    except Exception:
+        logger.exception("la fase de pricing falló; la ingesta sigue")
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Ingesta de precios OfertasCL")
     parser.add_argument("--once", action="store_true", help="una pasada y salir")
     parser.add_argument("--dry-run", action="store_true", help="no escribe a DB")
     parser.add_argument("--store", help="limitar a un slug de tienda")
     parser.add_argument("--category", help="limitar a un slug de categoría")
+    parser.add_argument(
+        "--skip-pricing",
+        action="store_true",
+        help="no correr baselines/detector después de la pasada",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -326,6 +356,8 @@ async def main() -> int:
                 dry_run=args.dry_run,
             )
             if not args.dry_run:
+                if not args.skip_pricing:
+                    await run_pricing(pool)
                 await send_alert(format_summary(outcomes))
             if args.once or stopping.is_set():
                 break

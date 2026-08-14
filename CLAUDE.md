@@ -206,3 +206,19 @@ se toca**: el runner, la persistencia y el detector solo conocen `RawProduct`.
 - No commitear `.env`, tokens ni `data/`.
 - No tocar signalsTrading desde acá.
 - **No commitees ni pushees salvo que te lo pidan.**
+
+## Infraestructura: dónde corre esto
+
+**Producción = `10.244.117.161`** (migrado el 2026-08-14). El host anterior
+`10.244.19.205` (`traderbot`) pasó a ser el entorno de **test**, donde se montan
+los cambios antes de subirlos.
+
+- El repo vive en `~/servicios/ofertoon`. Postgres usa el bind mount
+  `./data/postgres` (root-owned, en `.gitignore`).
+- Puerto host de Postgres: `${POSTGRES_HOST_PORT:-5436}`.
+- El túnel Cloudflare (`sendtelegram.budaicapital.com` → `paypal-webhook:8080`)
+  vive en `docker-compose.override.yml`, **fuera del repo**, detrás del profile
+  `tunnel`. Un `docker compose up -d` normal no lo levanta:
+  `docker compose --profile tunnel up -d cloudflared`.
+- ⚠️ **Nunca correr dos `cloudflared` con el mismo token a la vez** — Cloudflare
+  ve dos conectores y reparte el tráfico entre ambas máquinas.
