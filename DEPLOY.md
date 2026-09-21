@@ -193,7 +193,9 @@ docker compose up -d scraper
 Corre en loop de 12h. Si en la máquina de desarrollo ya había historia de
 precios y se la quiere conservar, hay que migrar el volumen de Postgres
 (`pg_dump` / `pg_restore`); si no, la historia arranca de cero y **F1 no se
-puede calibrar hasta 45 días después** de la primera pasada.
+puede calibrar hasta 60 días después** de la primera pasada: 30 para que la
+baseline cumpla `MIN_DAYS` y el detector emita su primera señal, más los 30 de
+`LABEL_WINDOW_DAYS` que el backtest necesita para etiquetarla.
 
 Cerrada cada pasada, el mismo proceso corre la **fase de pricing** (baselines +
 detector). No es un servicio aparte a propósito: el trigger de una baseline es
@@ -231,7 +233,9 @@ git, no en un `.env` que nadie revisa. Los valores están en las constantes del
 módulo.
 
 Prenderlo **no tiene sentido antes de ~2026-09-02**: hasta entonces no hay
-baselines con historia suficiente y el ranker no va a tener nada que elegir.
+baselines con historia suficiente y el ranker no va a tener nada que elegir. Y
+publicar con los θ del plan, sin el backtest que recién cierra el **2026-10-02**,
+es publicar contra umbrales que nadie midió.
 Cuando llegue el momento:
 
 ```bash

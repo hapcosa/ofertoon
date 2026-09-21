@@ -33,7 +33,8 @@ membresías, PayPal), pero con repo, Postgres (`:5436`) y marca separados.
 **F0, F1, F2 y F3 cerrados en código y desplegados. El detector empezó a aceptar
 ofertas el 2026-09-01**, el día que la primera cohorte cruzó los 30 días de
 historia. Lo que falta para publicar ya no es baseline: es calibrar θ, y eso
-necesita ≥45 días (~17 de septiembre).
+**no se puede antes del 2026-10-02** (ver "Cuándo empiezan a salir ofertas": la
+cuenta de 45 días que decía este handoff estaba mal).
 
 - **15.475 listings**, 6 tiendas. Última pasada del pipeline (1-sep 18:13, ya
   con los datos reparados):
@@ -147,15 +148,35 @@ Los rechazos por `history` siguen sin dejar fila (ver más abajo).
 
 ### Cuándo empiezan a salir ofertas
 
+> **Corrección 2026-09-21.** Este handoff decía que el backtest podía calibrar θ
+> "con ≥45 días, ~17 de septiembre". **Está mal, y la fecha real es el 2-oct.**
+> La cuenta de 45 días era 30 de baseline + 15, pero la ventana de etiquetado es
+> de 30 días, no 15 (`backtest.py:46`, `LABEL_WINDOW_DAYS = 30`). La cadena
+> completa es: la serie arranca el 3-ago → la baseline recién cumple
+> `MIN_DAYS = 30` el **2-sep**, que es el primer día en que el replay puede
+> emitir una señal → esa señal no se puede etiquetar hasta el **2-oct**. Antes
+> de eso `label_outcome` devuelve `unknown` para todo (`series_end < horizon`) y
+> la precisión sale `None`, que es lo correcto: no es 0 %, es "no se sabe".
+
+Verificado el 21-sep corriendo el backtest de verdad, no deducido:
+
+```
+categoría              θ  señales  /día  reales  falsas  s/madurar  precisión
+tecno-notebooks     0.10       60   1.2       0       0         60          —
+tecno-notebooks     0.15       31   0.6       0       0         31          —
+tecno-notebooks     0.25        9   0.2       0       0          9          —
+```
+
 | Hito | Fecha | Estado |
 |---|---|---|
-| Historia suficiente | **2026-09-01** | ✅ hecho. 5.227 baselines publicables, 42 aceptados |
-| Backtest con ≥45 días | **~2026-09-17** | pendiente. Recién ahí `pricing/backtest.py` tiene con qué calibrar θ (precisión ≥80 % con ≥3 ofertas/día) |
+| Historia suficiente | **2026-09-01** | ✅ hecho. 8.750 baselines publicables al 21-sep |
+| Primera señal etiquetable | **2026-10-02** | pendiente. Es el piso duro, y con una sola cohorte de señales |
+| Backtest con volumen para fijar θ | **~mediados de octubre** | pendiente. Un θ por categoría necesita más de un día de señales maduras |
 | `PUBLISHER_ENABLED=true` | después del backtest | pendiente. Antes de eso el canal recibiría ofertas medidas contra θ sin calibrar |
 
-Entre el 1 y el 17 de septiembre el detector va a producir candidatos que **no
-hay que publicar todavía**: son la materia prima del backtest. Con la baseline ya
-reparada, los que se acumulen desde el 1-sep 18:13 sí son dataset limpio.
+Hasta entonces el detector va a producir candidatos que **no hay que publicar
+todavía**: son la materia prima del backtest. Con la baseline ya reparada, los
+que se acumulen desde el 1-sep 18:13 sí son dataset limpio.
 
 ### El canario — tres arreglos, 2026-09-01
 
@@ -206,7 +227,8 @@ red/host, no de adaptador.
    dan para tres commits: el import dentro del `try` de `scrapers/runner.py`
    (`fix:`), los arreglos del canario (`fix:`) y `scripts/repair_oversampling.py`
    + este handoff (`chore:`/`docs:`).
-2. **Calibrar θ** (~2026-09-17, con ≥45 días). El output de
+2. **Calibrar θ** (no antes del 2026-10-02; con volumen, ~mediados de octubre).
+   El output de
    `pricing/backtest.py` **es** el gate: precisión ≥80% con ≥3 ofertas/día.
    Los θ de `categories.discount_threshold` son valores de partida del plan,
    **no** están calibrados.

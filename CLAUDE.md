@@ -18,10 +18,11 @@ scraping. El scraping es la parte mecánica; el valor está en el detector.
 Repo remoto: `hapcosa/ofertoon`. **No es signalsTrading** — ver §Aislamiento.
 
 **Estado:** F0 (scraping) cerrado. F1 (identidad/baseline/detector) escrito,
-falta calibrar θ (necesita ≥45 días de historia: mediados de septiembre 2026).
+falta calibrar θ (no antes del 2026-10-02: la baseline necesita 30 días y el
+etiquetado del backtest otros 30 — ver HANDOFF.md).
 F2 (suscripciones, PayPal) y F3 (MercadoPago) con código completo y **sin
-configurar externamente**. Falta el publisher (`curation/ranker.py`,
-`publisher/*`, `daemon.py`).
+configurar externamente**. El publisher (`curation/ranker.py`, `publisher/*`)
+está desplegado e **inerte a propósito**: `PUBLISHER_ENABLED=false`.
 
 Runbooks vivos: [`HANDOFF.md`](HANDOFF.md) (estado y traspaso de sesión),
 [`DEPLOY.md`](DEPLOY.md) (puesta en producción),

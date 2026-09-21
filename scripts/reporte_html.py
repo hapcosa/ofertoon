@@ -6,7 +6,7 @@ al día — un dashboard con reloj propio agregaría un proceso más para mirar 
 que cambian cada 12 h.
 
 Deliberadamente NO muestra los candidatos como "ofertas publicadas": hasta que θ
-esté calibrado (~2026-09-17) son materia prima del backtest. La página lo dice
+esté calibrado (no antes del 2026-10-02) son materia prima del backtest. La página lo dice
 arriba de todo, porque un reporte que se lee como catálogo de ofertas es
 exactamente el malentendido caro.
 
@@ -400,8 +400,9 @@ def render(data: dict) -> str:
     <div class="notice">
       <span class="label">Todavía no se publica</span>
       <p>Estos son <b>candidatos</b>, no ofertas enviadas al canal. Los umbrales por
-        categoría no están calibrados —eso necesita 45 días de serie, alrededor del
-        17 de septiembre— y el publisher está apagado a propósito hasta entonces.</p>
+        categoría no están calibrados —el backtest recién puede etiquetar señales a
+        partir del 2 de octubre— y el publisher está apagado a propósito hasta
+        entonces.</p>
     </div>
   </header>
 
