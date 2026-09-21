@@ -125,11 +125,14 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PUBLISHER_ENABLED: ${PUBLISHER_ENABLED:-false}
       PUBLISHER_POLL_SECONDS: ${PUBLISHER_POLL_SECONDS:-300}
-      # Postea con el mismo bot que administra los canales (ya verificado como
-      # administrator con can_post_messages). PUBLISHER_BOT_TOKEN los separa.
+      # Postea con ONBOARDING_BOT_TOKEN (@Ofertoon_bot), que es el único admin
+      # del canal vip con can_post_messages — verificado contra la Bot API el
+      # 2026-09-21. GATE_BOT_TOKEN (@Ofertoonvip_bot) administra membresías pero
+      # NO es admin del canal: si el daemon cayera en él, todo post fallaría.
+      # PUBLISHER_BOT_TOKEN sigue mandando cuando se lo define a mano.
       GATE_BOT_TOKEN: ${GATE_BOT_TOKEN:-}
       ONBOARDING_BOT_TOKEN: ${ONBOARDING_BOT_TOKEN:?ONBOARDING_BOT_TOKEN es obligatoria}
-      PUBLISHER_BOT_TOKEN: ${PUBLISHER_BOT_TOKEN:-}
+      PUBLISHER_BOT_TOKEN: ${PUBLISHER_BOT_TOKEN:-${ONBOARDING_BOT_TOKEN}}
     command: ["python", "-m", "publisher.daemon"]
 
   # Webhook de PayPal. Único servicio con puerto expuesto: necesita ser

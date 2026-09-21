@@ -51,11 +51,16 @@ def _bool_env(name: str, *, default: bool = False) -> bool:
 
 
 def resolve_token() -> str:
-    """El bot que postea. Es el mismo que administra los canales.
+    """El bot que postea.
 
-    `GATE_BOT_TOKEN` es el que ya está verificado como administrator con
-    `can_post_messages`. `PUBLISHER_BOT_TOKEN` permite separarlos si algún día
-    conviene que el que postea no sea el que expulsa.
+    El orden dice la preferencia, pero **quién puede postear lo decide Telegram,
+    no este archivo**: el bot tiene que ser administrator del canal con
+    `can_post_messages`. Al 2026-09-21 eso es cierto solo de `@Ofertoon_bot`
+    (`ONBOARDING_BOT_TOKEN`); `GATE_BOT_TOKEN` (`@Ofertoonvip_bot`) administra
+    membresías y no es admin del canal, así que caer en él haría fallar todo
+    post. `docker-compose.yml` resuelve `PUBLISHER_BOT_TOKEN` al de onboarding
+    por eso. Si algún día se separan de verdad, hay que darle admin al nuevo bot
+    en el canal antes de cambiar la variable.
     """
     return (
         os.environ.get("PUBLISHER_BOT_TOKEN", "").strip()

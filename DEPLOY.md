@@ -223,8 +223,14 @@ docker compose up -d publisher      # arranca inerte
 ```
 
 Igual que el gate, nace apagado (`PUBLISHER_ENABLED=false`) porque publicar en
-un canal es irreversible. Postea con `GATE_BOT_TOKEN`, que ya es administrator
-con `can_post_messages`.
+un canal es irreversible.
+
+Postea con `ONBOARDING_BOT_TOKEN` (`@Ofertoon_bot`), que es **el único admin del
+canal vip con `can_post_messages`** — verificado contra la Bot API el
+2026-09-21. `GATE_BOT_TOKEN` (`@Ofertoonvip_bot`) administra membresías pero no
+es admin del canal: el fallback del daemon caía en él y todo post habría
+fallado. Por eso `docker-compose.yml` resuelve `PUBLISHER_BOT_TOKEN` al de
+onboarding. **Antes de cambiar de bot hay que darle admin en el canal.**
 
 La política de publicación —cuota diaria, topes por tienda y categoría,
 espaciado y ventana horaria— vive entera en `curation/ranker.py`, no en env
