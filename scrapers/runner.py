@@ -309,9 +309,13 @@ async def run_pricing(pool: Any) -> None:
     sola en la siguiente. Un bug en el detector NO puede tumbar el scraper. Es el
     mismo criterio con el que un adaptador roto degrada su tienda y nada más.
     """
-    from pricing.pipeline import run as run_pipeline  # import perezoso, como alerts
-
     try:
+        # El import va adentro del try: perezoso como el de alerts, pero además
+        # un ImportError es exactamente el modo de falla que se dio en prod
+        # (imagen construida sin `pricing/pipeline.py`), y afuera escapaba a esta
+        # guarda y tumbaba el ciclo entero.
+        from pricing.pipeline import run as run_pipeline
+
         await run_pipeline(pool)
     except Exception:
         logger.exception("la fase de pricing falló; la ingesta sigue")
