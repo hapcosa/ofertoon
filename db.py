@@ -178,11 +178,22 @@ async def recent_items_seen(
     store_key: str | None,
     window: int = 7,
 ) -> list[int]:
-    """`items_seen` de las últimas `window` corridas sanas del MISMO target.
+    """`items_seen` de las últimas `window` corridas del MISMO target.
 
-    Solo `status='ok'`: una corrida rota no puede ser referencia de lo que es
-    volumen normal, y si lo fuera el canario se autoanestesiaría (dos pasadas
-    degradadas seguidas bajarían la vara para la tercera).
+    Se listan `ok` y `partial`. Queda afuera `failed` —una corrida que reventó no
+    vio nada, su cero no es un volumen— y `running`, que no terminó y cuyo
+    `items_seen` todavía es 0. Antes solo entraban las `ok`, y
+    eso enclavaba el canario: apenas un target caía en `partial`, sus corridas
+    dejaban de alimentar la historia y la mediana quedaba congelada en el nivel
+    viejo **para siempre**. Pasó con SP Digital, que perdió un tercio de su stock
+    el 28 de agosto y siguió reportando "18 items vs mediana 47" días después,
+    con las siete corridas previas en 18. Una alarma que no se apaga no es una
+    alarma: entierra los errores de verdad.
+
+    El riesgo que el filtro anterior quería evitar —que el canario se
+    autoanestesie— lo cubre la mediana: con `window=7` hacen falta 4 corridas
+    degradadas seguidas (2 días) para mover la vara, así que un adaptador roto
+    sigue gritando mientras hay margen para arreglarlo.
 
     El target incluye `store_key` porque un mismo (tienda, categoría) puede
     tener varias — con volúmenes que difieren en un orden de magnitud.
@@ -194,7 +205,7 @@ async def recent_items_seen(
          WHERE store_id = $1
            AND category_id IS NOT DISTINCT FROM $2
            AND store_key   IS NOT DISTINCT FROM $3
-           AND status = 'ok'
+           AND status IN ('ok', 'partial')
          ORDER BY started_at DESC
          LIMIT $4
         """,

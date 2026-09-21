@@ -115,3 +115,24 @@ class DetailAdapter(Protocol):
 
     async def fetch(self, refs: Sequence[ListingRef]) -> list[RawProduct]:
         ...
+
+
+@runtime_checkable
+class CountingAdapter(Protocol):
+    """Opcional: tiendas cuya API declara cuántos productos tiene la categoría.
+
+    Cuando existe, el runner reemplaza el canario estadístico por una
+    verificación **exacta** de completitud. Si la tienda dice 74 y la paginación
+    enumeró 74, la corrida está completa por definición y ninguna mediana puede
+    decir lo contrario — que es justo el falso positivo que SP Digital produjo
+    durante días cuando su stock cayó de golpe el 28 de agosto.
+
+    Cuenta entradas **enumeradas por la paginación**, no productos emitidos: un
+    ítem que el parser descarta por no traer precio es una decisión nuestra, no
+    una página que se perdió. Mezclarlos convertiría esta guarda exacta en otra
+    heurística.
+    """
+
+    def completeness(self, category: CategoryRef) -> tuple[int, int] | None:
+        """`(enumerados, declarados)` de la última corrida, o `None` si no se sabe."""
+        ...

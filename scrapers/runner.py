@@ -34,7 +34,7 @@ from typing import Any
 
 import db
 from alerts import RunOutcome, format_summary, send_alert
-from scrapers.base import CategoryRef, RawProduct, StoreAdapter
+from scrapers.base import CategoryRef, CountingAdapter, RawProduct, StoreAdapter
 from scrapers.http import HttpClient
 
 logger = logging.getLogger("runner")
@@ -43,8 +43,10 @@ logger = logging.getLogger("runner")
 #: una categoría larga no tire a la basura lo ya scrapeado.
 BATCH_SIZE = 100
 
-#: Piso absoluto: por debajo de esto no hay categoría viva que valga. Cubre el
-#: caso "todavía no hay historia" y el "devolvió cero".
+#: Piso absoluto para un target SIN historia con qué compararse. No se aplica
+#: cuando la hay: existen categorías que de verdad tienen 3 productos, y marcarlas
+#: `partial` para siempre —como venía pasando con `Tarjetas Gráficas AMD` de PC
+#: Factory— es ruido que entierra los errores reales.
 CANARY_MIN_ITEMS = 5
 
 #: El modo de falla real de un adaptador no es "cero items", es "muchos menos".
@@ -63,17 +65,43 @@ CANARY_WINDOW = 7
 CANARY_MIN_HISTORY = 3
 
 
-def canary_verdict(seen: int, history: Sequence[int]) -> tuple[str, str | None]:
+def canary_verdict(
+    seen: int,
+    history: Sequence[int],
+    *,
+    completeness: tuple[int, int] | None = None,
+) -> tuple[str, str | None]:
     """`('ok'|'partial', motivo)` para una corrida que no lanzó excepción.
 
-    `history` son los `items_seen` de las últimas corridas sanas del mismo
-    target, más reciente primero.
-    """
-    if seen < CANARY_MIN_ITEMS:
-        return "partial", f"canario: solo {seen} items (piso {CANARY_MIN_ITEMS})"
+    `history` son los `items_seen` de las últimas corridas del mismo target, más
+    reciente primero. `completeness` es `(enumerados, declarados)` para las
+    tiendas que declaran cuántos productos tiene la categoría
+    (`scrapers.base.CountingAdapter`).
 
-    if len(history) < CANARY_MIN_HISTORY:
+    Cuando la tienda declara un total, ese chequeo **reemplaza** al estadístico:
+    es exacto donde el otro es una inferencia, y no se equivoca cuando el
+    catálogo cambia de nivel de verdad.
+    """
+    if completeness is not None:
+        enumerated, declared = completeness
+        if enumerated < declared:
+            return "partial", (
+                f"canario: {enumerated} de {declared} que declara la tienda "
+                f"(paginación incompleta)"
+            )
         return "ok", None
+
+    # Sin historia no hay con qué comparar: solo rige el piso absoluto. Mejor
+    # ciego que gritando por ruido.
+    if len(history) < CANARY_MIN_HISTORY:
+        if seen < CANARY_MIN_ITEMS:
+            return "partial", (
+                f"canario: solo {seen} items (piso {CANARY_MIN_ITEMS}, sin historia)"
+            )
+        return "ok", None
+
+    if seen == 0:
+        return "partial", "canario: 0 items y la historia dice que debería haber"
 
     median = statistics.median(history)
     if median <= 0:
@@ -200,7 +228,12 @@ async def scrape_target(
         error = f"{type(exc).__name__}: {exc}"[:500]
         logger.exception("fallo %s/%s", adapter.slug, category.slug)
     else:
-        status, error = canary_verdict(seen, history)
+        completeness = (
+            adapter.completeness(category)
+            if isinstance(adapter, CountingAdapter)
+            else None
+        )
+        status, error = canary_verdict(seen, history, completeness=completeness)
         if status == "partial":
             logger.warning(
                 "canario %s/%s [%s] — %s",

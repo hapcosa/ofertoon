@@ -267,3 +267,59 @@ async def test_pagina_con_cursor_y_corte_al_final():
     assert http.cursors[0] is None  # la primera página va sin cursor
     assert http.cursors[1]  # la segunda usa el endCursor de la anterior
     assert len(http.cursors) == 2  # cortó al ver hasNextPage=false
+
+    # El fixture es una página podada de 5 sobre las 86 que declara la tienda:
+    # exactamente la forma de "la paginación se cortó antes de tiempo".
+    assert adapter.completeness(CATEGORY) == (5, 86)
+
+
+@pytest.mark.asyncio
+async def test_completitud_cuenta_edges_no_productos_emitidos():
+    """El chequeo compara paginación contra `totalCount`, no rendimiento del parser.
+
+    Un ítem que el parser descarta —sin sku, sin precio, con centinela— es una
+    decisión nuestra sobre una página que sí llegó. Contarlo como faltante
+    convertiría una guarda exacta en otra heurística.
+    """
+    payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    edges = payload["data"]["products"]["edges"]
+    edges[0]["node"]["defaultVariant"] = {"sku": None, "quantityAvailable": 1}
+    payload["data"]["products"]["pageInfo"] = {"endCursor": None, "hasNextPage": False}
+    payload["data"]["products"]["totalCount"] = 5
+    crudo = json.dumps(payload)
+
+    class _Http:
+        async def post_json(self, url, body, **kw):
+            return crudo
+
+    adapter = SpDigitalAdapter(_Http(), [])
+    productos = [p async for p in adapter.discover(CATEGORY)]
+
+    assert len(productos) == 4  # el parser descartó uno
+    assert adapter.completeness(CATEGORY) == (5, 5)  # la paginación estuvo completa
+
+
+@pytest.mark.asyncio
+async def test_completitud_es_por_categoria_y_se_reinicia():
+    """El adaptador se reusa entre categorías de la misma tienda."""
+    payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    payload["data"]["products"]["pageInfo"] = {"endCursor": None, "hasNextPage": False}
+    payload["data"]["products"]["totalCount"] = 5
+    crudo = json.dumps(payload)
+    otra = CategoryRef(slug="tecno-componentes", store_key="Q2F0ZWdvcnk6MTI5MA==")
+
+    class _Http:
+        async def post_json(self, url, body, **kw):
+            return crudo
+
+    adapter = SpDigitalAdapter(_Http(), [])
+    assert adapter.completeness(CATEGORY) is None
+
+    async for _ in adapter.discover(CATEGORY):
+        pass
+    assert adapter.completeness(CATEGORY) == (5, 5)
+    assert adapter.completeness(otra) is None
+
+    async for _ in adapter.discover(otra):
+        pass
+    assert adapter.completeness(otra) == (5, 5)
