@@ -220,14 +220,25 @@ async def scrape_target(
                     pool, buffer, store_id=store_id, category_id=category_id, dry_run=dry_run
                 )
                 buffer.clear()
-        written += await _flush(
-            pool, buffer, store_id=store_id, category_id=category_id, dry_run=dry_run
-        )
     except Exception as exc:  # el adaptador de una tienda no tumba la pasada
         status = "failed"
         error = f"{type(exc).__name__}: {exc}"[:500]
         logger.exception("fallo %s/%s", adapter.slug, category.slug)
-    else:
+
+    # El remanente se escribe también cuando el adaptador reventó a mitad: lo ya
+    # scrapeado es historia que no se recupera. Cuando este flush vivía en el
+    # camino feliz, cada corrida fallida tiraba hasta BATCH_SIZE-1 observaciones
+    # que ya estaban en memoria (el 404 de Easy perdía entre 20 y 99 por corrida).
+    try:
+        written += await _flush(
+            pool, buffer, store_id=store_id, category_id=category_id, dry_run=dry_run
+        )
+    except Exception as exc:
+        status = "failed"
+        error = f"{type(exc).__name__}: {exc}"[:500]
+        logger.exception("fallo el último lote de %s/%s", adapter.slug, category.slug)
+
+    if status == "ok":
         completeness = (
             adapter.completeness(category)
             if isinstance(adapter, CountingAdapter)
