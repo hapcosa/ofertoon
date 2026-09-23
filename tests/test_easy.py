@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from scrapers.base import CategoryRef
-from scrapers.http import BROWSER_USER_AGENT, DEFAULT_USER_AGENT
+from scrapers.http import BROWSER_USER_AGENT, DEFAULT_USER_AGENT, FetchError
 from scrapers.stores.easy import (
     EasyAdapter,
     NextDataMissing,
@@ -238,3 +238,60 @@ async def test_shell_despues_de_la_pagina_1_es_fin_de_catalogo():
     productos = [p async for p in adapter.discover(CATEGORY)]
     assert len(productos) == 6
     assert http.calls == 2  # cortó en la segunda, no siguió hasta max_pages
+
+
+@pytest.mark.asyncio
+async def test_404_despues_de_la_pagina_1_es_fin_de_catalogo():
+    """Easy 404ea la primera página pasada del final; no sirve el shell vacío.
+
+    Verificado en vivo el 2026-09-23 sobre `sierras-electricas`: página 8 → 200,
+    página 9 → 404. Sin este guard el `FetchError` escapaba de `discover` y el
+    runner marcaba `failed` la categoría entera, tirando además el lote pendiente.
+    """
+
+    class _Http:
+        def __init__(self):
+            self.calls = 0
+
+        async def get_text(self, url, **kw):
+            self.calls += 1
+            if self.calls == 1:
+                return FIXTURE.read_text(encoding="utf-8")
+            raise FetchError(f"{url} -> HTTP 404", status_code=404)
+
+    http = _Http()
+    productos = [p async for p in EasyAdapter(http, []).discover(CATEGORY)]
+    assert len(productos) == 6
+    assert http.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_404_en_la_pagina_1_es_error_de_configuracion():
+    """Un `store_key` inexistente no puede verse como una categoría vacía."""
+
+    class _Http:
+        async def get_text(self, url, **kw):
+            raise FetchError(f"{url} -> HTTP 404", status_code=404)
+
+    with pytest.raises(FetchError):
+        async for _ in EasyAdapter(_Http(), []).discover(CATEGORY):
+            pass
+
+
+@pytest.mark.asyncio
+async def test_otros_errores_http_siguen_propagando():
+    """Solo el 404 significa "fin"; un 403 es un bloqueo y tiene que gritar."""
+
+    class _Http:
+        def __init__(self):
+            self.calls = 0
+
+        async def get_text(self, url, **kw):
+            self.calls += 1
+            if self.calls == 1:
+                return FIXTURE.read_text(encoding="utf-8")
+            raise FetchError(f"{url} -> HTTP 403", status_code=403)
+
+    with pytest.raises(FetchError):
+        async for _ in EasyAdapter(_Http(), []).discover(CATEGORY):
+            pass

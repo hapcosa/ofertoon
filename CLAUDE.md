@@ -18,10 +18,11 @@ scraping. El scraping es la parte mecánica; el valor está en el detector.
 Repo remoto: `hapcosa/ofertoon`. **No es signalsTrading** — ver §Aislamiento.
 
 **Estado:** F0 (scraping) cerrado. F1 (identidad/baseline/detector) escrito,
-falta calibrar θ (necesita ≥45 días de historia: mediados de septiembre 2026).
+falta calibrar θ (no antes del 2026-10-02: la baseline necesita 30 días y el
+etiquetado del backtest otros 30 — ver HANDOFF.md).
 F2 (suscripciones, PayPal) y F3 (MercadoPago) con código completo y **sin
-configurar externamente**. Falta el publisher (`curation/ranker.py`,
-`publisher/*`, `daemon.py`).
+configurar externamente**. El publisher (`curation/ranker.py`, `publisher/*`)
+está desplegado e **inerte a propósito**: `PUBLISHER_ENABLED=false`.
 
 Runbooks vivos: [`HANDOFF.md`](HANDOFF.md) (estado y traspaso de sesión),
 [`DEPLOY.md`](DEPLOY.md) (puesta en producción),
@@ -141,6 +142,27 @@ Un módulo en `scrapers/stores/` que implemente `StoreAdapter` + un fixture en
 `tests/fixtures/` con payload real + una fila en la tabla `stores`. **Nada más
 se toca**: el runner, la persistencia y el detector solo conocen `RawProduct`.
 
+El checklist completo —incluido de dónde sale el `rate_limit_rps`, el engaño de
+la página 1 en el fixture y la verificación de centinelas— está en
+[`PLAN_TIENDAS.md`](PLAN_TIENDAS.md) §5. Tres cosas que no son obvias:
+
+- **Anotar la fecha de conexión.** Una tienda nueva no publica nada durante 30
+  días (`MIN_POINTS`/`MIN_DAYS` son un rechazo, no un default), así que se
+  evalúa 30 días después de esa fecha, nunca antes.
+- **El criterio de aceptación es una consulta, no una impresión**:
+  `python -m scripts.aceptacion_tienda --store <slug>`. Mide, **sobre la cohorte
+  de listings que tuvieron la oportunidad de madurar**, qué fracción llega a
+  `MIN_DAYS`; por debajo del 40% la tienda rota demasiado catálogo y se apaga con
+  `stores.is_active = false`. Esa espera de 30 días **es** el test de
+  estabilidad: no hace falta estudiarla antes de conectarla. Medido
+  transversalmente contra los listings vivos el número **miente**: mete a los
+  SKUs recién llegados en el denominador y hace ver igual a la tienda que crece
+  su catálogo y a la que lo rota (Easy: 34% transversal, 96% por cohorte).
+- **Verificar cómo señala la tienda el final de la paginación.** No todas
+  devuelven una lista vacía: Easy responde HTTP 404 y Falabella/Easy sirven la
+  página sin el bloque de productos. Si el adaptador no lo distingue de un error
+  real, el runner marca `failed` la categoría entera.
+
 ## Migraciones
 
 - Idempotentes (`IF NOT EXISTS` / `ON CONFLICT`), numeradas `NN_descripcion.sql`.
@@ -168,6 +190,16 @@ se toca**: el runner, la persistencia y el detector solo conocen `RawProduct`.
 - **Falabella, Sodimac, Easy y PC Factory NO exponen GTIN ni modelo en el
   listado** (auditado contra payload real). Por eso solo ~875 de ~11.000
   listings tienen identidad. Habría que abrir fichas (F3).
+- **Ferretek bloquea por User-Agent.** El Varnish que tiene adelante responde
+  `403 Empty UA blocked` a cualquier cosa que no parezca un navegador —el
+  `robots.txt` incluido—, así que su adaptador manda `BROWSER_USER_AGENT`. Es el
+  mismo caso que el UA-sniffing de Easy: un 403 acá no es anti-bot serio.
+- **Las categorías de una tienda se solapan, y eso duplica observaciones.** Las
+  vitrinas (`Ofertas`, `Outlet`, `Marcas`, `Despacho Gratis`) repiten los
+  productos del catálogo, y las hojas suelen estar contenidas en su paraguas.
+  Dos `store_key` solapados escriben dos `price_points` del mismo listing por
+  pasada y lo hacen pesar el doble en su propio p50. Verificá que toda llave
+  nueva sea disjunta **sobre SKUs reales** antes de meterla en la migración.
 - **SP Digital declara `Crawl-delay: 5`** en su `robots.txt` y el adaptador lo
   respeta con `rate_limit_rps = 0.2`. No lo subas sin releer el robots.
 - **`docker build` falla sin `.dockerignore`**: `data/postgres` es el bind mount
@@ -206,3 +238,19 @@ se toca**: el runner, la persistencia y el detector solo conocen `RawProduct`.
 - No commitear `.env`, tokens ni `data/`.
 - No tocar signalsTrading desde acá.
 - **No commitees ni pushees salvo que te lo pidan.**
+
+## Infraestructura: dónde corre esto
+
+**Producción = `10.244.117.161`** (migrado el 2026-08-14). El host anterior
+`10.244.19.205` (`traderbot`) pasó a ser el entorno de **test**, donde se montan
+los cambios antes de subirlos.
+
+- El repo vive en `~/servicios/ofertoon`. Postgres usa el bind mount
+  `./data/postgres` (root-owned, en `.gitignore`).
+- Puerto host de Postgres: `${POSTGRES_HOST_PORT:-5436}`.
+- El túnel Cloudflare (`sendtelegram.budaicapital.com` → `paypal-webhook:8080`)
+  vive en `docker-compose.override.yml`, **fuera del repo**, detrás del profile
+  `tunnel`. Un `docker compose up -d` normal no lo levanta:
+  `docker compose --profile tunnel up -d cloudflared`.
+- ⚠️ **Nunca correr dos `cloudflared` con el mismo token a la vez** — Cloudflare
+  ve dos conectores y reparte el tráfico entre ambas máquinas.

@@ -139,3 +139,31 @@ async def test_dry_run_no_toca_la_db(calls):
     assert calls["start_args"] is None
     assert calls["finish_args"] is None
     assert outcome.status == "ok" and outcome.items_seen == 30
+
+
+async def test_lo_scrapeado_antes_del_fallo_se_persiste(calls):
+    """Un adaptador que revienta a mitad no se lleva el lote pendiente.
+
+    Caso real: el 404 de paginación de Easy hacía `failed` la categoría entera y
+    además tiraba las observaciones que quedaban en el buffer — entre 20 y 99 por
+    corrida, medido sobre `scrape_runs`. Una observación scrapeada que no se
+    escribe es un hueco permanente en la serie: la baseline del SKU se calcula
+    con menos puntos y `MIN_POINTS=30` la rechaza por más tiempo.
+    """
+
+    class RompeAlFinal(FakeAdapter):
+        async def discover(self, category):
+            async for product in FakeAdapter.discover(self, category):
+                yield product
+            raise RuntimeError("HTTP 404 pasada la última página")
+
+    calls["history"] = [150, 150, 150]
+    # 130 = un lote completo de 100 + 30 en el buffer al momento de reventar.
+    outcome = await runner.scrape_target(
+        FakePool(), RompeAlFinal(130), TARGET, store_id=6, dry_run=False
+    )
+
+    assert outcome.status == "failed"
+    assert outcome.items_seen == 130
+    assert outcome.items_ok == 130  # antes eran 100: los 30 del buffer se perdían
+    assert calls["finish_args"]["items_ok"] == 130

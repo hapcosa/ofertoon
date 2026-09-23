@@ -8,10 +8,15 @@ Cada par (tienda, categoría) es una unidad de trabajo independiente con su fila
 `scrape_runs`. Si una tienda cambia el HTML y su adaptador revienta, se degrada esa
 tienda y las demás siguen — nunca se cae la pasada entera.
 
+Cerrada la pasada corre la fase de pricing (`pricing/pipeline.py`): baselines y
+detector sobre las observaciones recién escritas. Vive acá porque el trigger de
+una baseline es "hay dato nuevo", no una hora del reloj.
+
 Uso:
     python -m scrapers.runner                      # loop cada SCRAPE_INTERVAL_HOURS
     python -m scrapers.runner --once               # una pasada y sale
     python -m scrapers.runner --once --dry-run     # imprime, no escribe
+    python -m scrapers.runner --once --skip-pricing
     python -m scrapers.runner --once --store sodimac --category ferre-jardin
 """
 from __future__ import annotations
@@ -29,7 +34,7 @@ from typing import Any
 
 import db
 from alerts import RunOutcome, format_summary, send_alert
-from scrapers.base import CategoryRef, RawProduct, StoreAdapter
+from scrapers.base import CategoryRef, CountingAdapter, RawProduct, StoreAdapter
 from scrapers.http import HttpClient
 
 logger = logging.getLogger("runner")
@@ -38,8 +43,10 @@ logger = logging.getLogger("runner")
 #: una categoría larga no tire a la basura lo ya scrapeado.
 BATCH_SIZE = 100
 
-#: Piso absoluto: por debajo de esto no hay categoría viva que valga. Cubre el
-#: caso "todavía no hay historia" y el "devolvió cero".
+#: Piso absoluto para un target SIN historia con qué compararse. No se aplica
+#: cuando la hay: existen categorías que de verdad tienen 3 productos, y marcarlas
+#: `partial` para siempre —como venía pasando con `Tarjetas Gráficas AMD` de PC
+#: Factory— es ruido que entierra los errores reales.
 CANARY_MIN_ITEMS = 5
 
 #: El modo de falla real de un adaptador no es "cero items", es "muchos menos".
@@ -58,17 +65,43 @@ CANARY_WINDOW = 7
 CANARY_MIN_HISTORY = 3
 
 
-def canary_verdict(seen: int, history: Sequence[int]) -> tuple[str, str | None]:
+def canary_verdict(
+    seen: int,
+    history: Sequence[int],
+    *,
+    completeness: tuple[int, int] | None = None,
+) -> tuple[str, str | None]:
     """`('ok'|'partial', motivo)` para una corrida que no lanzó excepción.
 
-    `history` son los `items_seen` de las últimas corridas sanas del mismo
-    target, más reciente primero.
-    """
-    if seen < CANARY_MIN_ITEMS:
-        return "partial", f"canario: solo {seen} items (piso {CANARY_MIN_ITEMS})"
+    `history` son los `items_seen` de las últimas corridas del mismo target, más
+    reciente primero. `completeness` es `(enumerados, declarados)` para las
+    tiendas que declaran cuántos productos tiene la categoría
+    (`scrapers.base.CountingAdapter`).
 
-    if len(history) < CANARY_MIN_HISTORY:
+    Cuando la tienda declara un total, ese chequeo **reemplaza** al estadístico:
+    es exacto donde el otro es una inferencia, y no se equivoca cuando el
+    catálogo cambia de nivel de verdad.
+    """
+    if completeness is not None:
+        enumerated, declared = completeness
+        if enumerated < declared:
+            return "partial", (
+                f"canario: {enumerated} de {declared} que declara la tienda "
+                f"(paginación incompleta)"
+            )
         return "ok", None
+
+    # Sin historia no hay con qué comparar: solo rige el piso absoluto. Mejor
+    # ciego que gritando por ruido.
+    if len(history) < CANARY_MIN_HISTORY:
+        if seen < CANARY_MIN_ITEMS:
+            return "partial", (
+                f"canario: solo {seen} items (piso {CANARY_MIN_ITEMS}, sin historia)"
+            )
+        return "ok", None
+
+    if seen == 0:
+        return "partial", "canario: 0 items y la historia dice que debería haber"
 
     median = statistics.median(history)
     if median <= 0:
@@ -187,15 +220,31 @@ async def scrape_target(
                     pool, buffer, store_id=store_id, category_id=category_id, dry_run=dry_run
                 )
                 buffer.clear()
-        written += await _flush(
-            pool, buffer, store_id=store_id, category_id=category_id, dry_run=dry_run
-        )
     except Exception as exc:  # el adaptador de una tienda no tumba la pasada
         status = "failed"
         error = f"{type(exc).__name__}: {exc}"[:500]
         logger.exception("fallo %s/%s", adapter.slug, category.slug)
-    else:
-        status, error = canary_verdict(seen, history)
+
+    # El remanente se escribe también cuando el adaptador reventó a mitad: lo ya
+    # scrapeado es historia que no se recupera. Cuando este flush vivía en el
+    # camino feliz, cada corrida fallida tiraba hasta BATCH_SIZE-1 observaciones
+    # que ya estaban en memoria (el 404 de Easy perdía entre 20 y 99 por corrida).
+    try:
+        written += await _flush(
+            pool, buffer, store_id=store_id, category_id=category_id, dry_run=dry_run
+        )
+    except Exception as exc:
+        status = "failed"
+        error = f"{type(exc).__name__}: {exc}"[:500]
+        logger.exception("fallo el último lote de %s/%s", adapter.slug, category.slug)
+
+    if status == "ok":
+        completeness = (
+            adapter.completeness(category)
+            if isinstance(adapter, CountingAdapter)
+            else None
+        )
+        status, error = canary_verdict(seen, history, completeness=completeness)
         if status == "partial":
             logger.warning(
                 "canario %s/%s [%s] — %s",
@@ -292,12 +341,41 @@ async def run_once(
     return outcomes
 
 
+async def run_pricing(pool: Any) -> None:
+    """Fase de pricing post-pasada: baselines + detector sobre lo recién escrito.
+
+    Va acá y no en un servicio aparte porque el trigger correcto es "llegaron
+    observaciones nuevas", y este proceso es el único que sabe cuándo pasó eso
+    (ver el docstring de `pricing/pipeline.py`).
+
+    Envuelto porque la ingesta es lo irreversible: una pasada perdida es historia
+    que no se recupera, mientras que una corrida de pricing salteada se rehace
+    sola en la siguiente. Un bug en el detector NO puede tumbar el scraper. Es el
+    mismo criterio con el que un adaptador roto degrada su tienda y nada más.
+    """
+    try:
+        # El import va adentro del try: perezoso como el de alerts, pero además
+        # un ImportError es exactamente el modo de falla que se dio en prod
+        # (imagen construida sin `pricing/pipeline.py`), y afuera escapaba a esta
+        # guarda y tumbaba el ciclo entero.
+        from pricing.pipeline import run as run_pipeline
+
+        await run_pipeline(pool)
+    except Exception:
+        logger.exception("la fase de pricing falló; la ingesta sigue")
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Ingesta de precios OfertasCL")
     parser.add_argument("--once", action="store_true", help="una pasada y salir")
     parser.add_argument("--dry-run", action="store_true", help="no escribe a DB")
     parser.add_argument("--store", help="limitar a un slug de tienda")
     parser.add_argument("--category", help="limitar a un slug de categoría")
+    parser.add_argument(
+        "--skip-pricing",
+        action="store_true",
+        help="no correr baselines/detector después de la pasada",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -326,6 +404,8 @@ async def main() -> int:
                 dry_run=args.dry_run,
             )
             if not args.dry_run:
+                if not args.skip_pricing:
+                    await run_pricing(pool)
                 await send_alert(format_summary(outcomes))
             if args.once or stopping.is_set():
                 break

@@ -23,7 +23,7 @@ from typing import Any
 
 from catalog.normalize import clean_text, normalize_brand
 from scrapers.base import MAX_PLAUSIBLE_CLP, CategoryRef, RawProduct
-from scrapers.http import BROWSER_USER_AGENT, HttpClient
+from scrapers.http import BROWSER_USER_AGENT, FetchError, HttpClient
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,23 @@ class NotAListingPage(RuntimeError):
     - **página > 1** → se pasó del final. Easy no devuelve una lista vacía:
       devuelve la página sin la clave `serverProductsResponse`.
     """
+
+
+#: Easy responde **HTTP 404** a la primera página que se pasa del final, en vez
+#: de servir el shell sin `serverProductsResponse` que documenta
+#: `NotAListingPage`. Verificado en vivo el 2026-09-23 sobre
+#: `sierras-electricas`: página 8 → 200, página 9 → 404.
+#:
+#: El 404 llega como `FetchError` desde el cliente HTTP y, antes de este guard,
+#: escapaba de `discover` y el runner marcaba `failed` la categoría **entera**.
+#: No era solo ruido: el lote pendiente en el buffer se perdía, así que cada
+#: corrida fallida tiraba entre 20 y 99 observaciones ya scrapeadas (medido
+#: sobre `scrape_runs`, 3 categorías × 2 pasadas/día).
+#:
+#: Por qué la paginación se pasa del final en vez de cortar con
+#: `len(seen) >= total`: `recordsFiltered` cuenta lo que la tienda tiene, y
+#: nosotros descartamos los ítems sin precio. `seen` nunca alcanza a `total`.
+_END_OF_CATALOG_STATUS = 404
 
 
 def extract_next_data(html: str) -> dict[str, Any]:
@@ -204,9 +221,23 @@ class EasyAdapter:
 
         while page <= self.max_pages:
             url = self._page_url(category, page)
-            html = await self._http.get_text(
-                url, rps=self.rate_limit_rps, headers=self._headers
-            )
+            try:
+                html = await self._http.get_text(
+                    url, rps=self.rate_limit_rps, headers=self._headers
+                )
+            except FetchError as exc:
+                # Mismo criterio que `NotAListingPage`: en la página 1 un 404 es
+                # un `store_key` mal configurado y tiene que ser ruidoso; más
+                # allá, es el final del catálogo.
+                if exc.status_code != _END_OF_CATALOG_STATUS or page == 1:
+                    raise
+                logger.debug(
+                    "fin_de_catalogo store=%s categoria=%s pagina=%d (HTTP 404)",
+                    self.slug,
+                    category.slug,
+                    page,
+                )
+                break
             scraped_at = datetime.now(timezone.utc)
             try:
                 products, total = parse_listing(

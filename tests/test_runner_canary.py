@@ -47,6 +47,26 @@ def test_sin_historia_suficiente_solo_rige_el_piso_absoluto():
     assert f"piso {CANARY_MIN_ITEMS}" in reason
 
 
+def test_categoria_chica_de_verdad_no_dispara_el_piso():
+    """Con historia propia, el piso absoluto no manda.
+
+    `Tarjetas Gráficas AMD` de PC Factory tiene 3 productos y los tuvo siempre.
+    Marcarla `partial` en cada pasada es ruido permanente que tapa los errores
+    reales, no una detección.
+    """
+    assert canary_verdict(3, [3, 3, 3, 3, 3]) == ("ok", None)
+
+
+def test_un_nivel_nuevo_sostenido_deja_de_alarmar():
+    """El canario no se puede quedar enclavado en el nivel viejo.
+
+    SP Digital perdió un tercio de su stock el 28-ago. Una vez que la historia
+    refleja el nivel nuevo —lo que ahora ocurre porque `recent_items_seen`
+    incluye las corridas `partial`— la caída deja de ser noticia.
+    """
+    assert canary_verdict(18, [18, 19, 19, 18, 19, 19, 18]) == ("ok", None)
+
+
 def test_cero_items_siempre_es_partial():
     assert canary_verdict(0, [])[0] == "partial"
     assert canary_verdict(0, [900] * 7)[0] == "partial"
@@ -67,3 +87,39 @@ def test_target_historicamente_chico_no_se_marca_por_ser_chico():
 @pytest.mark.parametrize("median_history", ([0, 0, 0], [0, 0, 0, 0, 0]))
 def test_historia_en_cero_no_divide_por_cero(median_history):
     assert canary_verdict(7, median_history) == ("ok", None)
+
+
+# -----------------------------------------------------------------------------
+# Completitud exacta: tiendas que declaran cuántos productos tiene la categoría
+# -----------------------------------------------------------------------------
+
+
+def test_completitud_exacta_reemplaza_a_la_mediana():
+    """Si la tienda dice 18 y enumeramos 18, la corrida está completa.
+
+    Ninguna mediana puede contradecir eso: el catálogo cambió de nivel, no el
+    adaptador. Es el falso positivo que SP Digital produjo durante días.
+    """
+    history = [47, 46, 48, 47, 46, 45, 47]
+    assert canary_verdict(18, history, completeness=(18, 18)) == ("ok", None)
+
+
+def test_paginacion_incompleta_es_partial_aunque_el_volumen_parezca_normal():
+    """El modo de falla que esto ataca: la paginación se corta a mitad.
+
+    50 de 74 pasa cualquier vara estadística contra una historia de 74.
+    """
+    status, reason = canary_verdict(50, [74] * 7, completeness=(50, 74))
+    assert status == "partial"
+    assert "50 de 74" in reason
+
+
+def test_enumerar_de_mas_no_alarma():
+    """`totalCount` se lee de la primera página; si el inventario crece mientras
+    paginamos, enumerar más que lo declarado no es una falla nuestra."""
+    assert canary_verdict(76, [74] * 7, completeness=(76, 74)) == ("ok", None)
+
+
+def test_sin_declaracion_de_la_tienda_rige_el_canario_estadistico():
+    status, _ = canary_verdict(50, [942] * 7, completeness=None)
+    assert status == "partial"
