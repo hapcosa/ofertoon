@@ -142,6 +142,23 @@ Un módulo en `scrapers/stores/` que implemente `StoreAdapter` + un fixture en
 `tests/fixtures/` con payload real + una fila en la tabla `stores`. **Nada más
 se toca**: el runner, la persistencia y el detector solo conocen `RawProduct`.
 
+El checklist completo —incluido de dónde sale el `rate_limit_rps`, el engaño de
+la página 1 en el fixture y la verificación de centinelas— está en
+[`PLAN_TIENDAS.md`](PLAN_TIENDAS.md) §5. Tres cosas que no son obvias:
+
+- **Anotar la fecha de conexión.** Una tienda nueva no publica nada durante 30
+  días (`MIN_POINTS`/`MIN_DAYS` son un rechazo, no un default), así que se
+  evalúa 30 días después de esa fecha, nunca antes.
+- **El criterio de aceptación es una consulta, no una impresión**:
+  `python -m scripts.aceptacion_tienda --store <slug>`. Mide qué fracción de los
+  listings vivos llega a `MIN_DAYS`; por debajo del 40% la tienda rota demasiado
+  catálogo y se apaga con `stores.is_active = false`. Esa espera de 30 días
+  **es** el test de estabilidad: no hace falta estudiarla antes de conectarla.
+- **Verificar cómo señala la tienda el final de la paginación.** No todas
+  devuelven una lista vacía: Easy responde HTTP 404 y Falabella/Easy sirven la
+  página sin el bloque de productos. Si el adaptador no lo distingue de un error
+  real, el runner marca `failed` la categoría entera.
+
 ## Migraciones
 
 - Idempotentes (`IF NOT EXISTS` / `ON CONFLICT`), numeradas `NN_descripcion.sql`.
