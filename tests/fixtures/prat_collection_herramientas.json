@@ -1,0 +1,88 @@
+{
+ "products": [
+  {
+   "handle": "einhell-taladro-percutor-pxc-tp-cd-18-60-li-i-bl",
+   "title": "Einhell Taladro Percutor Pxc Tp-cd 18/60 Li- I Bl",
+   "vendor": "Einhell",
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/1078/2729/8590/files/TAL126380_20260715121714.jpg?v=1788535888"
+    }
+   ],
+   "variants": [
+    {
+     "id": 59889364566302,
+     "title": "Default Title",
+     "sku": "TAL126380",
+     "price": "95076",
+     "compare_at_price": "105640",
+     "available": true,
+     "featured_image": null
+    }
+   ]
+  },
+  {
+   "handle": "einhell-barredora-inalambrica-pxc-te-sw-18-610-li",
+   "title": "EINHELL BARREDORA INALAMBRICA PXC TE-SW 18/610 Li",
+   "vendor": "Einhell",
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/1078/2729/8590/files/EIN122952_20260525115942.jpg?v=1782932042"
+    }
+   ],
+   "variants": [
+    {
+     "id": 59518456529182,
+     "title": "Default Title",
+     "sku": "EIN122952",
+     "price": "188838",
+     "compare_at_price": "209820",
+     "available": false,
+     "featured_image": null
+    }
+   ]
+  },
+  {
+   "handle": "makita-taladro-ato-c-perc-18v-2bat-carg",
+   "title": "MAKITA TALADRO ATO C/PERC 18V 2BAT + CARG",
+   "vendor": "pratcl",
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/1078/2729/8590/files/ATO115732_20260427154049.jpg?v=1782932036"
+    }
+   ],
+   "variants": [
+    {
+     "id": 59518453186846,
+     "title": "Default Title",
+     "sku": "ATO115732",
+     "price": "301356",
+     "compare_at_price": "334840",
+     "available": true,
+     "featured_image": null
+    }
+   ]
+  },
+  {
+   "handle": "bosch-esmeril-angular-gws-18v-8",
+   "title": "BOSCH ESMERIL ANGULAR GWS 18V-8",
+   "vendor": "Bosch",
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/1078/2729/8590/files/ESM128845.jpg?v=1790184958"
+    }
+   ],
+   "variants": [
+    {
+     "id": 60036142760222,
+     "title": "Default Title",
+     "sku": "ESM128845",
+     "price": "181990",
+     "compare_at_price": null,
+     "available": true,
+     "featured_image": null
+    }
+   ]
+  }
+ ]
+}
