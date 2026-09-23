@@ -60,7 +60,17 @@ class RateLimiter:
 
 
 class FetchError(RuntimeError):
-    """Falla no recuperable tras agotar los reintentos."""
+    """Falla no recuperable tras agotar los reintentos.
+
+    `status_code` viene poblado solo cuando la tienda respondió con un status
+    HTTP: es `None` si lo que falló fue el transporte. Existe para que un
+    adaptador pueda distinguir un status que en ESA tienda significa algo
+    (Easy devuelve 404 pasado el final de la paginación) sin parsear el mensaje.
+    """
+
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class HttpClient:
@@ -174,8 +184,14 @@ class HttpClient:
                         cached.write_text(text, encoding="utf-8")
                     return text
                 if response.status_code not in RETRYABLE_STATUS:
-                    raise FetchError(f"{url} -> HTTP {response.status_code}")
-                last_exc = FetchError(f"{url} -> HTTP {response.status_code}")
+                    raise FetchError(
+                        f"{url} -> HTTP {response.status_code}",
+                        status_code=response.status_code,
+                    )
+                last_exc = FetchError(
+                    f"{url} -> HTTP {response.status_code}",
+                    status_code=response.status_code,
+                )
 
             if attempt < self._max_retries:
                 # Backoff exponencial con jitter: 1s, 2s, 4s (±25%).
@@ -190,4 +206,7 @@ class HttpClient:
                 )
                 await asyncio.sleep(delay)
 
-        raise FetchError(f"{url}: agotados {self._max_retries} reintentos") from last_exc
+        raise FetchError(
+            f"{url}: agotados {self._max_retries} reintentos",
+            status_code=getattr(last_exc, "status_code", None),
+        ) from last_exc
