@@ -1,0 +1,129 @@
+{
+ "items": [
+  {
+   "id": 33645,
+   "sku": "06011A21E1",
+   "name": "Taladro de impacto con llave modelo gsb 20-2 re - 06011A21E1",
+   "price": 246440,
+   "status": 1,
+   "visibility": 4,
+   "type_id": "simple",
+   "custom_attributes": [
+    {
+     "attribute_code": "GTIN",
+     "value": "3165140750691"
+    },
+    {
+     "attribute_code": "image",
+     "value": "/2/4/24792.jpg"
+    },
+    {
+     "attribute_code": "url_key",
+     "value": "taladro-de-impacto-con-llave-modelo-gsb-20-2-re-63"
+    },
+    {
+     "attribute_code": "marca",
+     "value": "165"
+    }
+   ]
+  },
+  {
+   "id": 33567,
+   "sku": "06010707E0",
+   "name": "Lijadora orbital gss 23 ae 190w - 06010707E0",
+   "price": 129680,
+   "status": 2,
+   "visibility": 4,
+   "type_id": "simple",
+   "custom_attributes": [
+    {
+     "attribute_code": "GTIN",
+     "value": "3165140468503"
+    },
+    {
+     "attribute_code": "image",
+     "value": "/0/6/0601535904_63.jpg"
+    },
+    {
+     "attribute_code": "url_key",
+     "value": "lijadora-orbital-gss-23-ae-190w-37"
+    },
+    {
+     "attribute_code": "marca",
+     "value": "165"
+    }
+   ]
+  },
+  {
+   "id": 33732,
+   "sku": "06013961E0",
+   "name": "Esmeril angular 4 1/2 gws 9 -125 s - 06013961E0",
+   "price": 123220,
+   "status": 1,
+   "visibility": 4,
+   "type_id": "simple",
+   "custom_attributes": [
+    {
+     "attribute_code": "GTIN",
+     "value": "3165140899307"
+    },
+    {
+     "attribute_code": "image",
+     "value": "/0/5/0503264604_5.jpg"
+    },
+    {
+     "attribute_code": "url_key",
+     "value": "esmeril-angular-4-12-gws-9-125-s-92"
+    },
+    {
+     "attribute_code": "special_price",
+     "value": "103000.000000"
+    },
+    {
+     "attribute_code": "marca",
+     "value": "165"
+    }
+   ]
+  },
+  {
+   "id": 34656,
+   "sku": "4138950",
+   "name": "Llave de impacto neumática - 4138950",
+   "price": 62220,
+   "status": 2,
+   "visibility": 4,
+   "type_id": "simple",
+   "custom_attributes": [
+    {
+     "attribute_code": "GTIN",
+     "value": "4006825639995"
+    },
+    {
+     "attribute_code": "image",
+     "value": "/2/7/2704162301_77.jpg"
+    },
+    {
+     "attribute_code": "url_key",
+     "value": "llave-de-impacto-neumatica-400"
+    },
+    {
+     "attribute_code": "special_price",
+     "value": "52890.000000"
+    },
+    {
+     "attribute_code": "marca",
+     "value": "180"
+    },
+    {
+     "attribute_code": "special_from_date",
+     "value": "2026-08-31 00:00:00"
+    },
+    {
+     "attribute_code": "special_to_date",
+     "value": "2026-09-03 00:00:00"
+    }
+   ]
+  }
+ ],
+ "total_count": 801
+}
