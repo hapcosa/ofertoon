@@ -190,6 +190,16 @@ la página 1 en el fixture y la verificación de centinelas— está en
 - **Falabella, Sodimac, Easy y PC Factory NO exponen GTIN ni modelo en el
   listado** (auditado contra payload real). Por eso solo ~875 de ~11.000
   listings tienen identidad. Habría que abrir fichas (F3).
+- **Ferretek bloquea por User-Agent.** El Varnish que tiene adelante responde
+  `403 Empty UA blocked` a cualquier cosa que no parezca un navegador —el
+  `robots.txt` incluido—, así que su adaptador manda `BROWSER_USER_AGENT`. Es el
+  mismo caso que el UA-sniffing de Easy: un 403 acá no es anti-bot serio.
+- **Las categorías de una tienda se solapan, y eso duplica observaciones.** Las
+  vitrinas (`Ofertas`, `Outlet`, `Marcas`, `Despacho Gratis`) repiten los
+  productos del catálogo, y las hojas suelen estar contenidas en su paraguas.
+  Dos `store_key` solapados escriben dos `price_points` del mismo listing por
+  pasada y lo hacen pesar el doble en su propio p50. Verificá que toda llave
+  nueva sea disjunta **sobre SKUs reales** antes de meterla en la migración.
 - **SP Digital declara `Crawl-delay: 5`** en su `robots.txt` y el adaptador lo
   respeta con `rate_limit_rps = 0.2`. No lo subas sin releer el robots.
 - **`docker build` falla sin `.dockerignore`**: `data/postgres` es el bind mount

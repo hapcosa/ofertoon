@@ -266,7 +266,7 @@ revisa cuando haya media docena de tiendas nuevas medidas con esta consulta.
 
 ---
 
-### Fase 1 — Ferretería (la categoría de tus cuatro links)
+### Fase 1 — Ferretería (la categoría de tus cuatro links) — 1a ✅
 
 Es la primera porque: θ=0.250 ya existe y no hay taxonomía nueva que inventar;
 tres de las tiendas tienen **API JSON abierta y verificada**; y es donde tu
@@ -274,19 +274,41 @@ hipótesis de "las grandes no tienen las mejores ofertas" es más probable que s
 cierta, porque Sodimac y Easy son justamente las dos de peor rendimiento por SKU
 después de Falabella.
 
-**1a. Las tres con API abierta** — una familia nueva cada una, y las tres
-familias se reusan después:
+**1a. Las tres con API abierta** ✅ **2026-09-23** — una familia nueva cada una,
+y las tres familias se reusan después:
 
-| Orden | Tienda | Entrega |
-|---|---|---|
-| 1 | **Ferretería Prat** | `scrapers/stores/shopify_family.py` + fixture + fila en `stores` |
-| 2 | **Urban Comercial** | `scrapers/stores/woo_family.py` + fixture + fila |
-| 3 | **Ferretek** | `scrapers/stores/ferretek.py` (REST Magento abierta) + fixture + fila |
+| Orden | Tienda | Entrega | Conectado |
+|---|---|---|---|
+| 1 | **Ferretería Prat** | `scrapers/stores/shopify_family.py` + fixture + migración 15 | 2 colecciones, 344 items |
+| 2 | **Urban Comercial** | `scrapers/stores/woo_family.py` + fixture + migración 16 | 1 categoría, 223 items |
+| 3 | **Ferretek** | `scrapers/stores/ferretek.py` + fixture + migración 17 | 7 categorías, 3.302 declarados |
 
-Ferretek necesita una decisión aparte: **48.454 productos es 2,5× todo el
-catálogo actual del sistema**. No se conecta entero. Hay que elegir las
-categorías que mapean a `ferre-herramientas` y `ferre-jardin` y dejar afuera el
-resto. Anotar la decisión en la migración.
+Lo que se aprendió conectándolas, que cambia lo que decía este plan:
+
+- **El solapamiento de categorías es el riesgo real de esta fase, no el
+  volumen.** Las tres tiendas anidan sus categorías y las vitrinas
+  (`Ofertas`, `Outlet`, `Marcas`, `Despacho Gratis`) repiten los mismos
+  productos. Dos llaves solapadas producen dos `price_points` por pasada para
+  el mismo listing, y como `compute_baseline` saca el p50 de los puntos crudos,
+  ese SKU pesa el doble en su propia mediana. Es el mismo daño que reparó
+  `scripts/repair_oversampling.py`. **Toda llave nueva se verifica disjunta
+  contra las ya conectadas, sobre SKUs reales**, antes de entrar a la migración.
+- **Los 48.454 de Ferretek eran un número de tabla, no de catálogo.** El árbol
+  declara 10.333 bajo la raíz `Herramientas`; el resto son repuestos de
+  maquinaria sin categoría visible. Conviene leer `/rest/V1/categories` antes de
+  asustarse con un `total_count`.
+- **El `in_stock` real llegó a medias.** Prat sí discrimina (172 de 344
+  variantes agotadas). Urban trae el campo pero oculta lo agotado del listado,
+  así que da 223 de 223 en stock — igual es mejor que la ceguera de
+  Paris/Falabella: el producto agotado desaparece y su serie queda con un hueco,
+  en vez de registrar un precio con `in_stock` inventado. Ferretek no trae stock
+  y queda ciega como Paris.
+- **La identidad mejoró donde no se esperaba.** El plan daba a Woo como "precio
+  y stock"; Urban expone EAN y Marca como atributos. Y Ferretek trae GTIN en el
+  97%, que la vuelve la mejor fuente de matching cross-store del sistema.
+- **Confirmación de la regla 1 con dato propio**: el `compare_at_price` de Prat
+  declara **exactamente 10,0% en 249 de 250 productos**, rango 10,0%..10,0%. No
+  es un descuento: es un margen fijo sobre todo el catálogo.
 
 **1b. Las dos de grid HTML:**
 
