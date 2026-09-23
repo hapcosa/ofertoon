@@ -150,10 +150,14 @@ la página 1 en el fixture y la verificación de centinelas— está en
   días (`MIN_POINTS`/`MIN_DAYS` son un rechazo, no un default), así que se
   evalúa 30 días después de esa fecha, nunca antes.
 - **El criterio de aceptación es una consulta, no una impresión**:
-  `python -m scripts.aceptacion_tienda --store <slug>`. Mide qué fracción de los
-  listings vivos llega a `MIN_DAYS`; por debajo del 40% la tienda rota demasiado
-  catálogo y se apaga con `stores.is_active = false`. Esa espera de 30 días
-  **es** el test de estabilidad: no hace falta estudiarla antes de conectarla.
+  `python -m scripts.aceptacion_tienda --store <slug>`. Mide, **sobre la cohorte
+  de listings que tuvieron la oportunidad de madurar**, qué fracción llega a
+  `MIN_DAYS`; por debajo del 40% la tienda rota demasiado catálogo y se apaga con
+  `stores.is_active = false`. Esa espera de 30 días **es** el test de
+  estabilidad: no hace falta estudiarla antes de conectarla. Medido
+  transversalmente contra los listings vivos el número **miente**: mete a los
+  SKUs recién llegados en el denominador y hace ver igual a la tienda que crece
+  su catálogo y a la que lo rota (Easy: 34% transversal, 96% por cohorte).
 - **Verificar cómo señala la tienda el final de la paginación.** No todas
   devuelven una lista vacía: Easy responde HTTP 404 y Falabella/Easy sirven la
   página sin el bloque de productos. Si el adaptador no lo distingue de un error

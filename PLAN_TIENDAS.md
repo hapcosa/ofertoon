@@ -40,8 +40,10 @@ estudiar la tienda antes de conectarla.
 
 Una tienda que rota SKUs no acumula 30 días por producto y nunca publica nada,
 por grande que sea su catálogo. No hace falta un estudio previo: se conecta, se
-esperan 30 días y se mide `listing_baselines.n_days >= 30`. Ese número es el
-criterio de aceptación de cada tienda nueva.
+esperan 30 días y se mide `listing_baselines.n_days >= 30` **sobre la cohorte de
+listings que tuvieron la oportunidad de madurar** — no sobre el catálogo vivo,
+que incluye a los recién llegados y confunde crecimiento con rotación (§Fase 0).
+Ese número es el criterio de aceptación de cada tienda nueva.
 
 ### 1.3 La taxonomía actual **no tiene ropa ni deportes**
 
@@ -228,12 +230,39 @@ No agrega tiendas; hace que agregarlas no ensucie las señales que ya existen.
 **Criterio de salida:** ✅ 8/8 targets de Easy en `ok` en una pasada completa
 (antes fallaban taladros, sierras y motosierras).
 
-**Pendiente de decisión (no bloquea la Fase 1):** el criterio del 40% da
-`APAGAR` para Easy (35%) y `MANTENER` raspando para Falabella (41%), cuando Easy
-produce 366 aceptados y Falabella 740 con 4× el catálogo. O el umbral está mal
-elegido, o la estabilidad sola no es el criterio. Además el 35% de Easy está
-contaminado por el bug de arriba: hay que volver a medirlo con 30 días de datos
-ya sin el 404.
+**Decisión resuelta (2026-09-23):** el criterio transversal daba `APAGAR` para
+Easy (34%) y salvaba raspando a Falabella (41%), cuando Easy produce 175
+aceptados por cada 1.000 listings y Falabella 84. No era el umbral: **era el
+denominador**.
+
+Medir `maduros / listings con baseline` mete a los SKUs recién llegados en el
+denominador, y esos no maduraron por ser nuevos, no por rotación. El indicador
+hacía ver idéntica a la tienda que **crece** su catálogo y a la que lo **rota**.
+El 65% del catálogo de Easy tenía menos de 30 días.
+
+Corregido a una **cohorte**: solo los listings nacidos hace más de `MIN_DAYS`
+—los que tuvieron la oportunidad de madurar— y hace menos de
+`VENTANA_COHORTE_DIAS = 90`, para que el catálogo muerto histórico no hunda el
+indicador con el paso del tiempo. El orden se invierte y pasa a coincidir con el
+rendimiento por SKU:
+
+| Tienda | Transversal | **Cohorte** | Supervivencia | Nuevos <30d | Acept./1.000 |
+|---|---:|---:|---:|---:|---:|
+| Easy | 34% | **96%** | 91% | 65% | 175 |
+| PC Factory | 61% | **73%** | 66% | 16% | 295 |
+| Paris | 56% | **71%** | 68% | 20% | 281 |
+| Sodimac | 63% | **71%** | 66% | 11% | 116 |
+| SP Digital | 52% | **64%** | 62% | 19% | 186 |
+| Falabella | 41% | **51%** | 55% | 20% | 84 |
+
+Maduración por cohorte y supervivencia son casi el mismo número en las seis: un
+listing madura si y sólo si sigue vivo, que es la confirmación de que lo que el
+indicador mide es rotación. Easy queda **prendido**; la tienda que de verdad
+rota catálogo es Falabella, y se mantiene igual por volumen absoluto.
+
+El umbral del 40% se conserva sin cambio: sobre la cohorte pasan las seis, y
+Falabella al 51% marca el piso real observado. Sigue **sin calibrar** — se
+revisa cuando haya media docena de tiendas nuevas medidas con esta consulta.
 
 ---
 
@@ -274,8 +303,8 @@ resto. Anotar la decisión en la migración.
   App Router: frágil y de catálogo chico.
 - **MTS**: 403. Queda para la Fase 6.
 
-**Criterio de salida (30 días después):** cada tienda con ≥40% de sus listings
-con `n_days >= 30`, y ≥1 candidato aceptado propio. Las que no lleguen, se
+**Criterio de salida (30 días después):** cada tienda con ≥40% de su **cohorte**
+(los listings nacidos hace más de 30 días) con `n_days >= 30`, y ≥1 candidato aceptado propio. Las que no lleguen, se
 desactivan.
 
 ---
