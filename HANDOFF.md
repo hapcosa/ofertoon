@@ -221,6 +221,94 @@ Los `failed` del histórico no son un problema vivo: 145 de 148 son `FetchError`
 del **19-ago ~20:20 UTC** repartidos entre las 6 tiendas a la vez — un evento de
 red/host, no de adaptador.
 
+### La cadencia de muestreo — medida y cerrada el 2026-09-24
+
+Quedaba abierto del 23-sep: "hay pasadas de más por despliegue y no está medido
+cuánto mueven el p50". Se midió, y **el diagnóstico estaba equivocado en las dos
+mitades**.
+
+**Mitad 1: el sobremuestreo por despliegue es inocuo. No hay que deduplicar.**
+
+Comparando listing por listing la baseline sobre la serie cruda contra la
+deduplicada con el criterio de `repair_oversampling.py` (primera observación de
+cada mitad del día), con `compute_baseline` y `evaluate` reales sobre los 21.378
+listings y 1.003.864 observaciones de la ventana:
+
+| Medida | Resultado |
+|---|---|
+| p50 idéntico | **8.812 de 9.073** (97,1 %) con historia mínima |
+| Δp50 medio | **−0,003 %** (mediana 0,000 %; p01 −0,26 %, p99 0,00 %) |
+| \|Δ\| > 1 % | 101 listings (1,11 %) |
+| Historia mínima perdida al deduplicar | **0** por `n_points`, **0** por `n_days` |
+| Decisiones del detector que cambian | **4 de 13.490** (aceptados 91→92) |
+
+Nada que ver con el desastre de agosto (61 % de las filas de la ventana). La
+razón es aritmética: las pasadas extra son 2 días sobre ~53 con datos, y el
+punto extra casi siempre trae el mismo precio que el del día. **Deduplicar
+movería 4 decisiones y tocaría 1M de filas antes de la calibración: no se
+hace.** SP Digital es la única tienda medianamente sensible (132 de 347
+listings cambian algo, media −0,076 %) y aun así por debajo del ruido.
+
+**Mitad 2: lo que el handoff anterior leyó como "3 pasadas ese día" era una
+caída de 48 h.** Los días **18 y 19 de septiembre no tienen una sola fila en
+`price_points`**. Lo que se contó como pasadas extra eran reintentos de un
+crash-loop:
+
+- 18-sep: 336 corridas, **336 `failed`**. 19-sep: 226 corridas, **226 `failed`**.
+- Las **seis tiendas al 100 % de fallo** (`agotados 3 reintentos` contra todos
+  los hosts) → caída de la red saliente del host, no un adaptador roto.
+- 20 y 21 de septiembre quedaron además con **una sola pasada** (1,03
+  obs/listing).
+
+Es el mismo evento que este handoff ya describía para el **19-ago ~20:20 UTC**
+(145 de 148 `failed` repartidos entre las 6 tiendas a la vez). **Pasa más de una
+vez; hay que tratarlo como recurrente, no como anécdota.**
+
+**Por qué nadie se enteró, que es la parte que había que arreglar.**
+`ALERT_BOT_TOKEN`/`ALERT_CHAT_ID` están configurados y `alerts.py` funciona. Pero
+la alerta viaja por `api.telegram.org`, o sea **por la misma red saliente que se
+cayó**: el canal de aviso comparte el modo de falla que debe reportar. Se
+descubrió cinco días después, mirando `price_points` a mano.
+
+Lo que se hizo (2026-09-24):
+
+1. **`db.dias_sin_observaciones()`** detecta días completos sin una sola fila,
+   leyendo el Postgres **local** — lo único que sobrevive a esa caída. El runner
+   lo consulta después de cada pasada y `format_summary` lo reporta **aunque la
+   pasada haya salido verde**, así el aviso sale en la primera pasada que vuelve
+   a alcanzar Telegram. Sin estado ni tabla nueva: la ventana de 3 días
+   (`GAP_LOOKBACK_DAYS`) hace que se calle solo.
+2. **`scripts/salud_serie.py`** es esa misma consulta a mano, para mirar la
+   cadencia de un vistazo: `obs/listing` por día (2,0 es sano), agujeros y
+   mitades de día duplicadas. `DATABASE_URL=<dsn> python -m scripts.salud_serie`.
+3. **`runner.espera_hasta_proxima()`** ancla la cadencia al arranque de la
+   última pasada registrada, en vez de contar el intervalo desde el arranque del
+   proceso. Antes, la primera vuelta del loop entraba directo a `run_once`: cada
+   `up -d --build` y **cada reinicio del daemon de Docker** disparaba una pasada
+   completa contra las nueve tiendas. `--once` y `--dry-run` la saltean (son una
+   orden directa del operador). De paso corrige la deriva: el intervalo se
+   contaba desde el FIN de la pasada, así que el ciclo real era de 12,2 h y el
+   horario daba la vuelta al reloj en un mes.
+
+   El ancla es `db.ultima_pasada` y es el **`MIN(started_at)` de la última
+   pasada**, no el `MAX`: `scrape_runs` tiene una fila por (tienda, llave) y
+   arrancan escalonadas a lo largo de los 11-14 min que la pasada tarda en
+   recorrer las nueve tiendas (medido en producción el 2026-09-24). Con `MAX` el
+   ancla era el arranque de la ÚLTIMA tienda y el ciclo seguía siendo de 12,2 h:
+   el mismo número que este cambio dice corregir. Lo cubren tres tests con DB en
+   `tests/test_runner_cadencia.py`.
+
+**Lo que esto NO arregla, y hay que tener presente al calibrar θ el 2026-10-02:**
+el agujero del 18-19 ya está en los datos y no se rellena. Concretamente:
+
+- La ventana de 60 d tiene **51 días con observaciones**, no 53.
+- **~75 listings** quedaron bajo `MIN_DAYS` por el agujero (verificado: de 298
+  con edad suficiente y `n_days` 28-29, solo 75 estaban vivos a ambos lados del
+  hueco; los otros 223 son intermitencia propia, no el gap).
+- Más importante: **el backtest va a hacer replay sobre dos días sin ningún
+  candidato.** La métrica de salida es "precisión ≥80 % con ≥3 ofertas/día/canal"
+  — esos dos días no tienen que contarse como "días sin ofertas".
+
 ## Lo que sigue, en orden
 
 1. **Commitear lo que está en el working tree.** Son tres cosas independientes y

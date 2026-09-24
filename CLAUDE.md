@@ -207,6 +207,22 @@ la página 1 en el fixture y la verificación de centinelas— está en
 - **Después de tocar el código hay que reconstruir el contenedor.** El
   Dockerfile copia las fuentes, no las monta: un cambio en el host no llega al
   scraper que ya está corriendo.
+- **Una caída de red saliente silencia su propia alerta.** El aviso de
+  `alerts.py` viaja por `api.telegram.org`: cuando el host pierde la salida,
+  fallan las nueve tiendas Y el mensaje que avisaría de eso. Pasó el 19-ago y
+  otra vez del 18 al 20-sep de 2026 (48 h, 562 corridas `failed`, cero avisos,
+  descubierto cinco días después). Por eso el agujero se detecta leyendo el
+  Postgres **local** (`db.dias_sin_observaciones`) y se reporta en la primera
+  pasada que vuelve a alcanzar Telegram, aunque esa pasada esté verde. Para
+  mirarlo a mano: `python -m scripts.salud_serie`.
+- **El loop del scraper no corre una pasada al arrancar.** `espera_hasta_proxima`
+  la ancla al arranque de la última pasada registrada, así un despliegue o un
+  reinicio del daemon de Docker no meten una pasada extra. Si necesitás una
+  pasada ya, es `--once` (o `--dry-run`), que la saltean a propósito. Ojo al
+  tocar `db.ultima_pasada`: `scrape_runs` tiene una fila por (tienda, llave) y
+  arrancan escalonadas ~13 min, así que el ancla es el `MIN(started_at)` del
+  grupo. Un `MAX` devuelve el arranque de la última tienda y le suma esos
+  minutos a cada ciclo — que es justo la deriva que el ancla elimina.
 - **`in_stock` es ciego en Paris y Falabella**: hoy lo asumen `True`, así que la
   guarda de stock del detector no protege nada ahí. Se arregla en F3
   verificando la ficha solo del candidato (10–30 fetches/día, no 2.898).
