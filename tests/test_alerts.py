@@ -1,6 +1,8 @@
 """El aviso post-pasada: silencio cuando todo está verde, ruido cuando no."""
 from __future__ import annotations
 
+from datetime import date
+
 import alerts
 from alerts import MAX_LINES, RunOutcome, format_summary, send_alert
 
@@ -95,3 +97,42 @@ async def test_telegram_caido_no_tumba_la_pasada(monkeypatch):
 def test_alerts_no_importa_aiohttp_si_no_hay_nada_que_mandar():
     """El import del cliente es perezoso: la pasada verde no paga aiohttp."""
     assert "aiohttp" not in dir(alerts)
+
+
+# -----------------------------------------------------------------------------
+# El aviso de agujero en la serie
+# -----------------------------------------------------------------------------
+# Existe porque la alerta de una caída de red viaja por la misma red que se
+# cayó: del 18 al 20 de septiembre de 2026 hubo 48 h sin una sola observación,
+# 562 corridas `failed` y cero avisos. Lo que sobrevive a esa caída es la serie
+# en el Postgres local, así que el agujero se detecta leyendo la DB y se reporta
+# en la primera pasada que SÍ logra hablar con Telegram — aunque esa pasada haya
+# salido verde.
+
+
+def test_pasada_verde_con_agujero_si_avisa():
+    """El caso del 18-sep: la pasada de hoy anduvo, pero faltan días."""
+    summary = format_summary([ok(), ok()], [date(2026, 9, 18), date(2026, 9, 19)])
+    assert summary is not None
+    assert "2 día(s) SIN observaciones" in summary
+    assert "2026-09-18" in summary and "2026-09-19" in summary
+
+
+def test_sin_agujero_la_pasada_verde_sigue_callada():
+    assert format_summary([ok(), ok()], []) is None
+
+
+def test_agujero_y_fallos_van_en_el_mismo_mensaje():
+    """Una sola alerta: son el mismo incidente visto por dos lados."""
+    summary = format_summary([ok(), bad("failed")], [date(2026, 9, 18)])
+    assert summary is not None
+    assert "1 día(s) SIN observaciones" in summary
+    assert "1 fallo(s)" in summary
+    # El agujero va primero: es el dato más viejo y el más grave.
+    assert summary.index("SIN observaciones") < summary.index("fallo(s)")
+
+
+def test_el_agujero_explica_por_que_importa():
+    """Un aviso que no dice qué rompe se ignora a la tercera vez."""
+    summary = format_summary([ok()], [date(2026, 9, 18)])
+    assert "n_days" in summary and "backtest" in summary

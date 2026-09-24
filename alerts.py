@@ -7,6 +7,16 @@ un mensaje con las corridas `failed` y `partial`.
 Silencio = todo verde, a propósito. Si cada pasada mandara un "OK", en una
 semana el mensaje sería ruido y el primer `partial` real pasaría de largo.
 
+**El aviso de agujero es distinto y por eso existe aparte** (ver `gap_days`).
+Una alerta viaja por `api.telegram.org`, o sea por la misma red saliente que el
+scraper usa para las tiendas: cuando esa red se cae, las seis tiendas fallan al
+100 % y el mensaje que avisaría de eso tampoco sale. Pasó del 18 al 20 de
+septiembre de 2026 — 48 h sin una sola observación, 562 corridas `failed`, cero
+alertas — y se descubrió cinco días después mirando `price_points` a mano. El
+estado que sobrevive a esa caída es la serie misma, que vive en el Postgres
+local: por eso el agujero se detecta leyendo la DB y se reporta en la primera
+pasada que SÍ logra hablar con Telegram.
+
 Configuración (ambas opcionales; sin ellas el módulo es un no-op y solo loguea):
     ALERT_BOT_TOKEN   token del bot que manda el aviso
     ALERT_CHAT_ID     chat destino (tu DM o un canal privado de operación)
@@ -17,6 +27,7 @@ import logging
 import os
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date
 
 logger = logging.getLogger("alerts")
 
@@ -39,11 +50,30 @@ class RunOutcome:
     error: str | None = None
 
 
-def format_summary(outcomes: Sequence[RunOutcome]) -> str | None:
-    """Mensaje de la pasada, o `None` si no hay nada que reportar."""
+def format_summary(
+    outcomes: Sequence[RunOutcome], gap_days: Sequence[date] = ()
+) -> str | None:
+    """Mensaje de la pasada, o `None` si no hay nada que reportar.
+
+    `gap_days` son días completos sin ninguna observación
+    (`db.dias_sin_observaciones`). Se reportan aunque la pasada haya salido
+    verde: son la evidencia de una caída anterior cuya propia alerta no pudo
+    salir.
+    """
     bad = [o for o in outcomes if o.status in ("failed", "partial")]
-    if not bad:
+    if not bad and not gap_days:
         return None
+
+    if gap_days:
+        dias = ", ".join(d.isoformat() for d in gap_days)
+        aviso = (
+            f"🕳️ OfertasCL — {len(gap_days)} día(s) SIN observaciones: {dias}\n"
+            "La serie tiene un agujero: nadie scrapeó o falló todo. "
+            "Afecta n_days de cada listing y deja al backtest sin candidatos "
+            "esos días."
+        )
+        if not bad:
+            return aviso
 
     failed = [o for o in bad if o.status == "failed"]
     partial = [o for o in bad if o.status == "partial"]
@@ -53,7 +83,7 @@ def format_summary(outcomes: Sequence[RunOutcome]) -> str | None:
         f"⚠️ OfertasCL — pasada con {len(failed)} fallo(s) y "
         f"{len(partial)} degradada(s) de {total} corridas"
     )
-    lines = [header, ""]
+    lines = ([aviso, ""] if gap_days else []) + [header, ""]
     for outcome in failed + partial:
         icon = "❌" if outcome.status == "failed" else "🟡"
         lines.append(

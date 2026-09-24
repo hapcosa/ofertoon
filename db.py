@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 import asyncpg
@@ -240,6 +240,46 @@ async def finish_run(
         items_ok,
         error,
     )
+
+
+#: Cuántos días hacia atrás se buscan agujeros en la serie. Corto a propósito:
+#: el aviso tiene que salir cuando el scraper se recupera y después callarse
+#: solo, sin estado que mantener ni tabla que marcar como "ya notificado". Con 3
+#: días, una caída se reporta en la primera pasada que vuelve a hablar con
+#: Telegram y deja de aparecer tres días después.
+GAP_LOOKBACK_DAYS = 3
+
+
+async def dias_sin_observaciones(
+    conn: asyncpg.Connection, *, lookback: int = GAP_LOOKBACK_DAYS
+) -> list[date]:
+    """Días COMPLETOS sin una sola fila en `price_points`, del más viejo al más nuevo.
+
+    Hoy queda afuera a propósito: hasta que corra la primera pasada del día está
+    legítimamente vacío, y avisar de eso sería una falsa alarma cada mañana.
+
+    Un día sin observaciones no es "la pasada salió con pocos items" —eso lo
+    cubre el canario—, es la serie interrumpida: le baja `n_days` a cada listing
+    vivo y deja al backtest sin candidatos que evaluar ese día.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT d::date AS dia
+          FROM generate_series(
+                   CURRENT_DATE - ($1::int) * INTERVAL '1 day',
+                   CURRENT_DATE - INTERVAL '1 day',
+                   INTERVAL '1 day'
+               ) AS d
+         WHERE NOT EXISTS (
+               SELECT 1 FROM price_points
+                WHERE observed_at >= d::date
+                  AND observed_at <  d::date + INTERVAL '1 day'
+           )
+         ORDER BY dia
+        """,
+        lookback,
+    )
+    return [r["dia"] for r in rows]
 
 
 #: Cuánto puede durar una pasada. Con 9 tiendas tarda 11-14 min; 2 h deja

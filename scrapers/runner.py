@@ -453,7 +453,12 @@ async def main() -> int:
             if not args.dry_run:
                 if not args.skip_pricing:
                     await run_pricing(pool)
-                await send_alert(format_summary(outcomes))
+                # El agujero se consulta a la DB local, que es lo único que
+                # sobrevive a la caída de red que lo causó: la alerta de esa
+                # caída no pudo salir por el mismo motivo que falló el scraping.
+                async with pool.acquire() as conn:
+                    gap = await db.dias_sin_observaciones(conn)
+                await send_alert(format_summary(outcomes, gap))
             if args.once or stopping.is_set():
                 break
     finally:
