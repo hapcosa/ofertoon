@@ -30,6 +30,7 @@ import signal
 import statistics
 import sys
 from collections.abc import Sequence
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import db
@@ -365,6 +366,36 @@ async def run_pricing(pool: Any) -> None:
         logger.exception("la fase de pricing falló; la ingesta sigue")
 
 
+async def espera_hasta_proxima(pool: Any, interval: float) -> float:
+    """Segundos hasta la próxima pasada, contados desde la ÚLTIMA que corrió.
+
+    No desde el arranque del proceso, que era lo que hacía este loop: como la
+    primera vuelta entraba directo a `run_once`, cada `docker compose up -d
+    --build scraper` metía una pasada extra ese día, y un crash-loop metía una
+    por reinicio (562 corridas en las 48 h de la caída del 18-sep-2026).
+
+    Que la cadencia importe no es obvio: `compute_baseline` saca el p50 de los
+    puntos crudos, así que la cantidad de observaciones de un día es su peso en
+    la mediana. Medido sobre el catálogo entero, el sobremuestreo por despliegue
+    mueve el p50 de menos del 3 % de los listings y cambia 4 decisiones de
+    13.490 — o sea que por la señal solo, esto no valdría el cambio. Lo que sí
+    vale es lo otro: reiniciar en loop dispara una pasada completa contra las
+    nueve tiendas por vuelta, y eso es tráfico que termina en un bloqueo.
+
+    Anclar al ARRANQUE de la pasada (no al de su última tienda: ver
+    `db.ultima_pasada`) corrige además la deriva: el intervalo se contaba desde
+    que la pasada terminaba, así que el ciclo real era de 12,2 h y no de 12, y
+    el horario daba la vuelta al reloj en un mes.
+    """
+    async with pool.acquire() as conn:
+        ultima = await db.ultima_pasada(conn)
+    if ultima is None:  # base recién creada: no hay de qué colgarse
+        return 0.0
+
+    restante = (ultima + timedelta(seconds=interval)) - datetime.now(timezone.utc)
+    return max(0.0, restante.total_seconds())
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Ingesta de precios OfertasCL")
     parser.add_argument("--once", action="store_true", help="una pasada y salir")
@@ -395,8 +426,24 @@ async def main() -> int:
         loop.add_signal_handler(sig, stopping.set)
 
     pool = await db.create_pool(dsn)
+    # `--once` y `--dry-run` son una orden directa del operador: corren ya, sin
+    # esperar a que toque. El loop desatendido sí respeta la cadencia.
+    saltear_espera = args.once or args.dry_run
     try:
         while True:
+            if not saltear_espera:
+                espera = await espera_hasta_proxima(pool, interval)
+                if espera > 0:
+                    logger.info(
+                        "última pasada hace poco; la próxima en %.1f h", espera / 3600
+                    )
+                    try:
+                        await asyncio.wait_for(stopping.wait(), timeout=espera)
+                        break  # llegó la señal durante la espera
+                    except asyncio.TimeoutError:
+                        pass
+            saltear_espera = False
+
             outcomes = await run_once(
                 pool,
                 only_store=args.store,
@@ -409,11 +456,6 @@ async def main() -> int:
                 await send_alert(format_summary(outcomes))
             if args.once or stopping.is_set():
                 break
-            try:
-                await asyncio.wait_for(stopping.wait(), timeout=interval)
-                break  # llegó la señal durante la espera
-            except asyncio.TimeoutError:
-                pass
     finally:
         await pool.close()
 

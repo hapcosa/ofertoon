@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
 
 import asyncpg
@@ -238,4 +239,36 @@ async def finish_run(
         items_seen,
         items_ok,
         error,
+    )
+
+
+#: Cuánto puede durar una pasada. Con 9 tiendas tarda 11-14 min; 2 h deja
+#: margen para el doble de catálogo y sigue estando lejísimos de las 12 h que
+#: separan una pasada de la siguiente, que es la única confusión posible.
+PASS_WINDOW = "2 hours"
+
+
+async def ultima_pasada(conn: asyncpg.Connection) -> datetime | None:
+    """Instante en que ARRANCÓ la última pasada, sin importar cómo terminó.
+
+    Es el ancla de la cadencia del loop: la serie tiene que quedar muestreada a
+    intervalos parejos porque `compute_baseline` saca el p50 de los puntos
+    crudos, así que la cantidad de observaciones de un día ES su peso en la
+    mediana. Contar el intervalo desde el arranque del proceso en vez de desde
+    la última pasada hace que cada despliegue y cada reinicio corra su propia
+    pasada extra.
+
+    Ojo con el `MIN`: `scrape_runs` tiene una fila por (tienda, llave), no una
+    por pasada, y esas filas arrancan escalonadas a lo largo de los ~13 min que
+    la pasada tarda en recorrer las nueve tiendas. Un `MAX(started_at)` acá
+    devolvería el arranque de la ÚLTIMA tienda y le sumaría esos 13 min al
+    ciclo, que es exactamente la deriva que este ancla existe para eliminar.
+    """
+    return await conn.fetchval(
+        f"""
+        SELECT MIN(started_at)
+          FROM scrape_runs
+         WHERE started_at >= (SELECT MAX(started_at) FROM scrape_runs)
+                             - INTERVAL '{PASS_WINDOW}'
+        """
     )
