@@ -16,32 +16,52 @@ saltea (y la suite igual da verde, que es la trampa que documenta el HANDOFF).
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 
 import pytest
 
 from curation import ranker
+from pricing import detector
 from publisher import poster
 from publisher.poster import Tier
 
 pytestmark = pytest.mark.asyncio
 
+def _ultimo_mediodia_de_santiago(ahora: datetime | None = None) -> datetime:
+    """El mediodía local más reciente que YA PASÓ.
+
+    La serie sintética tiene que satisfacer dos relojes a la vez y por eso el
+    ancla no puede ser ni una fecha fija ni una hora fija del día de hoy:
+
+    - El **reloj real**: `compute_baseline` filtra `observed_at <= now` y el
+      detector descarta lo que tenga más de `PRICE_MAX_AGE_HOURS` (26 h), los dos
+      contra el reloj del servidor. El ancla tiene que estar en el pasado y a
+      menos de 26 h. Una fecha absoluta apaga estos tests a los dos días — ya
+      pasó: escritos el 2026-08-04, el 2026-08-06 fallaban 12 de 17.
+    - El **reloj inyectado**: `PUBLISH_AT` tiene que caer dentro de la ventana
+      del ranker, que está definida en hora de Santiago (9-22), y a menos de
+      `ranker.MAX_AGE_HOURS` del `detected_at` del candidato, que es el ancla.
+
+    El mediodía local más reciente cumple las dos: está entre 0 y 24 h en el
+    pasado, y `PUBLISH_AT` (una hora después) queda a las 13:00 locales, lejos de
+    los dos bordes de la ventana y del cambio de día calendario en cualquier
+    época del año. Anclar a las 15:00 UTC de HOY no cumplía la primera: cuando la
+    suite corría antes de esa hora, la observación de la oferta quedaba en el
+    futuro, `compute_baseline` la filtraba y el mínimo previo daba el precio sin
+    descuento.
+    """
+    local = (ahora or datetime.now(timezone.utc)).astimezone(ranker.TZ)
+    dia = local.date() if local.hour >= 12 else local.date() - timedelta(days=1)
+    # `datetime.combine` y no aritmética sobre el aware: restar un día en UTC
+    # cruzando el cambio de hora de Chile daría las 11:00 o las 13:00 locales.
+    return datetime.combine(dia, time(12), tzinfo=ranker.TZ).astimezone(timezone.utc)
+
+
 #: Ancla de la serie sintética. Todo se cuenta hacia atrás desde acá.
-#:
-#: Es el día en que corre la suite, NO una fecha fija: el detector descarta las
-#: observaciones de más de `PRICE_MAX_AGE_HOURS` (26 h) contra el reloj del
-#: servidor, así que una serie anclada a una fecha absoluta deja de evaluarse a
-#: los dos días y estos tests se apagan solos sin que nadie toque el código. Ya
-#: pasó: escritos el 2026-08-04, el 2026-08-06 fallaban 12 de 17.
-#:
-#: La hora sí es fija (15:00 UTC) para que `PUBLISH_AT` caiga siempre dentro de
-#: la ventana del ranker. Que la ancla quede unas horas en el futuro cuando la
-#: suite corre de madrugada no molesta: el filtro de edad solo mira hacia atrás.
-NOW = datetime.now(timezone.utc).replace(hour=15, minute=0, second=0, microsecond=0)
-#: Un mediodía de Santiago (16:00 UTC es 12:00 con UTC−4, 13:00 con UTC−3):
-#: dentro de la ventana de publicación y lejos de los bordes del día calendario
-#: local en cualquier época del año.
+NOW = _ultimo_mediodia_de_santiago()
+#: Las 13:00 de Santiago: dentro de la ventana de publicación, con margen para
+#: los +50 min del test de cooldown y lejos de los bordes del día local.
 PUBLISH_AT = NOW + timedelta(hours=1)
 
 PRECIO_NORMAL = Decimal("500000")
@@ -489,8 +509,9 @@ async def test_no_publica_fuera_de_la_ventana_horaria(db_conn, telegram_pool) ->
     )
     await run_pipeline(telegram_pool)
 
-    # 06:00 UTC = 02:00 en Santiago. Relativo a la ancla, por lo mismo que ella.
-    madrugada = NOW.replace(hour=6)
+    # Las 2 de la mañana de Santiago, que es lo que la ventana mira: dicho en
+    # hora local y no en UTC, porque el desfase cambia con el horario de verano.
+    madrugada = NOW.astimezone(ranker.TZ).replace(hour=2).astimezone(timezone.utc)
     fake = FakeTelegram()
     stats = await poster.run_once(telegram_pool, fake, now=madrugada)
 
@@ -600,3 +621,40 @@ async def test_el_mensaje_publicado_dice_el_mas_barato_en_60_dias(
     await poster.run_once(telegram_pool, fake, now=PUBLISH_AT)
 
     assert "🏆 El más barato en 60 días" in fake.sent[0]["text"]
+
+
+# -----------------------------------------------------------------------------
+# El ancla misma
+# -----------------------------------------------------------------------------
+# Estos dos no tocan DB: prueban que la serie sintética sea válida a CUALQUIER
+# hora del día. Existen porque el ancla anterior (las 15:00 UTC de hoy) fallaba
+# corriendo la suite antes de esa hora —la observación de la oferta quedaba en el
+# futuro, `compute_baseline` la filtraba y `min_prior` daba el precio sin
+# descuento— y el único síntoma era un test rojo que parecía flaky.
+
+
+async def test_el_ancla_es_valida_a_cualquier_hora_del_dia() -> None:
+    """Las cuatro restricciones de los dos relojes, hora por hora."""
+    base = datetime(2026, 9, 24, tzinfo=timezone.utc)
+    for hora in range(24):
+        ahora = base + timedelta(hours=hora)
+        ancla = _ultimo_mediodia_de_santiago(ahora)
+        publish_at = ancla + timedelta(hours=1)
+
+        assert ancla <= ahora, f"{hora}h: el ancla no puede estar en el futuro"
+        edad = (ahora - ancla).total_seconds() / 3600
+        assert edad < detector.PRICE_MAX_AGE_HOURS, f"{hora}h: serie muy vieja"
+        assert ranker.within_window(publish_at), f"{hora}h: fuera de la ventana"
+        assert publish_at - ancla <= timedelta(hours=ranker.MAX_AGE_HOURS)
+
+
+async def test_el_ancla_sobrevive_al_cambio_de_hora_de_chile() -> None:
+    """El mediodía local sigue siendo mediodía local cruzando el cambio.
+
+    Chile cambia a las 24:00 del sábado: restar 24 h en UTC daría las 11:00 o las
+    13:00 locales y el ancla se correría hacia el borde de la ventana.
+    """
+    for dia in (date(2026, 4, 5), date(2026, 9, 6)):  # los dos domingos de cambio
+        ahora = datetime.combine(dia, time(6), tzinfo=timezone.utc)  # madrugada local
+        ancla = _ultimo_mediodia_de_santiago(ahora)
+        assert ancla.astimezone(ranker.TZ).hour == 12
