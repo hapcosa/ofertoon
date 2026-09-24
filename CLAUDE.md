@@ -209,7 +209,7 @@ la página 1 en el fixture y la verificación de centinelas— está en
   scraper que ya está corriendo.
 - **Una caída de red saliente silencia su propia alerta.** El aviso de
   `alerts.py` viaja por `api.telegram.org`: cuando el host pierde la salida,
-  fallan las nueve tiendas Y el mensaje que avisaría de eso. Pasó el 19-ago y
+  fallan todas las tiendas Y el mensaje que avisaría de eso. Pasó el 19-ago y
   otra vez del 18 al 20-sep de 2026 (48 h, 562 corridas `failed`, cero avisos,
   descubierto cinco días después). Por eso el agujero se detecta leyendo el
   Postgres **local** (`db.dias_sin_observaciones`) y se reporta en la primera
@@ -223,6 +223,17 @@ la página 1 en el fixture y la verificación de centinelas— está en
   arrancan escalonadas ~13 min, así que el ancla es el `MIN(started_at)` del
   grupo. Un `MAX` devuelve el arranque de la última tienda y le suma esos
   minutos a cada ciclo — que es justo la deriva que el ancla elimina.
+- **`product_list_limit` de Magento solo acepta los valores que el sitio ofrece.**
+  Con `=96`, Kupfer responde **HTTP 200 y sirve 12 productos** —su default—: no
+  clampea al máximo, ignora el parámetro. Por eso `magento_html.PAGE_SIZE` es 36
+  (lo que lista su `<select id="limiter">`) y por eso subirlo a ojo reduciría el
+  alcance a un cuarto sin un solo error. Esa familia además **no pagina a
+  propósito**: el `robots.txt` de Kupfer prohíbe `/*?p=`, así que trae cada
+  categoría en una request y reporta lo que no entró vía `CountingAdapter`.
+- **Construmart no publica precios sin elegir sucursal.** Cada sucursal es un
+  `customer_group_id`; para un anónimo el HTML del listado no trae un solo `$` y
+  todas las filas salen "Sin Stock". Su `products-render-info` contesta sin token
+  pero devuelve `final_price: 0`. No está conectada — ver PLAN_TIENDAS §1c.
 - **`in_stock` es ciego en Paris y Falabella**: hoy lo asumen `True`, así que la
   guarda de stock del detector no protege nada ahí. Se arregla en F3
   verificando la ficha solo del candidato (10–30 fetches/día, no 2.898).

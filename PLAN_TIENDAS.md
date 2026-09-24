@@ -86,8 +86,8 @@ y donde caen las cuatro tiendas que aportaste.
 | **Ferretek** (`ferretek.cl`) | Magento 2 | ✅ **REST abierta sin token**: `/rest/V1/products` → **48.454 productos**, con `price`, `sku`, `marca` | **S** | El `sku` parece EAN-13 (`2615000001008`) → identidad posible. Catálogo de repuestos de maquinaria (Stens, Oregon, Rotary): muy de nicho |
 | **Urban Comercial** (`urbancomercial.cl`) | WooCommerce | ✅ **Store API pública**: `/wp-json/wc/store/v1/products` → JSON con precio y stock | **S** | Herramientas de marca (Dewalt visto en el primer item) |
 | **Ferretería Prat** (`ferreteriaprat.cl`) | Shopify | ✅ `/products.json?limit=250&page=N` | **S** | Trae `variants[].available` → **`in_stock` real** |
-| **Construmart** (`construmart.cl`) | Magento 2 | REST **cerrada** (`consumer isn't authorized`) → grid HTML `?p=N` | **M** | Cadena nacional, la más grande de las no integradas |
-| **Kupfer** (`kupfer.cl`) | Magento 2 | REST cerrada → grid HTML | **M** | Ferretería industrial |
+| **Construmart** (`construmart.cl`) | Magento 2 | REST cerrada. Grid HTML **sin precios**: son por sucursal (`customer_group_id`) y para un anónimo las 20 filas salen "Sin Stock" | **L** | Cadena nacional, la más grande de las no integradas. Necesita sesión por sucursal → Fase 1c |
+| **Kupfer** (`kupfer.cl`) | Magento 2 | ✅ REST cerrada (401) → grid HTML con `data-price-amount` y SKU propio. **Sin `?p=`**: su robots lo prohíbe | **S** | Conectada el 2026-09-24. Ferretería industrial: solo 24 productos mapean a la taxonomía |
 | **Kruuse** (`kruuse.cl`) | Next.js App Router | Payload RSC (`self.__next_f`), sin API JSON encontrada. Rutas `/cl/categories/<slug>` | **L** | Importador Scheppach. Catálogo chico y muy específico |
 | **Chilemat** (`chilemat.cl`) | sin determinar | HTTP 200, plataforma no identificada. Declara `Crawl-delay` en robots | **M?** | Requiere una sesión de inspección |
 | **MTS** (`mts.cl`) | — | ❌ **HTTP 403** a UA de Chrome | **L** | Anti-bot. No en las primeras fases |
@@ -185,7 +185,7 @@ tiendas, solo cambia la `base_url`.
 | **`woo_family.py`** | Urban Comercial (+ cualquier Woo con Store API) | `/wp-json/wc/store/v1/products` | precio y stock en el mismo JSON |
 | **`vtex_family.py`** | Colloky (+ los VTEX que se confirmen) | `/api/catalog_system/pub/products/search?_from=&_to=` | **EAN** en el payload → identidad de producto |
 | **`sfcc_family.py`** | Hites, La Polar, Tricot, ABCDin, Maicao | grid HTML paginado | 5 tiendas por un adaptador |
-| **`magento_html.py`** | Construmart, Kupfer, Sparta, Andesgear | grid HTML `?p=N&product_list_limit=N` | 4 tiendas por un adaptador |
+| **`magento_html.py`** ✅ | Kupfer, Sparta, Andesgear (**no** Construmart) | grid HTML, **una request por categoría**: `?product_list_limit=36`, sin `?p=` | total exacto en `span.toolbar-number` → canario exacto en vez de estadístico |
 | *(caso propio)* | Ferretek | `/rest/V1/products` abierta | es Magento pero con REST abierta: no comparte código con el grid HTML |
 
 **Limitación conocida de Shopify**: `products.json` **no expone `barcode`**
@@ -310,15 +310,45 @@ Lo que se aprendió conectándolas, que cambia lo que decía este plan:
   declara **exactamente 10,0% en 249 de 250 productos**, rango 10,0%..10,0%. No
   es un descuento: es un margen fijo sobre todo el catálogo.
 
-**1b. Las dos de grid HTML:**
+**1b. Las de grid HTML — cerrada el 2026-09-24, con una sola tienda de dos.**
 
-| Orden | Tienda | Entrega |
-|---|---|---|
-| 4 | **Construmart** | `scrapers/stores/magento_html.py` + fixture + fila |
-| 5 | **Kupfer** | solo fixture + fila (reusa la familia) |
+| Orden | Tienda | Entrega | Resultado |
+|---|---|---|---|
+| 4 | **Kupfer** | `scrapers/stores/magento_html.py` + 3 fixtures + migración 18 | ✅ conectada, 24 listings |
+| 5 | **Construmart** | — | ❌ **no construible como estaba planeado** → 1c |
+
+Lo que la inspección del día encontró, y que el paso 1 del checklist §5 existe
+para encontrar:
+
+- **El `robots.txt` de Kupfer prohíbe `/*?p=`**, que es el parámetro de
+  paginación de Magento. Por eso la familia **no pagina**: trae cada categoría en
+  una request con `product_list_limit=36` (que su robots no prohíbe) y reporta lo
+  que no entra en vez de ir a buscarlo. Sale más barato para la tienda que
+  paginar. La consecuencia es que **solo se pueden conectar categorías de ≤36
+  productos**, y por eso Kupfer entra con una llave y no con cinco.
+- **`product_list_limit=96` devuelve HTTP 200 con 12 productos** — el default. No
+  clampea al máximo: ignora el parámetro. Subirlo a ojo reduce el alcance a un
+  cuarto sin un solo error.
+- **Construmart no publica precios.** Sus precios y su stock son por sucursal
+  (cada una es un `customer_group_id`) y el propio sitio lo dice: "Para ver los
+  precios y stock, selecciona la región y tienda". Para un anónimo el HTML no
+  trae un solo `$` en 800 KB y las 20 filas del grid salen "Sin Stock". Su
+  `/rest/default/V1/products-render-info` **sí** contesta sin token —es la ruta
+  anónima que usa su propio front— pero devuelve `final_price: 0` e
+  `is_salable: ""` en los 20 productos.
+- **El catálogo de Kupfer que mapea a nuestra taxonomía es chico**: es una
+  ferretería industrial (amarre, cadenas, cabos, mantención). `herramientas-electricas`
+  declara 24 productos y 7 de sus 10 hojas tienen cero: los productos están
+  asignados al padre, que es anchor y los contiene.
 
 **1c. Investigación, sin compromiso de entrega:**
 
+- **Construmart**: reversear el endpoint que fija la sucursal (el botón "ENTRAR A
+  CONSTRUMART.CL" del `storePopup`, que hoy solo se ve como
+  `localStorage.selected_store_name` + un `customer_group_id` por tienda),
+  sostener una sesión con **una** sucursal de referencia de Santiago y aceptar
+  explícitamente que la serie de un SKU es la de esa sucursal. Es una decisión de
+  modelo —el sistema asume un precio por SKU por tienda—, no un adaptador más.
 - **Imperial**: reintentar. Si el 520 persiste una semana, es bloqueo, no caída.
 - **Chilemat** y **Kruuse**: una sesión de inspección cada una para decidir si
   el adaptador vale lo que cuesta. Kruuse en particular es payload RSC de Next
@@ -354,6 +384,13 @@ plan completo, pero depende de la Fase 1 para existir.
 | 3 | **Sparta** | XS tras Fase 1b (reusa `magento_html`), respetar `Crawl-delay: 1` |
 | 4 | **Andesgear** | XS tras Fase 1b |
 | 5 | Mountain | investigación |
+
+⚠ **Lo que Sparta y Andesgear heredan de la Fase 1b**: `magento_html` no pagina,
+así que solo sirve para categorías que entren en una página. Antes de dar por XS
+cualquiera de las dos hay que (a) releer su `robots.txt` —si NO prohíbe `?p=`,
+conviene agregarle paginación a la familia en vez de recortar categorías— y
+(b) mirar qué valores ofrece su `<select id="limiter">`, porque un
+`product_list_limit` que la tienda no ofrezca cae al default de 12 en silencio.
 
 **Criterio de salida:** el mismo de la Fase 1, **más** una revisión manual de 20
 candidatos aceptados para ver si el problema de liquidación apareció.

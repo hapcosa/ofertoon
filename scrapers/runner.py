@@ -379,8 +379,8 @@ async def espera_hasta_proxima(pool: Any, interval: float) -> float:
     la mediana. Medido sobre el catálogo entero, el sobremuestreo por despliegue
     mueve el p50 de menos del 3 % de los listings y cambia 4 decisiones de
     13.490 — o sea que por la señal solo, esto no valdría el cambio. Lo que sí
-    vale es lo otro: reiniciar en loop dispara una pasada completa contra las
-    nueve tiendas por vuelta, y eso es tráfico que termina en un bloqueo.
+    vale es lo otro: reiniciar en loop dispara una pasada completa contra todas
+    las tiendas por vuelta, y eso es tráfico que termina en un bloqueo.
 
     Anclar al ARRANQUE de la pasada (no al de su última tienda: ver
     `db.ultima_pasada`) corrige además la deriva: el intervalo se contaba desde

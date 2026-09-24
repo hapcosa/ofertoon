@@ -282,7 +282,8 @@ async def dias_sin_observaciones(
     return [r["dia"] for r in rows]
 
 
-#: Cuánto puede durar una pasada. Con 9 tiendas tarda 11-14 min; 2 h deja
+#: Cuánto puede durar una pasada. Con las tiendas conectadas a septiembre de
+#: 2026 tarda 11-14 min; 2 h deja
 #: margen para el doble de catálogo y sigue estando lejísimos de las 12 h que
 #: separan una pasada de la siguiente, que es la única confusión posible.
 PASS_WINDOW = "2 hours"
@@ -300,7 +301,7 @@ async def ultima_pasada(conn: asyncpg.Connection) -> datetime | None:
 
     Ojo con el `MIN`: `scrape_runs` tiene una fila por (tienda, llave), no una
     por pasada, y esas filas arrancan escalonadas a lo largo de los ~13 min que
-    la pasada tarda en recorrer las nueve tiendas. Un `MAX(started_at)` acá
+    la pasada tarda en recorrer todas las tiendas. Un `MAX(started_at)` acá
     devolvería el arranque de la ÚLTIMA tienda y le sumaría esos 13 min al
     ciclo, que es exactamente la deriva que este ancla existe para eliminar.
     """

@@ -36,22 +36,19 @@ historia. Lo que falta para publicar ya no es baseline: es calibrar θ, y eso
 **no se puede antes del 2026-10-02** (ver "Cuándo empiezan a salir ofertas": la
 cuenta de 45 días que decía este handoff estaba mal).
 
-- **15.475 listings**, 6 tiendas. Última pasada del pipeline (1-sep 18:13, ya
-  con los datos reparados):
-  `baselines[15475 listings, 15475 escritas, 5227 con historia suficiente, 190
-  con rampa] detector[10005 evaluados, 42 aceptados (above_floor=12,
-  history=4778, ramp=88, threshold=5085)]`.
-- **420 tests**; sin `TEST_DATABASE_URL` corren 350 y se saltean 70 en ~3 s. Con
-  la variable seteada la suite tarda **~40 minutos** — casi todo es el `TRUNCATE`
-  de `price_points` y sus particiones en el fixture. No es un cuelgue.
-- **Migraciones 01..14 aplicadas**, 0 pendientes.
-- **7 commits**, el último `0ab6148` (F3 ya commiteado). En el working tree
-  quedan `scrapers/runner.py` (ver incidente 2026-08-17), los tres arreglos del
-  canario del 1-sep (`scrapers/base.py`, `scrapers/stores/spdigital.py`,
-  `db.py`, `tests/`) y `scripts/repair_oversampling.py`. **Nada commiteado.**
+- **21.466 listings** en **10 tiendas activas** y 1.043.197 observaciones
+  (2026-09-24 17:00). Por tienda: falabella 9.147, paris 4.766, easy 2.140,
+  sodimac 1.989, ferretek 1.548, spdigital 642, pcfactory 588, prat 396,
+  urban 226, kupfer 24. De 21.270 baselines escritas, **9.083 tienen historia
+  suficiente** (`n_points>=30 AND n_days>=30`).
+- **530 tests con DB** (3:25 contra una base recién creada), **452 sin DB**
+  (78 salteados, 2,4 s). El handoff decía ~40 minutos: eso era el `TRUNCATE` de
+  `price_points` con datos, no la suite.
+- **Migraciones 01..18 aplicadas**, 0 pendientes.
+- **26 commits**, el último `aeea8d6`. Working tree limpio salvo los docs.
 - Servicios arriba: `postgres` (healthy), `scraper`, `bot`, `gate`,
-  `paypal-webhook`, `publisher`, `cloudflared`. Los 5 servicios propios corren
-  la imagen reconstruida el 2026-09-01 18:20, verificada sin desfase.
+  `paypal-webhook`, `publisher`, `cloudflared`. `scraper` corre la imagen
+  reconstruida el 2026-09-24 17:00 (fix de cadencia + familia Magento HTML).
 
 ### Incidente 2026-08-17 — el scraper llevaba 2 días sin correr el pipeline
 
@@ -309,12 +306,43 @@ el agujero del 18-19 ya está en los datos y no se rellena. Concretamente:
   candidato.** La métrica de salida es "precisión ≥80 % con ≥3 ofertas/día/canal"
   — esos dos días no tienen que contarse como "días sin ofertas".
 
+### Fase 1b del plan de tiendas — cerrada el 2026-09-24 con una tienda de dos
+
+**Kupfer conectada** (`scrapers/stores/magento_html.py`, migración 18, 3 fixtures,
+25 tests). **Construmart no es construible como estaba planeado** y pasó a la
+Fase 1c. Lo que encontró la inspección del día:
+
+| Hallazgo | Consecuencia |
+|---|---|
+| El `robots.txt` de Kupfer prohíbe `/*?p=` | La familia **no pagina**: una request por categoría con `product_list_limit=36`. Solo se pueden conectar categorías de ≤36 productos |
+| `product_list_limit=96` → **HTTP 200 con 12 productos** (el default) | Subir `PAGE_SIZE` a ojo reduce el alcance a un cuarto **en silencio**. Solo valen los valores del `<select id="limiter">` |
+| `span.toolbar-number` declara el total exacto ("118 productos") | La familia implementa `CountingAdapter`: el canario es exacto ("36 de 118" → `partial`) en vez de estadístico. Sin eso, una categoría que crece pasando de 36 se vería sana para siempre |
+| Construmart no publica precios a un anónimo | Sus precios y stock son **por sucursal** (cada una es un `customer_group_id`). En 800 KB de HTML no hay un solo `$` y las 20 filas del grid salen "Sin Stock". El propio sitio lo dice: "Para ver los precios y stock, selecciona la región y tienda" |
+| Su `/rest/default/V1/products-render-info` **sí** contesta sin token | Pero devuelve `final_price: 0` e `is_salable: ""` en los 20 productos. Es la ruta anónima de su propio front, y para el anónimo no hay precio |
+| El catálogo de Kupfer que mapea a la taxonomía es chico | Es ferretería industrial: `herramientas-electricas` declara 24 y 7 de sus 10 hojas tienen cero (los productos están asignados al padre, que es anchor) |
+
+**Kupfer entra asumiendo que 24 listings no mueven el volumen del canal.** Cuesta
+una request por pasada y es el primer caso de la familia, que Sparta y Andesgear
+reusan en la Fase 2. Se evalúa el **2026-10-24**; si no deja un candidato aceptado
+propio, `UPDATE stores SET is_active = false WHERE slug = 'kupfer'`.
+
+Primera pasada real, verificada en producción: `kupfer/ferre-herramientas → 24
+vistos, 24 observaciones nuevas [ok]`, `completeness=(24, 24)`, precios de $2.674
+a $2.911.631, marca en 7 de 24, **sin GTIN** (el grid de Magento no lo expone).
+
+**Lo que Construmart necesita, para cuando se retome:** reversear el endpoint que
+fija la sucursal (el botón "ENTRAR A CONSTRUMART.CL" del componente `storePopup`;
+del lado visible solo queda `localStorage.selected_store_name` y un
+`customer_group_id` por tienda), sostener una sesión con UNA sucursal de
+referencia de Santiago, y aceptar explícitamente que la serie de un SKU es la de
+**esa** sucursal. Eso último es una decisión de modelo: hoy el sistema asume un
+precio por SKU por tienda.
+
 ## Lo que sigue, en orden
 
-1. **Commitear lo que está en el working tree.** Son tres cosas independientes y
-   dan para tres commits: el import dentro del `try` de `scrapers/runner.py`
-   (`fix:`), los arreglos del canario (`fix:`) y `scripts/repair_oversampling.py`
-   + este handoff (`chore:`/`docs:`).
+1. **Fase 1c del plan de tiendas** — Construmart (la sesión por sucursal, que es
+   la decisión de modelo descrita arriba), reintentar Imperial (daba HTTP 520) e
+   inspeccionar Chilemat y Kruuse. Nada de esto tiene compromiso de entrega.
 2. **Calibrar θ** (no antes del 2026-10-02; con volumen, ~mediados de octubre).
    El output de
    `pricing/backtest.py` **es** el gate: precisión ≥80% con ≥3 ofertas/día.
