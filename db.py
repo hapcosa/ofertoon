@@ -38,7 +38,12 @@ async def load_store_targets(conn: asyncpg.Connection) -> list[dict[str, Any]]:
           JOIN store_categories AS sc ON sc.store_id = s.id
           JOIN categories       AS c  ON c.id = sc.category_id
          WHERE s.is_active AND sc.is_active
-         ORDER BY s.slug, c.slug
+         -- `store_key` también, y no es cosmético: cuando una tienda cross-lista
+         -- el mismo SKU en dos llaves de la misma categoría (Andesgear), el
+         -- adaptador lo emite UNA vez y la llave que gana es la primera de este
+         -- orden. Sin el tercer criterio, el empate lo resolvía Postgres y la
+         -- asignación podía cambiar entre pasadas.
+         ORDER BY s.slug, c.slug, sc.store_key
         """
     )
     return [dict(r) for r in rows]

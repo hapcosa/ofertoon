@@ -102,6 +102,10 @@ BRAND_SELECTOR = "span.product-item-brand"
 #: final: se piden exactamente las que la tienda dice tener.
 _PAGE_COUNT = "#am-page-count"
 
+#: Vocabulario que convierte a `span.price-label` en una señal de stock. Sin este
+#: filtro, cualquier rótulo de precio se leería como disponibilidad.
+_STOCK_WORDS = ("disponible", "agotado", "stock")
+
 
 class NotAListingPage(RuntimeError):
     """La respuesta no es un listado de categoría.
@@ -184,10 +188,14 @@ def _in_stock(item: Any) -> bool:
     """
     if item.css_first("div.stock.unavailable") is not None:
         return False
-    label = _text(item, "span.price-label")
-    if label is None:
+    label = (_text(item, "span.price-label") or "").casefold()
+    if not any(palabra in label for palabra in _STOCK_WORDS):
+        # La etiqueta no habla de stock: en Sparta dice "Precio habitual" y es el
+        # rótulo del precio tachado. Leerla como señal de disponibilidad marcaba
+        # agotados exactamente a los 14 de 36 productos CON descuento, o sea a los
+        # únicos que esta tienda podría publicar.
         return True
-    return "disponible" in label.casefold()
+    return "disponible" in label
 
 
 def total_pages(tree: Any) -> int | None:
@@ -200,16 +208,26 @@ def total_pages(tree: Any) -> int | None:
 
 
 def declared_total(tree: Any) -> int | None:
-    """Cuántos productos declara la categoría, de `span.toolbar-number`.
+    """Cuántos productos declara la categoría, del bloque `toolbar-amount`.
 
-    El texto cambia de plantilla en plantilla ("24" en una, "118 productos" en
-    otra), así que se toma el primer entero y no el nodo completo.
+    Se toma el **último** entero del bloque, no el primero, porque las tres
+    plantillas de Magento que la familia ve escriben el total al final:
+
+        Kupfer       "5 artículos"            → 5
+        Construmart  "23 Productos"           → 23
+        Sparta       "Artículos 1-36 de 1080" → 1080
+
+    Sparta es el caso que fija la regla: emite **tres** `span.toolbar-number` (1,
+    36 y 1080) y quedarse con el primero daba 1 para una categoría de 1.080. Eso
+    no fallaba ruidosamente: `canary_verdict` solo marca `partial` cuando lo
+    enumerado es MENOR que lo declarado, así que 36 contra 1 pasaba como `ok` y
+    la guarda exacta quedaba anulada en silencio.
     """
-    node = tree.css_first("span.toolbar-number")
+    node = tree.css_first("p.toolbar-amount") or tree.css_first("span.toolbar-number")
     if node is None:
         return None
-    match = re.search(r"\d+", node.text(strip=True).replace(".", ""))
-    return int(match.group()) if match else None
+    numeros = re.findall(r"\d+", node.text(strip=True).replace(".", ""))
+    return int(numeros[-1]) if numeros else None
 
 
 @dataclass(frozen=True)
@@ -327,6 +345,11 @@ class _MagentoHtmlAdapter:
     #: ¿El `robots.txt` de la tienda permite `?p=`? Es la única razón por la que
     #: una tienda de esta familia pagina y otra no.
     paginates: bool = False
+    #: ¿La tienda cross-lista el mismo SKU en varias categorías? Con esto en
+    #: `True`, el `seen` vive en la pasada y no en la categoría: el producto se
+    #: emite una vez y la llave que gana es la primera del orden de
+    #: `db.load_store_targets`. Ver `AndesgearAdapter`.
+    dedupe_across_categories: bool = False
     #: Techo de páginas por categoría. Vale como cota de cordura: el corte normal
     #: es el total que declara el paginador.
     max_pages: int = 30
@@ -336,6 +359,9 @@ class _MagentoHtmlAdapter:
         self._http = http
         self._categories = tuple(categories)
         self._completeness: dict[str, tuple[int, int]] = {}
+        #: Solo se usa con `dedupe_across_categories`. La instancia vive una
+        #: pasada, así que el conjunto se vacía solo entre pasadas.
+        self._seen_en_la_pasada: set[str] = set()
 
     def categories(self) -> Sequence[CategoryRef]:
         return self._categories
@@ -358,7 +384,10 @@ class _MagentoHtmlAdapter:
 
     async def discover(self, category: CategoryRef) -> AsyncIterator[RawProduct]:
         self._completeness.pop(category.store_key, None)
-        seen: set[str] = set()
+        seen = (
+            self._seen_en_la_pasada if self.dedupe_across_categories else set()
+        )
+        locales: set[str] = set()
         enumerated = 0
         declared: int | None = None
         page, pages = 1, 1
@@ -386,20 +415,29 @@ class _MagentoHtmlAdapter:
                 declared = parsed.declared
                 pages = parsed.pages or 1 if self.paginates else 1
 
-            nuevos = 0
+            # Dos conjuntos, y la distinción importa: `locales` detecta que la
+            # tienda sirvió otra vez la misma página, y `seen` decide si el
+            # producto se emite. Con `dedupe_across_categories` son distintos, y
+            # confundirlos cortaba la paginación en la primera página cuyos
+            # productos ya habían entrado por OTRA categoría — que en Andesgear
+            # pasó en 3 de 25 categorías y dejó `mujer/calzado` en 140 de 224.
+            nuevos_en_la_pagina = 0
             for product in parsed.products:
+                if product.store_sku in locales:
+                    continue
+                locales.add(product.store_sku)
+                nuevos_en_la_pagina += 1
                 if product.store_sku in seen:
                     continue
                 seen.add(product.store_sku)
-                nuevos += 1
                 yield product
 
-            # Una página que EMITE productos y no aporta ni un SKU nuevo es el
-            # síntoma de una tienda que dejó de respetar `?p=` y sirve la primera
-            # para siempre. Que no emita nada no lo es: la última página de
-            # Construmart suele traer solo filas sin precio (lo que esa sucursal
-            # no tiene), y avisar de eso sería una alerta por pasada para siempre.
-            if page > 1 and parsed.products and nuevos == 0:
+            # Una página que EMITE productos y no aporta ni un SKU nuevo A ESTA
+            # CATEGORÍA es el síntoma de una tienda que dejó de respetar `?p=` y
+            # sirve la primera para siempre. Que no emita nada no lo es: la última
+            # página de Construmart suele traer solo filas sin precio (lo que esa
+            # sucursal no tiene), y avisar de eso sería una alerta por pasada.
+            if page > 1 and parsed.products and nuevos_en_la_pagina == 0:
                 logger.warning(
                     "pagina_repetida store=%s categoria=%s pagina=%d",
                     self.slug,
@@ -467,3 +505,45 @@ class ConstrumartAdapter(_MagentoHtmlAdapter):
 
     def headers(self) -> dict[str, str] | None:
         return {"Cookie": f"persistent_customer_group_id={self.CUSTOMER_GROUP_ID}"}
+
+
+class AndesgearAdapter(_MagentoHtmlAdapter):
+    """Andesgear. `store_key` = el path de la categoría, sin `.html`.
+
+    Pagina —su `robots.txt` no prohíbe `?p=`— y **respeta su `Crawl-delay: 3`**
+    con `rate_limit_rps = 0.33`, que es lo que hace que una pasada suya cueste
+    ~7 min: 25 llaves, ~140 páginas de 24. No se manda `product_list_limit`
+    porque esta tienda **no publica un limiter**: sin la lista de valores que
+    acepta, pedir uno sería adivinar, y un valor que no ofrece cae a su default
+    sin avisar (la trampa que documenta el docstring del módulo).
+
+    **Cross-lista el mismo SKU en varias categorías, y por eso deduplica por
+    pasada.** Medido el 2026-09-26 sobre la primera página de 25 categorías: el
+    árbol `montana-nieve/*` re-lista productos de `hombre/*`, `mujer/*` y
+    `escalada/*`, el calzado unisex aparece en `hombre/calzado` y en
+    `mujer/calzado`, y hay una chaqueta de niño en `ninos/top`. Con 24 de cientos
+    de productos por muestra ya aparecieron 13 pares solapados: el catálogo real
+    solapa más.
+
+    Lo que hace seguro deduplicar acá es que **los 13 pares caen dentro de la
+    misma categoría interna** (montana-nieve/vestuario con hombre y mujer son
+    todos `deporte-vestuario`; el calzado unisex es todo `deporte-calzado`), así
+    que cuál llave gana no cambia el θ contra el que se mide ese producto. Si
+    alguna vez se conecta una llave que cruce dos categorías internas, esto deja
+    de ser inocuo.
+
+    No aporta identidad: su grid no expone GTIN ni modelo, y tampoco marca (0 de
+    24 con los dos selectores de la familia).
+    """
+
+    slug = "andesgear"
+    base_url = "https://www.andesgear.cl"
+    #: `Crawl-delay: 3` en su robots.txt.
+    rate_limit_rps = 0.33
+    page_size = None
+    paginates = True
+    dedupe_across_categories = True
+    #: 28 páginas es la categoría más grande medida (`hombre/accesorios`, 662
+    #: productos, que igual no se conecta). 30 deja margen sin ser un cheque en
+    #: blanco.
+    max_pages = 30

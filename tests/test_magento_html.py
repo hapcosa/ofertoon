@@ -29,6 +29,20 @@ permite):
   filas son los tres casos del grid: una con marca y precio, otra igual para
   contrastar, y una **"Sin Stock" sin precio ni SKU**, que es cómo esta tienda
   marca lo que esa sucursal no tiene.
+De **Andesgear** (pagina, respeta `Crawl-delay: 3`, y deduplica entre categorías):
+
+- `andesgear_colchonetas.html` — 3 de las 16 filas de
+  `camping-trekking/colchonetas`, con su `toolbar-amount` (16) y su
+  `#am-page-count` (1) reales. Una de las tres trae `oldPrice`: esta tienda y
+  Sparta son las dos de la familia que declaran descuentos.
+
+De **Sparta**, que no está conectada pero encontró dos bugs de la familia:
+
+- `sparta_zapatillas.html` — 2 de las 36 filas de `zapatillas.html` (categoría de
+  **1.080 productos en 30 páginas**) con su `toolbar-amount` real, que escribe
+  "Artículos 1-36 de 1080" en **tres** `span.toolbar-number`. Las dos filas son la
+  que trae `oldPrice` con el rótulo "Precio habitual" y una sin rótulo.
+
 - `construmart_taladros_g35_p2.html` — la **página 2 real** de esa misma
   categoría, que trae 3 filas y las 3 son "Sin Stock". No es un caso raro: es la
   cola normal de una categoría de Construmart, y es la razón por la que "una
@@ -47,6 +61,7 @@ from scrapers.base import CategoryRef
 from scrapers.runner import canary_verdict
 from scrapers.stores.magento_html import (
     PAGE_SIZE,
+    AndesgearAdapter,
     ConstrumartAdapter,
     KupferAdapter,
     NotAListingPage,
@@ -60,6 +75,8 @@ PAGINADA = FIXTURES / "kupfer_categoria_paginada.html"
 VACIA = FIXTURES / "kupfer_categoria_vacia.html"
 CONSTRUMART = FIXTURES / "construmart_taladros_g35.html"
 CONSTRUMART_P2 = FIXTURES / "construmart_taladros_g35_p2.html"
+SPARTA = FIXTURES / "sparta_zapatillas.html"
+ANDESGEAR = FIXTURES / "andesgear_colchonetas.html"
 
 CATEGORY = CategoryRef(
     slug="ferre-herramientas",
@@ -478,3 +495,154 @@ async def test_una_pagina_repetida_corta_la_paginacion():
 
     assert [p.store_sku for p in productos] == ["225066", "240421"]
     assert len(http.urls) == 2, "se pidió la 2, no aportó nada nuevo, se cortó"
+
+
+# -----------------------------------------------------------------------------
+# Los dos bugs que encontró Sparta (no está conectada; el fixture es su markup)
+# -----------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def sparta():
+    return parse_listing(
+        SPARTA.read_text(encoding="utf-8"),
+        store_slug="sparta",
+        category=CategoryRef(slug="deporte-calzado", store_key="zapatillas.html"),
+        scraped_at=NOW,
+    )
+
+
+def test_el_total_declarado_es_el_ultimo_numero_del_toolbar(sparta):
+    """"Artículos 1-36 de 1080" → 1080, no 1.
+
+    Quedarse con el primer `span.toolbar-number` daba 1 para una categoría de
+    1.080, y eso NO fallaba ruidosamente: `canary_verdict` solo marca `partial`
+    cuando lo enumerado es menor que lo declarado, así que 36 contra 1 pasaba como
+    `ok` y la guarda exacta quedaba anulada en silencio.
+    """
+    assert sparta.declared == 1080
+    assert sparta.pages == 30
+    assert canary_verdict(36, [], completeness=(36, sparta.declared))[0] == "partial"
+
+
+def test_un_rotulo_de_precio_no_es_una_señal_de_stock(sparta):
+    """Sparta pone `<span class="price-label">Precio habitual</span>` en el
+    precio tachado.
+
+    Leer cualquier `price-label` como disponibilidad marcaba agotados justo a los
+    14 de 36 productos CON descuento, o sea a los únicos que esta tienda podría
+    publicar. La etiqueta solo cuenta como stock si habla de stock.
+    """
+    assert len(sparta.products) == 2
+    assert [p.in_stock for p in sparta.products] == [True, True]
+    # La fila del rótulo es además la que trae el "antes" tachado.
+    assert sparta.products[0].price_normal is not None
+    assert sparta.products[0].price_normal > sparta.products[0].price_effective
+    assert sparta.products[1].price_normal is None
+
+
+# -----------------------------------------------------------------------------
+# Andesgear: el mismo SKU cross-listado en dos categorías
+# -----------------------------------------------------------------------------
+
+CAT_AG_A = CategoryRef(slug="deporte-equipamiento", store_key="camping-trekking/colchonetas")
+CAT_AG_B = CategoryRef(slug="deporte-equipamiento", store_key="montana-nieve/equipo-para-la-nieve")
+
+
+@pytest.mark.asyncio
+async def test_andesgear_emite_el_sku_una_vez_aunque_este_en_dos_llaves():
+    """Su árbol `montana-nieve/*` re-lista productos de las otras ramas.
+
+    Medido sobre la primera página de 25 categorías: 13 pares solapados con
+    muestras de 24 productos, así que el catálogo real solapa más. Dos llaves
+    solapadas escribirían dos `price_points` del mismo listing por pasada.
+
+    La segunda categoría no emite nada y eso es correcto, no una falla: el
+    producto ya entró por la primera llave del orden de `load_store_targets`.
+    """
+    html = ANDESGEAR.read_text(encoding="utf-8")
+    http = _Http(html, html)
+    adapter = AndesgearAdapter(http, [CAT_AG_A, CAT_AG_B])
+
+    primera = [p async for p in adapter.discover(CAT_AG_A)]
+    segunda = [p async for p in adapter.discover(CAT_AG_B)]
+
+    assert len(primera) == 3
+    assert segunda == []
+    # Las filas igual se enumeran: la completitud es de la categoría, no del
+    # conjunto de la pasada.
+    assert adapter.completeness(CAT_AG_B) == (3, 16)
+
+
+@pytest.mark.asyncio
+async def test_sin_el_flag_cada_categoria_arranca_limpia():
+    """Kupfer y Construmart no cross-listan: su `seen` es por categoría."""
+    html = ANDESGEAR.read_text(encoding="utf-8")
+    http = _Http(html, html)
+    adapter = ConstrumartAdapter(http, [CAT_AG_A, CAT_AG_B])
+
+    primera = [p async for p in adapter.discover(CAT_AG_A)]
+    segunda = [p async for p in adapter.discover(CAT_AG_B)]
+
+    assert len(primera) == 3 and len(segunda) == 3
+
+
+@pytest.mark.asyncio
+async def test_andesgear_no_manda_product_list_limit():
+    """No publica limiter: pedir un valor sería adivinar, y uno que no ofrezca
+    cae a su default sin avisar."""
+    http = _Http(ANDESGEAR.read_text(encoding="utf-8"))
+    adapter = AndesgearAdapter(http, [CAT_AG_A])
+
+    _ = [p async for p in adapter.discover(CAT_AG_A)]
+
+    assert http.urls == ["https://www.andesgear.cl/camping-trekking/colchonetas"]
+    assert AndesgearAdapter.rate_limit_rps == pytest.approx(0.33), "Crawl-delay: 3"
+
+
+def test_andesgear_declara_el_antes_tachado():
+    parsed = parse_listing(
+        ANDESGEAR.read_text(encoding="utf-8"),
+        store_slug="andesgear",
+        category=CAT_AG_A,
+        scraped_at=NOW,
+    )
+    assert parsed.declared == 16
+    assert parsed.pages == 1
+    assert [p.price_effective for p in parsed.products] == [
+        Decimal("111990"),
+        Decimal("89990"),
+        Decimal("99900"),
+    ]
+    assert [p.price_normal for p in parsed.products] == [Decimal("139900"), None, None]
+    assert all(p.in_stock for p in parsed.products)
+    # El grid de esta tienda no expone GTIN, modelo ni marca.
+    assert all(p.gtin is None and p.model is None and p.brand is None for p in parsed.products)
+
+
+@pytest.mark.asyncio
+async def test_el_dedupe_no_corta_la_paginacion_de_la_categoria_siguiente():
+    """El bug que la primera pasada real destapó.
+
+    Cuando una página trae solo productos que ya entraron por OTRA categoría, no
+    es una página repetida: es el cross-listing haciendo lo suyo. Confundir los
+    dos conjuntos cortaba la paginación ahí mismo y dejó `mujer/calzado` en 140 de
+    224 productos.
+    """
+    html = ANDESGEAR.read_text(encoding="utf-8")
+    p2 = html.replace(
+        '<div id="am-page-count" style="display: none">1</div>',
+        '<div id="am-page-count" style="display: none">2</div>',
+    )
+    # La categoría B pide 2 páginas: la 1 trae lo que ya entró por A, y la 2 trae
+    # un SKU nuevo que no puede perderse.
+    p2_distinta = p2.replace("APILDOWNL_OM053", "SOLO-EN-LA-PAGINA-2")
+
+    http = _Http(p2, p2, p2_distinta)
+    adapter = AndesgearAdapter(http, [CAT_AG_A, CAT_AG_B])
+
+    _ = [p async for p in adapter.discover(CAT_AG_A)]
+    segunda = [p async for p in adapter.discover(CAT_AG_B)]
+
+    assert len(http.urls) == 4, "A pidió 2 páginas y B pidió sus 2, sin cortarse"
+    assert [p.store_sku for p in segunda] == ["SOLO-EN-LA-PAGINA-2"]
