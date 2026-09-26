@@ -88,7 +88,7 @@ y donde caen las cuatro tiendas que aportaste.
 | **Ferretería Prat** (`ferreteriaprat.cl`) | Shopify | ✅ `/products.json?limit=250&page=N` | **S** | Trae `variants[].available` → **`in_stock` real** |
 | **Construmart** (`construmart.cl`) | Magento 2 | ✅ REST cerrada → grid HTML **con la cookie `persistent_customer_group_id`**: sin ella no hay un solo precio, con ella el grid completo. Pagina con `?p=`, que su robots permite | **S** | Conectada el 2026-09-26, sucursal 35 (DEPARTAMENTAL). 19 llaves, ~217 listings con precio. **Su serie es de esa sucursal** |
 | **Kupfer** (`kupfer.cl`) | Magento 2 | ✅ REST cerrada (401) → grid HTML con `data-price-amount` y SKU propio. **Sin `?p=`**: su robots lo prohíbe | **S** | Conectada el 2026-09-24. Ferretería industrial: solo 24 productos mapean a la taxonomía |
-| **Kruuse** (`kruuse.cl`) | Medusa + Next | ✅ **`/cl/product-feed.json`**: feed paginado que su propio `llms.txt` ofrece para indexar y su `robots.txt` permite a ClaudeBot. 3.753 productos, `limit` clamea honesto en 100 → 38 requests | **S** | **GTIN en el 99%** (la mejor identidad del sistema). Pero **92% del catálogo es `backorder`**: importador de maquinaria que vende a pedido. Sin conectar |
+| **Kruuse** (`kruuse.cl`) | Medusa + Next | ✅ **`/cl/product-feed.json`**: feed paginado que su propio `llms.txt` ofrece para indexar y su `robots.txt` permite a ClaudeBot. 3.772 productos, `limit` clamea honesto en 100 → 38 requests | **S** | Conectada el 2026-09-26: 24 llaves, 628 listings, **GTIN en el 99%**. Pero **92% del catálogo es `backorder`** (96 de sus 628 listings disponibles): importador de maquinaria que vende a pedido |
 | **Chilemat** (`chilemat.cl`) | SPA React + Firebase | ❌ **No vende**: su bundle declara `/noticias`, `/encuentra-ferreteria`, `/ferreterias`, `/concursos`, `/unete-ferretero` y **cero** rutas de producto, carrito, catálogo o precio. El sitemap solo trae páginas institucionales | — | Sitio corporativo de una cadena de franquicias con localizador de locales. **Descartada: no hay catálogo que scrapear** |
 | **MTS** (`mts.cl`) | — | ❌ **HTTP 403** a UA de Chrome | **L** | Anti-bot. No en las primeras fases |
 | **Imperial** (`imperial.cl`) | — | ❌ **HTTP 403 de Akamai** (`errors.edgesuite.net`) con UA propio, y con UA de navegador el servidor resetea el stream HTTP/2 | **L** | El 520 del primer relevamiento era el mismo WAF. **Descartada: es bloqueo, no caída** → mismo balde que MTS (Fase 6) |
@@ -359,8 +359,8 @@ para encontrar:
   `/unete-ferretero` y **cero** ocurrencias de producto, carrito, catálogo, precio
   o stock. Es el sitio corporativo de una cadena de franquicias con localizador
   de locales.
-- 🟡 **Kruuse: vale la pena, y el plan la subestimaba — pero no por lo que
-  parecía.** No es payload RSC: corre **Medusa** y publica
+- ✅ **Kruuse: conectada el 2026-09-26** (24 llaves, 628 listings, migración 20).
+  El plan la subestimaba, pero no por lo que parecía. No es payload RSC: corre **Medusa** y publica
   `/cl/product-feed.json`, un feed paginado que su propio `llms.txt` ofrece para
   "catalog discovery" y que su `robots.txt` **permite explícitamente a ClaudeBot**.
   3.753 productos, `limit` clamea honesto en 100 (→ 38 requests por pasada),
@@ -398,20 +398,29 @@ plan completo, pero depende de la Fase 1 para existir.
    ampliar la ventana de baseline más allá de 60d para vestuario, o agregar una
    etiqueta de outcome específica al backtest.
 
-| Orden | Tienda | Costo |
-|---|---|---|
-| 1 | **Doite** | XS (fixture + fila) |
-| 2 | **Lippi** | XS (fixture + fila) |
-| 3 | **Sparta** | XS tras Fase 1b (reusa `magento_html`), respetar `Crawl-delay: 1` |
-| 4 | **Andesgear** | XS tras Fase 1b |
-| 5 | Mountain | investigación |
+| Orden | Tienda | Costo | Estado al 2026-09-26 |
+|---|---|---|---|
+| 1 | **Doite** | — | ❌ **Su `robots.txt` prohíbe 212 handles de `/collections/`**, que es exactamente el endpoint de la familia Shopify. No conectar |
+| 2 | **Lippi** | — | ❌ **No hay tienda.** `lippi.cl` no resuelve (NXDOMAIN), `lippioutdoor.cl` resuelve pero no responde, y `lippi.com` es un WordPress de marca sin `/products.json` ni precios en CLP |
+| 3 | **Sparta** | S | Magento. `Crawl-delay: 1` y **`Disallow: /*?` + `/*?*`**: ninguna URL con query string. Sirve con `paginates=False, page_size=None` (una request por categoría, path limpio) y `completeness()` reportando lo que no entró |
+| 4 | **Andesgear** | S | Magento. **`Crawl-delay: 3`** → `rate_limit_rps = 0.33`. NO prohíbe `?p=`, así que pagina como Construmart. Prohíbe `/rest/`, consistente con ir por el grid |
+| 5 | Mountain | investigación | — |
 
-⚠ **Lo que Sparta y Andesgear heredan de la Fase 1b**: `magento_html` no pagina,
-así que solo sirve para categorías que entren en una página. Antes de dar por XS
-cualquiera de las dos hay que (a) releer su `robots.txt` —si NO prohíbe `?p=`,
-conviene agregarle paginación a la familia en vez de recortar categorías— y
-(b) mirar qué valores ofrece su `<select id="limiter">`, porque un
-`product_list_limit` que la tienda no ofrezca cae al default de 12 en silencio.
+**Doite, con detalle, porque el veredicto no es técnico.** Su `products.json`
+global responde 200 y no está en el `Disallow`, así que se *podría* usar. Pero la
+lista de 212 colecciones prohibidas cubre el árbol de categorías entero
+(`hombre`, `ofertas`, `novedades`, `chaquetas-hombre`, `poleras-hombre`,
+`parka-termica-hombre`...) y el `robots.txt` abre con un banner propio sobre
+scraping automatizado. La intención de la tienda es clara, y este repo respeta
+intenciones declaradas incluso cuando la letra deja una puerta abierta — igual que
+con el `Crawl-delay: 5` de SP Digital y el `?p=` de Kupfer. **Si alguna vez se
+revierte esta decisión, que sea explícita y de quien la toma, no por descuido.**
+
+✅ **Lo que Sparta y Andesgear ya NO heredan de la Fase 1b**: `magento_html`
+aprendió a paginar en la Fase 1c (Construmart), y `paginates`/`page_size` son por
+tienda. Andesgear puede paginar; Sparta no, por su prohibición de query strings.
+Falta, para las dos, mirar qué valores ofrece su `<select id="limiter">`: un
+`product_list_limit` que la tienda no ofrezca cae a su default en silencio.
 
 **Criterio de salida:** el mismo de la Fase 1, **más** una revisión manual de 20
 candidatos aceptados para ver si el problema de liquidación apareció.

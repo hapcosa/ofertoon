@@ -36,19 +36,19 @@ historia. Lo que falta para publicar ya no es baseline: es calibrar θ, y eso
 **no se puede antes del 2026-10-02** (ver "Cuándo empiezan a salir ofertas": la
 cuenta de 45 días que decía este handoff estaba mal).
 
-- **22.037 listings** en **11 tiendas activas** y 1.090.351 observaciones
-  (2026-09-26 15:30). Por tienda: falabella 9.257, paris 4.824, easy 2.248,
-  sodimac 2.000, ferretek 1.554, spdigital 643, pcfactory 600, prat 430,
-  urban 238, construmart 219, kupfer 24. De 21.554 baselines escritas, **9.303
-  tienen historia suficiente** (`n_points>=30 AND n_days>=30`).
+- **22.665 listings** en **12 tiendas activas** y 1.090.979 observaciones
+  (2026-09-26 16:20). Por tienda: falabella 9.257, paris 4.824, easy 2.248,
+  sodimac 2.000, ferretek 1.554, kruuse 628, spdigital 643, pcfactory 600,
+  prat 430, urban 238, construmart 219, kupfer 24. De 21.554 baselines escritas,
+  **9.303 tienen historia suficiente** (`n_points>=30 AND n_days>=30`).
+- **Migraciones 01..20 aplicadas**, 0 pendientes.
 - **538 tests con DB** (3:54 contra una base recién creada), **460 sin DB**
   (78 salteados, 2,6 s). El handoff decía ~40 minutos: eso era el `TRUNCATE` de
   `price_points` con datos, no la suite.
-- **Migraciones 01..19 aplicadas**, 0 pendientes.
-- **29 commits**, el último `docs: cerrar la Fase 1c`.
+- **31 commits**, el último `docs: Kruuse conectada y la identidad que no corre`.
 - Servicios arriba: `postgres` (healthy), `scraper`, `bot`, `gate`,
   `paypal-webhook`, `publisher`, `cloudflared`. `scraper` corre la imagen
-  reconstruida el 2026-09-26 15:26 (Construmart).
+  reconstruida el 2026-09-26 16:14 (Kruuse).
 - **La cadencia quedó arreglada y medido en vivo**: las pasadas van a 03:2x y
   15:2x UTC (2 por día, ±10 min), y las mitades de día duplicadas que
   `scripts.salud_serie` cuenta como `dup` cayeron de **13.293 el 24-sep a ~600**
@@ -384,6 +384,86 @@ Lo que hay que tener presente sobre esta tienda, en orden de importancia:
 lo reporta, al revés de Magento), `category` viene en el 65%, `sale_price` en 0 de
 3.753, 2 productos superan `MAX_PLAUSIBLE_CLP` y son máquinas industriales reales
 (no centinelas), y `backorder`/`preorder` tienen que mapear a `in_stock=False`.
+
+### Kruuse conectada, y el agujero de identidad que encontró — 2026-09-26
+
+**Kruuse entró por su propio feed** (`scrapers/stores/kruuse.py`, migración 20, 24
+llaves, **628 listings**, 21 corridas `ok` + 3 `partial` previstas). Lo que hay que
+saber para operar:
+
+1. **Su feed es plano y la pasada lo baja UNA vez** (38 requests con `limit=100`);
+   las 24 llaves se sirven de esa copia y el `store_key` es el nombre de la
+   categoría tal como lo escribe la tienda. El fallo también se cachea: sin eso,
+   una tienda caída se llevaría 24 bajadas completas en la misma pasada.
+2. **96 de sus 628 listings están disponibles.** El resto es `backorder`: vende a
+   pedido. `in_stock` es `True` solo para `in_stock`, así que el detector va a
+   rechazar casi todo lo suyo — correctamente. Al evaluarla el 2026-10-26, el
+   criterio de "≥1 candidato aceptado propio" puede no cumplirse por esta razón y
+   no por inestabilidad de catálogo: ahí la decisión es de producto.
+3. **Las 3 llaves de 4 productos salen `partial` sus primeras 3 corridas** por el
+   piso absoluto del canario. Está previsto en la migración; a la cuarta pasada la
+   mediana toma el control.
+
+**El hallazgo que importa más que la tienda: `catalog/identity.assign_products()`
+no tiene llamador.** Buscado en todo el repo, solo lo importan su propio test y la
+documentación. Consecuencia medida hoy:
+
+| | |
+|---|---|
+| `products` | **0 filas** |
+| `listings.product_id` no nulo | **0 de 22.665** |
+| `listings.gtin_raw` | **3.216** (ferretek 1.504, kruuse 614, paris 623, spdigital 458, urban 17) |
+| `gtin_raw` compartidos por 2+ tiendas | **11** |
+
+Dos lecturas, las dos importantes:
+
+- **No hay pérdida de datos.** La migración 07 existe justo para esto: el GTIN
+  crudo se guarda en `listings` en cada pasada, así que el paso de agrupamiento se
+  puede correr cuando se quiera y reconstruye `products` hacia atrás. Lo que este
+  handoff y CLAUDE.md afirmaban —"~875 de ~11.000 listings tienen identidad"— era
+  **falso** y quedó corregido.
+- **La expectativa hay que bajarla.** Aun con el paso corriendo, hoy solo 11 GTIN
+  están en dos tiendas o más, porque las cuatro tiendas con GTIN casi no se
+  solapan en catálogo (Ferretek = repuestos de maquinaria, Kruuse = máquinas
+  Scheppach, Paris = electrónica, SP Digital = componentes PC). El copy "más
+  barato que en Paris" no se destraba conectando más ferreterías: se destraba
+  cuando dos tiendas que venden lo mismo traigan las dos el código.
+
+Wirearlo es chico (una llamada en `pricing/pipeline.py` + su test) y **no está
+hecho**: es una decisión pendiente, no un olvido de esta sesión.
+
+### Fase 2 — inspeccionada el 2026-09-26, no arrancó y hay que saber por qué
+
+Las dos tiendas que la hacían "la mejor relación valor/esfuerzo del plan" no
+existen como premisa:
+
+- **Doite**: su `robots.txt` prohíbe **212 handles de `/collections/`** —el
+  endpoint exacto de la familia Shopify— cubriendo el árbol de categorías
+  completo, y abre con un banner propio sobre scraping automatizado. Su
+  `/products.json` global responde 200 y no está prohibido, así que técnicamente
+  se podría; **no se hace**, por la misma razón por la que se respeta el
+  `Crawl-delay: 5` de SP Digital y el `?p=` de Kupfer. Si alguna vez se revierte,
+  que sea una decisión explícita.
+- **Lippi**: no hay tienda. `lippi.cl` no resuelve, `lippioutdoor.cl` resuelve y
+  no responde, `lippi.com` es un WordPress de marca sin `/products.json` ni
+  precios en CLP.
+
+Quedan **Sparta** (Magento, `Crawl-delay: 1`, y `Disallow: /*?` → ninguna URL con
+query string, así que va sin paginar) y **Andesgear** (Magento, `Crawl-delay: 3` →
+`rate_limit_rps = 0.33`, y sí puede paginar). Las dos reusan `magento_html` sin
+escribir adaptador.
+
+**Pero la fase sigue bloqueada por lo que PLAN_TIENDAS §1.3 dejó abierto a
+propósito**, y son decisiones de producto, no de código:
+
+1. **Categorías nuevas** (`deporte-*`) con θ de partida sin calibrar, y a qué
+   canal se mapean. Hoy el único canal vivo es `vip` (`-1003914468578`,
+   `gate_enabled=true`) y tiene las 7 categorías actuales. Una categoría sin fila
+   en `telegram_tier_categories` se ingesta y se evalúa pero **no puede
+   publicarse**, así que conectar primero y decidir el canal después es gratis.
+2. **La liquidación de fin de temporada**: es un descuento real que se ve igual
+   que el escalón permanente que `backtest.py` etiqueta `fake`. §1.3 dice que se
+   decide antes, no durante.
 
 ## Lo que sigue, en orden
 
