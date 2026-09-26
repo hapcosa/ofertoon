@@ -36,19 +36,25 @@ historia. Lo que falta para publicar ya no es baseline: es calibrar θ, y eso
 **no se puede antes del 2026-10-02** (ver "Cuándo empiezan a salir ofertas": la
 cuenta de 45 días que decía este handoff estaba mal).
 
-- **22.665 listings** en **12 tiendas activas** y 1.090.979 observaciones
-  (2026-09-26 16:20). Por tienda: falabella 9.257, paris 4.824, easy 2.248,
-  sodimac 2.000, ferretek 1.554, kruuse 628, spdigital 643, pcfactory 600,
-  prat 430, urban 238, construmart 219, kupfer 24. De 21.554 baselines escritas,
-  **9.303 tienen historia suficiente** (`n_points>=30 AND n_days>=30`).
-- **Migraciones 01..20 aplicadas**, 0 pendientes.
+- **25.429 listings** en **13 tiendas activas**, **10 categorías** y 1.099.271
+  observaciones (2026-09-26 17:20). Por tienda: falabella 9.257, paris 4.824,
+  andesgear 2.764, easy 2.248, sodimac 2.000, ferretek 1.554, kruuse 628,
+  spdigital 643, pcfactory 600, prat 430, urban 238, construmart 219, kupfer 24.
+  De 21.554 baselines escritas, **9.303 tienen historia suficiente**
+  (`n_points>=30 AND n_days>=30`) — ninguna de las 4 tiendas nuevas todavía.
+- **Migraciones 01..21 aplicadas**, 0 pendientes.
+- **θ vigentes** (los 3 últimos nuevos, todos sin calibrar): tecno-* 0.15/0.18,
+  hogar-electro 0.20, ferre-* 0.25, **deporte-equipamiento 0.25, deporte-calzado
+  0.30, deporte-vestuario 0.35**.
+- **Una pasada completa pasó de ~13 a ~20 min**: Andesgear sola cuesta ~7 min por
+  su `Crawl-delay: 3`.
 - **538 tests con DB** (3:54 contra una base recién creada), **460 sin DB**
   (78 salteados, 2,6 s). El handoff decía ~40 minutos: eso era el `TRUNCATE` de
   `price_points` con datos, no la suite.
-- **31 commits**, el último `docs: Kruuse conectada y la identidad que no corre`.
+- **33 commits**, el último `docs: cerrar la Fase 2 con vestuario adentro`.
 - Servicios arriba: `postgres` (healthy), `scraper`, `bot`, `gate`,
   `paypal-webhook`, `publisher`, `cloudflared`. `scraper` corre la imagen
-  reconstruida el 2026-09-26 16:14 (Kruuse).
+  reconstruida el 2026-09-26 17:08 (Andesgear + los 3 fixes de la familia).
 - **La cadencia quedó arreglada y medido en vivo**: las pasadas van a 03:2x y
   15:2x UTC (2 por día, ±10 min), y las mitades de día duplicadas que
   `scripts.salud_serie` cuenta como `dup` cayeron de **13.293 el 24-sep a ~600**
@@ -465,18 +471,77 @@ propósito**, y son decisiones de producto, no de código:
    que el escalón permanente que `backtest.py` etiqueta `fake`. §1.3 dice que se
    decide antes, no durante.
 
+### Fase 2 arrancada: deportes con vestuario incluido — 2026-09-26
+
+**Decisión del dueño del producto: la ropa va.** Eso pone en juego lo que
+PLAN_TIENDAS §1.3 dejaba como prerrequisito, así que antes de conectar se fue a
+mirar el código. **El efecto no está donde la advertencia decía:**
+
+| Capa | Qué le hace una liquidación de temporada |
+|---|---|
+| Ingesta | Nada. Guarda precios. |
+| **Detector** | **No la rechaza.** `detect_ramp` exige un alza sostenida (≥15% sobre el p50 por ≥5 días entre d−21 y d−3) ANTES de la baja; una liquidación baja sin haber subido → `ramp_flag=False` → se acepta como candidata. |
+| **Backtest** | **Acá pega.** `label_outcome` marca `fake` todo pozo que se queda abajo, y una liquidación se queda abajo. La precisión medida de las 3 categorías nuevas va a verse mal y la calibración empujaría sus θ hacia arriba hasta excluirlas. |
+
+O sea que §1.3 es una decisión **de calibración, con datos**, no un bloqueo para
+conectar: aceptar que las liquidaciones se filtren, o darle al backtest una
+etiqueta para "se quedó abajo pero fue una ganga real". Mientras no se decida,
+nada se publica igual y la serie se acumula.
+
+**Lo que entró** (migración 21): 3 categorías nuevas —`deporte-vestuario` θ 0.350,
+`deporte-calzado` 0.300, `deporte-equipamiento` 0.250, **las tres mapeadas al canal
+`vip`**— y **Andesgear** con 25 llaves y 3.042 productos declarados. Los θ son de
+partida y más altos que los de ferretería a propósito: en vestuario un 25% es
+precio de lista de cualquier martes.
+
+Tres cosas de Andesgear que hay que saber:
+
+1. **Cuesta ~7 min de pasada** (~140 páginas de 24 a `rate_limit_rps = 0.33`, que
+   es su `Crawl-delay: 3`). La pasada completa pasó de ~13 a ~20 min.
+2. **Cross-lista el mismo SKU en varias categorías** y por eso su adaptador
+   deduplica por pasada (`dedupe_across_categories`). Es inocuo **solo porque los
+   13 pares solapados medidos caen dentro de la misma categoría interna**; una
+   llave que cruce dos categorías internas rompe el supuesto. Por eso
+   `db.load_store_targets` ahora ordena también por `store_key`: sin eso, cuál
+   llave gana un SKU duplicado lo decidía Postgres y podía cambiar entre pasadas.
+3. **Las categorías de 20+ páginas van a marcar `partial` de vez en cuando.**
+   `hombre/top` enumeró 520 contra 521 declarados en la primera pasada: el
+   catálogo se movió un item mientras paginábamos un minuto. El `partial` dice la
+   verdad —esa corrida no vio todo— y no hay tolerancia que agregarle a una guarda
+   que vale por ser exacta.
+
+**Sparta no entró y es una decisión pendiente, no un olvido.** Su `robots.txt`
+prohíbe toda URL con query string (`Disallow: /*?`), o sea que **no se puede
+paginar**: `zapatillas.html` declara 1.080 productos y una request trae 36. Las
+únicas tajadas disjuntas que ofrece son sus facetas de marca
+(`/zapatillas/filtro/adidas.html`, sin query string), que serían ~200 llaves para
+cubrir el árbol.
+
+Igual dejó dos regalos: **encontró dos bugs de la familia `magento_html`** que
+estaban activos para Kupfer y Construmart, con fixture propio en los tests:
+
+- `declared_total` tomaba el PRIMER `span.toolbar-number`. Sparta escribe
+  "Artículos 1-36 de 1080" en tres, así que declaraba 1 para una categoría de
+  1.080 — y eso no fallaba ruidosamente: el canario solo marca `partial` cuando lo
+  enumerado es MENOR que lo declarado, así que 36 contra 1 pasaba `ok` y la guarda
+  exacta quedaba anulada en silencio.
+- `_in_stock` leía cualquier `span.price-label` como señal de stock. Sparta pone
+  ahí "Precio habitual" (el rótulo del precio tachado), lo que marcaba agotados
+  justo a los 14 de 36 productos CON descuento.
+
 ## Lo que sigue, en orden
 
-1. **Calibrar θ** es lo próximo que mueve la aguja, y no antes del 2026-10-02.
-   Las tiendas nuevas (Kupfer 24-sep, Construmart 26-sep) no participan: les
-   faltan 30 días. Si hay ganas de conectar algo más mientras se espera, lo que
-   está listo para decidir es **Kruuse** (ver arriba) y la **Fase 2** (Doite y
-   Lippi son XS, reusan la familia Shopify).
-2. **Calibrar θ** (no antes del 2026-10-02; con volumen, ~mediados de octubre).
-   El output de
-   `pricing/backtest.py` **es** el gate: precisión ≥80% con ≥3 ofertas/día.
-   Los θ de `categories.discount_threshold` son valores de partida del plan,
-   **no** están calibrados.
+1. **Calibrar θ** es lo próximo que mueve la aguja, y no antes del 2026-10-02
+   (con volumen, ~mediados de octubre). El output de `pricing/backtest.py` **es**
+   el gate: precisión ≥80% con ≥3 ofertas/día. Los θ de
+   `categories.discount_threshold` son valores de partida del plan, **no** están
+   calibrados. Ninguna de las cuatro tiendas conectadas esta semana participa
+   (Kupfer 24-sep; Construmart, Kruuse y Andesgear 26-sep): les faltan 30 días y
+   se evalúan el 24 y el 26 de octubre.
+2. **Tres decisiones quedaron sobre la mesa**, ninguna urgente: wirear
+   `assign_products` (identidad), qué hacer con la liquidación en el backtest
+   (§1.3, recién importa al calibrar `deporte-*`), y si Sparta vale ~200 llaves de
+   facetas.
 3. **Probar el funnel con un pago real.** Lo verificado es el trial: PayPal creó
    la suscripción y mandó el `CREATED` con firma válida, pero nadie pagó, así que
    `PAYMENT.SALE.COMPLETED` —el evento que valida los 6.00 contra `price_usd`—

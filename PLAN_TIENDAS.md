@@ -185,7 +185,7 @@ tiendas, solo cambia la `base_url`.
 | **`woo_family.py`** | Urban Comercial (+ cualquier Woo con Store API) | `/wp-json/wc/store/v1/products` | precio y stock en el mismo JSON |
 | **`vtex_family.py`** | Colloky (+ los VTEX que se confirmen) | `/api/catalog_system/pub/products/search?_from=&_to=` | **EAN** en el payload → identidad de producto |
 | **`sfcc_family.py`** | Hites, La Polar, Tricot, ABCDin, Maicao | grid HTML paginado | 5 tiendas por un adaptador |
-| **`magento_html.py`** ✅ | Kupfer, Construmart, Sparta, Andesgear | grid HTML. Pagina con `?p=` o trae una sola página, **según lo que permita el `robots.txt` de cada tienda** | total exacto en `span.toolbar-number` → canario exacto en vez de estadístico |
+| **`magento_html.py`** ✅ | Kupfer, Construmart, **Andesgear** (Sparta pendiente) | grid HTML. Pagina con `?p=` o trae una sola página, **según lo que permita el `robots.txt` de cada tienda**; deduplica entre categorías si la tienda cross-lista | total exacto en el `toolbar-amount` → canario exacto en vez de estadístico |
 | *(caso propio)* | Ferretek | `/rest/V1/products` abierta | es Magento pero con REST abierta: no comparte código con el grid HTML |
 
 **Limitación conocida de Shopify**: `products.json` **no expone `barcode`**
@@ -388,22 +388,38 @@ Va segunda porque **Doite y Lippi son costo XS**: reusan la familia Shopify de
 la Fase 1 sin escribir un adaptador. Es la mejor relación valor/esfuerzo del
 plan completo, pero depende de la Fase 1 para existir.
 
-**Trabajo previo obligatorio** (esto es lo que la hace segunda y no primera):
+**Trabajo previo obligatorio — hecho el 2026-09-26, migración 21:**
 
-1. **Migración con categorías nuevas**: `deporte-outdoor`, `deporte-calzado`,
-   `deporte-equipamiento` (o la partición que decidas). θ de partida sin
-   calibrar, igual que los 7 actuales.
-2. **Decidir qué hacer con la liquidación de temporada** (§1.3). Si no se
-   resuelve, esta fase publica mal. Opciones a evaluar, no decididas acá:
-   ampliar la ventana de baseline más allá de 60d para vestuario, o agregar una
-   etiqueta de outcome específica al backtest.
+1. ✅ **Categorías nuevas**: `deporte-vestuario` (θ 0.350), `deporte-calzado`
+   (0.300) y `deporte-equipamiento` (0.250), las tres mapeadas al canal `vip`.
+   Los θ son de partida **sin calibrar**, y más altos que los de ferretería a
+   propósito: en vestuario un 25% de descuento es precio de lista de cualquier
+   martes.
+2. ✅ **La liquidación de temporada: ubicada, no resuelta — y no bloquea.** Se
+   revisó el código antes de conectar, y el efecto no está donde esta advertencia
+   sugería:
+
+   - La ingesta no se entera.
+   - **El detector NO la rechaza**: `detect_ramp` exige un alza sostenida (≥15%
+     sobre el p50 por ≥5 días entre d−21 y d−3) ANTES de la baja, y una
+     liquidación baja sin haber subido → `ramp_flag=False` → la oferta se acepta.
+   - **Pega en el backtest**: `label_outcome` marca `fake` todo pozo que se queda
+     abajo, y una liquidación se queda abajo. Así que la precisión medida de estas
+     3 categorías va a verse mal y la calibración empujaría sus θ hacia arriba
+     hasta excluirlas.
+
+   O sea que la decisión es **de calibración y se toma con datos**: aceptar que se
+   filtren, o agregarle al backtest una etiqueta para "se quedó abajo pero fue una
+   ganga real". Mientras no se decida, nada se publica igual
+   (`PUBLISHER_ENABLED=false`) y la serie se acumula, que es lo único que no se
+   recupera después.
 
 | Orden | Tienda | Costo | Estado al 2026-09-26 |
 |---|---|---|---|
 | 1 | **Doite** | — | ❌ **Su `robots.txt` prohíbe 212 handles de `/collections/`**, que es exactamente el endpoint de la familia Shopify. No conectar |
 | 2 | **Lippi** | — | ❌ **No hay tienda.** `lippi.cl` no resuelve (NXDOMAIN), `lippioutdoor.cl` resuelve pero no responde, y `lippi.com` es un WordPress de marca sin `/products.json` ni precios en CLP |
-| 3 | **Sparta** | S | Magento. `Crawl-delay: 1` y **`Disallow: /*?` + `/*?*`**: ninguna URL con query string. Sirve con `paginates=False, page_size=None` (una request por categoría, path limpio) y `completeness()` reportando lo que no entró |
-| 4 | **Andesgear** | S | Magento. **`Crawl-delay: 3`** → `rate_limit_rps = 0.33`. NO prohíbe `?p=`, así que pagina como Construmart. Prohíbe `/rest/`, consistente con ir por el grid |
+| 3 | **Andesgear** | S | ✅ **Conectada el 2026-09-26** (migración 21): 25 llaves, 3.042 productos declarados, ~140 páginas por pasada a 0.33 rps ≈ 7 min. Pagina con `?p=` y **deduplica entre categorías** |
+| 4 | **Sparta** | M, pendiente | Magento, `Crawl-delay: 1`, pero **`Disallow: /*?` + `/*?*`**: ninguna URL con query string, o sea **no se puede paginar**. `zapatillas.html` declara 1.080 y una request trae 36. Las únicas tajadas disjuntas son sus facetas de marca (`/zapatillas/filtro/adidas.html`): ~200 llaves para cubrir el árbol. **Decisión aparte** |
 | 5 | Mountain | investigación | — |
 
 **Doite, con detalle, porque el veredicto no es técnico.** Su `products.json`

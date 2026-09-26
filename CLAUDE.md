@@ -252,6 +252,24 @@ la página 1 en el fixture y la verificación de centinelas— está en
   esa sucursal**: cambiar `ConstrumartAdapter.CUSTOMER_GROUP_ID` invalida el
   histórico entero de la tienda, porque el p50 de un SKU quedaría mezclando dos
   sucursales.
+- **El total declarado de Magento es el ÚLTIMO número del `toolbar-amount`, no el
+  primero.** Sparta escribe "Artículos 1-36 de 1080" en **tres**
+  `span.toolbar-number`; quedarse con el primero daba 1 para una categoría de
+  1.080 y —lo peor— no fallaba ruidosamente: `canary_verdict` solo marca `partial`
+  cuando lo enumerado es MENOR que lo declarado, así que 36 contra 1 pasaba `ok` y
+  la guarda exacta quedaba anulada en silencio.
+- **Un `span.price-label` no es una señal de stock salvo que hable de stock.**
+  Kupfer pone ahí "Disponible para compra online", pero Sparta pone "Precio
+  habitual" como rótulo del precio tachado: leerlo como disponibilidad marcaba
+  agotados justo a los 14 de 36 productos CON descuento, o sea a los únicos
+  publicables. `_STOCK_WORDS` es el filtro.
+- **Andesgear cross-lista el mismo SKU en varias categorías** (`montana-nieve/*`
+  re-lista lo de `hombre/*`, `mujer/*` y `escalada/*`; el calzado unisex está en
+  hombre y en mujer). Por eso su adaptador tiene `dedupe_across_categories`: el
+  SKU se emite una vez por pasada y gana la primera llave del orden de
+  `db.load_store_targets` —que por eso ordena también por `store_key`—. Es inocuo
+  **solo porque los solapamientos medidos caen dentro de la misma categoría
+  interna**; una llave que cruce dos categorías internas rompe el supuesto.
 - **En Construmart, `items_seen` es bastante mayor que `items_ok`, y está bien.**
   Las filas "Sin Stock" de la sucursal vienen sin precio ni SKU: se enumeran
   (cuentan para el total declarado, que el canario compara) y no se emiten. De 302
@@ -262,6 +280,15 @@ la página 1 en el fixture y la verificación de centinelas— está en
 - **Los θ de `categories.discount_threshold` NO están calibrados.** Son valores
   de partida del plan. El gate de F1 es el output de `pricing/backtest.py`:
   precisión ≥80% con ≥3 ofertas/día/canal.
+- **La liquidación de temporada NO la rechaza el detector; la castiga el
+  backtest.** Importa desde que hay vestuario y calzado conectados (migración 21).
+  `detect_ramp` exige un alza sostenida (≥15% sobre el p50 por ≥5 días entre d−21
+  y d−3) ANTES de la baja, y una liquidación baja sin haber subido: `ramp_flag`
+  queda en False y la oferta se acepta. Donde pega es en `label_outcome`, que
+  marca `fake` todo pozo que se queda abajo — y una liquidación se queda abajo.
+  O sea que la decisión de PLAN_TIENDAS §1.3 es de **calibración** y se toma con
+  datos: aceptar que se filtren, o darle al backtest una etiqueta para "se quedó
+  abajo pero fue una ganga real".
 
 ## Convenciones
 
