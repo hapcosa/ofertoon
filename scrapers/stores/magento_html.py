@@ -6,36 +6,62 @@ Kupfer, Construmart, Sparta y Andesgear corren el mismo Magento y responden
 server-side. Ahí sí está todo lo que el detector necesita: `data-price-amount` en
 el bloque de precio y el SKU propio de la tienda en el grid.
 
-LO QUE HACE DISTINTA A ESTA FAMILIA: NO PAGINA
+SI PAGINA O NO LO DECIDE EL `robots.txt` DE CADA TIENDA
 --------------------------------------------------------------------------------
-El `robots.txt` de Kupfer prohíbe `/*?p=`, que es exactamente el parámetro de
-paginación de Magento (leído el 2026-09-24). `product_list_limit` —el tamaño de
-página— no está prohibido, así que una categoría se enumera en **una sola
-request** pidiendo la página más grande que la tienda ofrece, y lo que no entra
-NO se va a buscar. Es más barato para la tienda que paginar (una request en vez
-de cuatro) y respeta la letra y la intención de su robots.
+`?p=` es el parámetro de paginación de Magento, y las dos tiendas de esta familia
+opinan distinto sobre él (leídos el 2026-09-24):
 
-Eso convierte "la categoría no entra en una página" en una condición que hay que
-**reportar**, no resolver: `completeness()` compara lo enumerado contra el total
-que la tienda declara en `span.toolbar-number` y el runner marca la corrida
-`partial` con "36 de 118". Sin ese chequeo, conectar una categoría que crece
-pasando de 36 productos se vería igual que una categoría sana: 36 items todas las
-pasadas, canario estadístico contento, y 82 productos que nunca existieron para
-el sistema.
+- **Kupfer lo prohíbe** (`Disallow: /*?p=`). Ahí una categoría se enumera en **una
+  sola request** pidiendo la página más grande que el limiter ofrece, y lo que no
+  entra NO se va a buscar. Es más barato para la tienda que paginar y respeta la
+  letra y la intención de su robots.
+- **Construmart no lo prohíbe** (prohíbe `?limit=`, `?mode=`, `?dir=` y
+  `?order=`). Ahí se pagina normalmente, con el tamaño de página por defecto para
+  no tocar ningún parámetro discutible.
+
+De ahí los atributos `paginates` y `page_size` por tienda. Con `paginates=False`,
+"la categoría no entra en una página" es una condición que hay que **reportar**,
+no resolver: `completeness()` compara lo enumerado contra el total que la tienda
+declara en `span.toolbar-number` y el runner marca `partial` con "36 de 118". Sin
+ese chequeo, una categoría que crece pasando de 36 productos se vería igual que
+una sana —36 items estables en cada pasada, canario estadístico contento— y 82
+productos no existirían para el sistema.
+
+Cuando sí se pagina, el corte NO es probar la página siguiente hasta que falle:
+Magento publica cuántas páginas tiene (`#am-page-count` de Amasty en Construmart),
+así que se piden exactamente esas y nunca se golpea una URL pasada del final.
 
 LA TRAMPA DEL `product_list_limit`
 --------------------------------------------------------------------------------
-Solo valen los valores que el limiter ofrece (12, 24 y 36 en Kupfer). Con
-`product_list_limit=96` la tienda responde **HTTP 200 y sirve 12 productos** —el
-default— sin un solo error: no clampea al máximo, ignora el parámetro. Verificado
-en vivo sobre una categoría de 118. O sea que subir `PAGE_SIZE` a ojo no amplía
-el alcance, lo reduce a un cuarto en silencio.
+Solo valen los valores que el limiter de ESA tienda ofrece: 12/24/36 en Kupfer,
+4/5/10/20 en Construmart. Con `product_list_limit=96` Kupfer responde **HTTP 200 y
+sirve 12 productos** —su default— sin un solo error: no clampea al máximo, ignora
+el parámetro. Verificado en vivo sobre una categoría de 118. O sea que subir
+`page_size` a ojo no amplía el alcance, lo reduce a un cuarto en silencio. Por eso
+Construmart usa `page_size = None`: su default (20) ya es su máximo y así la URL
+no lleva el parámetro.
+
+LOS PRECIOS DE CONSTRUMART VIVEN DETRÁS DE UNA COOKIE
+--------------------------------------------------------------------------------
+Construmart cotiza **por sucursal**: cada una es un `customer_group_id` de Magento
+(el módulo se llama `Construmart_CatalogPriceByGroup`). Para un visitante sin
+sucursal elegida el listado no trae un solo precio y todas las filas salen "Sin
+Stock" — no es un bloqueo, es el sitio funcionando como está diseñado ("Para ver
+los precios y stock, selecciona la región y tienda", dice su propio popup).
+
+Lo único que su front hace antes de recargar es escribir la cookie
+`persistent_customer_group_id`, así que el adaptador manda esa misma cookie y ve
+lo que ve cualquiera que haya elegido esa sucursal. La consecuencia que hay que
+tener presente al leer la serie: **el precio de un SKU es el de ESA sucursal**. La
+señal queda consistente porque baseline y precio de hoy salen del mismo grupo, que
+es lo que pide la regla 1, pero la oferta vale ahí.
 """
 from __future__ import annotations
 
 import logging
 import re
 from collections.abc import AsyncIterator, Sequence
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
@@ -65,6 +91,16 @@ _ITEM = "li.item.product.product-item"
 _EMPTY_MESSAGE = "div.message.info.empty"
 
 _SKU_PREFIX = re.compile(r"^\s*SKU\s*:\s*", re.I)
+
+#: Marca del producto en el grid. El nombre de la clase lo elige el tema, no
+#: Magento: Kupfer usa `product-item-brand` y Construmart `atributte-brand` (con
+#: el typo incluido). De ahí que sea un atributo por tienda.
+BRAND_SELECTOR = "span.product-item-brand"
+
+#: Cuántas páginas declara el paginador. Es de Amasty, no de Magento, pero las
+#: dos tiendas de la familia lo traen. Sirve para NO probar una página pasada del
+#: final: se piden exactamente las que la tienda dice tener.
+_PAGE_COUNT = "#am-page-count"
 
 
 class NotAListingPage(RuntimeError):
@@ -128,23 +164,39 @@ def _sku_of(item: Any) -> str | None:
 
 
 def _in_stock(item: Any) -> bool:
-    """Stock según la etiqueta que el grid pone al lado del precio.
+    """Stock según lo que el grid marca, con los dos marcadores de la familia.
 
-    Los 72 productos auditados el 2026-09-24 en tres categorías traían la misma
-    ("Disponible para compra online") y ninguno vino sin precio, así que **el
-    caso negativo no está observado**: lo más probable es que Kupfer no liste lo
-    agotado (como Urban) o que le saque el precio, y sin precio lo descartamos
-    antes de llegar acá.
+    Construmart pone `<div class="stock unavailable">Sin Stock</div>`; Kupfer una
+    etiqueta "Disponible para compra online" al lado del precio. Se miran los dos
+    porque son marcadores de tema y no cuesta nada, así que no hacen falta hooks
+    por tienda.
 
-    Si la tienda cambiara el texto de la etiqueta, esto daría `False` para todo y
-    el detector dejaría de publicar esta tienda por `out_of_stock` — la serie se
-    sigue guardando igual. Es el lado seguro del error: preferimos callarnos a
-    publicar una oferta de algo que no se puede comprar.
+    **El caso negativo casi no se puede observar**: en las dos tiendas, el
+    producto sin stock viene además sin precio, y sin precio lo descartamos antes
+    de llegar acá (20 de 20 en Construmart sin cookie, 4 de 4 con cookie; 0 de 72
+    en Kupfer). O sea que esta guarda es el cinturón y el descarte por precio es
+    el tirante.
+
+    Si una tienda cambiara el texto de su etiqueta, esto daría `False` para todo y
+    el detector dejaría de publicarla por `out_of_stock` — la serie se sigue
+    guardando igual. Es el lado seguro del error: preferimos callarnos a publicar
+    una oferta de algo que no se puede comprar.
     """
+    if item.css_first("div.stock.unavailable") is not None:
+        return False
     label = _text(item, "span.price-label")
     if label is None:
         return True
     return "disponible" in label.casefold()
+
+
+def total_pages(tree: Any) -> int | None:
+    """Páginas que declara el paginador, o `None` si no lo declara."""
+    node = tree.css_first(_PAGE_COUNT)
+    if node is None:
+        return None
+    text = node.text(strip=True)
+    return int(text) if text.isdigit() else None
 
 
 def declared_total(tree: Any) -> int | None:
@@ -160,20 +212,31 @@ def declared_total(tree: Any) -> int | None:
     return int(match.group()) if match else None
 
 
+@dataclass(frozen=True)
+class ParsedPage:
+    """Una página del grid, ya convertida.
+
+    `enumerated` son las **filas del grid** y no los productos emitidos: un item
+    que se descarta por no traer precio es una decisión nuestra, no una página que
+    se perdió, y mezclarlos volvería heurística la guarda exacta de
+    `completeness()`.
+    """
+
+    products: list[RawProduct] = field(default_factory=list)
+    enumerated: int = 0
+    declared: int | None = None
+    pages: int | None = None
+
+
 def parse_listing(
     html: str,
     *,
     store_slug: str,
     category: CategoryRef,
     scraped_at: datetime,
-) -> tuple[list[RawProduct], int, int | None]:
-    """Convierte el grid en productos.
-
-    Devuelve `(productos, enumerados, declarados)`. `enumerados` son las filas
-    del grid y no los productos emitidos: un item que se descarta por no traer
-    precio es una decisión nuestra, no una página que se perdió, y mezclarlos
-    volvería heurística la guarda exacta de `completeness()`.
-    """
+    brand_selector: str = BRAND_SELECTOR,
+) -> ParsedPage:
+    """Convierte el grid en productos."""
     tree = HTMLParser(html)
     grid = tree.css_first(_GRID)
     if grid is None:
@@ -184,7 +247,7 @@ def parse_listing(
                 category.slug,
                 category.store_key,
             )
-            return [], 0, declared_total(tree)
+            return ParsedPage(declared=declared_total(tree), pages=total_pages(tree))
         raise NotAListingPage(
             f"{store_slug}/{category.slug}: store_key={category.store_key!r} "
             "no devolvió un grid de categoría"
@@ -231,7 +294,7 @@ def parse_listing(
                 # Magento no modela la tarjeta de la casa; estas tiendas tampoco
                 # tienen una.
                 price_card=None,
-                brand=normalize_brand(_text(item, "span.product-item-brand")),
+                brand=normalize_brand(_text(item, brand_selector)),
                 model=None,
                 gtin=None,
                 category_path=category.slug,
@@ -243,16 +306,31 @@ def parse_listing(
             )
         )
 
-    return products, len(items), declared_total(tree)
+    return ParsedPage(
+        products=products,
+        enumerated=len(items),
+        declared=declared_total(tree),
+        pages=total_pages(tree),
+    )
 
 
 class _MagentoHtmlAdapter:
-    """Base compartida. Las subclases solo fijan slug y host."""
+    """Base compartida. Las subclases fijan host, paginación y selectores."""
 
     slug: str = ""
     rate_limit_rps: float = 0.5
     base_url: str = ""
-    page_size: int = PAGE_SIZE
+    #: Valor de `product_list_limit`, o `None` para no mandarlo y usar el default
+    #: de la tienda. Solo valen los valores de SU limiter (ver el docstring del
+    #: módulo): cualquier otro cae al default sin avisar.
+    page_size: int | None = PAGE_SIZE
+    #: ¿El `robots.txt` de la tienda permite `?p=`? Es la única razón por la que
+    #: una tienda de esta familia pagina y otra no.
+    paginates: bool = False
+    #: Techo de páginas por categoría. Vale como cota de cordura: el corte normal
+    #: es el total que declara el paginador.
+    max_pages: int = 30
+    brand_selector: str = BRAND_SELECTOR
 
     def __init__(self, http: HttpClient, categories: Sequence[CategoryRef]) -> None:
         self._http = http
@@ -265,31 +343,74 @@ class _MagentoHtmlAdapter:
     def completeness(self, category: CategoryRef) -> tuple[int, int] | None:
         return self._completeness.get(category.store_key)
 
-    def _url(self, category: CategoryRef) -> str:
-        return (
-            f"{self.base_url}/{category.store_key.lstrip('/')}"
-            f"?product_list_limit={self.page_size}"
-        )
+    def headers(self) -> dict[str, str] | None:
+        """Cabeceras extra de la tienda. Ver `ConstrumartAdapter`."""
+        return None
+
+    def _url(self, category: CategoryRef, page: int) -> str:
+        query = []
+        if page > 1:
+            query.append(f"p={page}")
+        if self.page_size is not None:
+            query.append(f"product_list_limit={self.page_size}")
+        suffix = f"?{'&'.join(query)}" if query else ""
+        return f"{self.base_url}/{category.store_key.lstrip('/')}{suffix}"
 
     async def discover(self, category: CategoryRef) -> AsyncIterator[RawProduct]:
         self._completeness.pop(category.store_key, None)
-        html = await self._http.get_text(self._url(category), rps=self.rate_limit_rps)
-        scraped_at = datetime.now(timezone.utc)
-        products, enumerated, declared = parse_listing(
-            html,
-            store_slug=self.slug,
-            category=category,
-            scraped_at=scraped_at,
-        )
+        seen: set[str] = set()
+        enumerated = 0
+        declared: int | None = None
+        page, pages = 1, 1
+
+        while page <= min(pages, self.max_pages):
+            html = await self._http.get_text(
+                self._url(category, page),
+                rps=self.rate_limit_rps,
+                headers=self.headers(),
+            )
+            scraped_at = datetime.now(timezone.utc)
+            parsed = parse_listing(
+                html,
+                store_slug=self.slug,
+                category=category,
+                scraped_at=scraped_at,
+                brand_selector=self.brand_selector,
+            )
+            enumerated += parsed.enumerated
+
+            if page == 1:
+                # El total se toma de la primera página y no se vuelve a mirar:
+                # si el catálogo se mueve mientras paginamos, la referencia tiene
+                # que ser la del arranque o el chequeo se persigue la cola.
+                declared = parsed.declared
+                pages = parsed.pages or 1 if self.paginates else 1
+
+            nuevos = 0
+            for product in parsed.products:
+                if product.store_sku in seen:
+                    continue
+                seen.add(product.store_sku)
+                nuevos += 1
+                yield product
+
+            # Una página que EMITE productos y no aporta ni un SKU nuevo es el
+            # síntoma de una tienda que dejó de respetar `?p=` y sirve la primera
+            # para siempre. Que no emita nada no lo es: la última página de
+            # Construmart suele traer solo filas sin precio (lo que esa sucursal
+            # no tiene), y avisar de eso sería una alerta por pasada para siempre.
+            if page > 1 and parsed.products and nuevos == 0:
+                logger.warning(
+                    "pagina_repetida store=%s categoria=%s pagina=%d",
+                    self.slug,
+                    category.slug,
+                    page,
+                )
+                break
+            page += 1
+
         if declared is not None:
             self._completeness[category.store_key] = (enumerated, declared)
-
-        seen: set[str] = set()
-        for product in products:
-            if product.store_sku in seen:
-                continue
-            seen.add(product.store_sku)
-            yield product
 
 
 class KupferAdapter(_MagentoHtmlAdapter):
@@ -297,7 +418,8 @@ class KupferAdapter(_MagentoHtmlAdapter):
 
     Su `robots.txt` no declara `Crawl-delay`, así que rige el default conservador
     de la familia. Lo que sí declara es `Disallow: /*?p=`, que es por lo que esta
-    familia no pagina.
+    tienda **no pagina** y por lo que solo se le conectan categorías que entren en
+    una página de 36.
 
     **El catálogo que mapea a nuestra taxonomía es chico**: Kupfer es industrial
     (amarre, cadenas, mantención) y su rama de herramientas eléctricas tiene 24
@@ -308,3 +430,40 @@ class KupferAdapter(_MagentoHtmlAdapter):
 
     slug = "kupfer"
     base_url = "https://kupfer.cl"
+
+
+class ConstrumartAdapter(_MagentoHtmlAdapter):
+    """Construmart. `store_key` = el path de la categoría, sin `.html`.
+
+    Pagina —su `robots.txt` permite `?p=`— con el tamaño de página por defecto
+    (20, que además es el máximo que ofrece su limiter), así que la URL no lleva
+    `product_list_limit` y no toca ninguno de los parámetros que su robots sí
+    prohíbe (`?limit=`, `?mode=`, `?dir=`, `?order=`).
+
+    **Manda la cookie de sucursal**, sin la cual el listado no trae precios (ver
+    el docstring del módulo). `CUSTOMER_GROUP_ID` es la sucursal cuya serie
+    estamos construyendo, y cambiarlo cambia el significado de todo el histórico
+    de esta tienda: el p50 de un SKU sería una mezcla de dos sucursales. Si alguna
+    vez hay que moverlo, la serie vieja no sirve.
+    """
+
+    slug = "construmart"
+    base_url = "https://www.construmart.cl"
+    page_size = None
+    paginates = True
+    #: Construmart usa `atributte-brand`, con el typo del tema.
+    brand_selector = "p.atributte-brand"
+    #: Su total declarado SÍ es confiable y por eso el canario queda exacto:
+    #: las filas del grid coinciden con `toolbar-number` categoría por categoría
+    #: (18=18, 18=18, 12=12, y 20+3=23 en la paginada; medido el 2026-09-24).
+    #: Ojo con cómo se cuenta: las filas sin precio —lo que esa sucursal no
+    #: tiene— también se enumeran, y son hasta un tercio de la categoría. Contar
+    #: solo las vendibles hace parecer que la tienda declara de más.
+
+    #: DEPARTAMENTAL (Av. Departamental 541, Santiago), `customer_group_id` 35.
+    #: Sucursal urbana grande; elegida sobre Las Condes y Las Rejas para no tomar
+    #: ni el extremo caro ni el barato del abanico de precios de la cadena.
+    CUSTOMER_GROUP_ID = "35"
+
+    def headers(self) -> dict[str, str] | None:
+        return {"Cookie": f"persistent_customer_group_id={self.CUSTOMER_GROUP_ID}"}
