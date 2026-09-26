@@ -86,12 +86,12 @@ y donde caen las cuatro tiendas que aportaste.
 | **Ferretek** (`ferretek.cl`) | Magento 2 | ✅ **REST abierta sin token**: `/rest/V1/products` → **48.454 productos**, con `price`, `sku`, `marca` | **S** | El `sku` parece EAN-13 (`2615000001008`) → identidad posible. Catálogo de repuestos de maquinaria (Stens, Oregon, Rotary): muy de nicho |
 | **Urban Comercial** (`urbancomercial.cl`) | WooCommerce | ✅ **Store API pública**: `/wp-json/wc/store/v1/products` → JSON con precio y stock | **S** | Herramientas de marca (Dewalt visto en el primer item) |
 | **Ferretería Prat** (`ferreteriaprat.cl`) | Shopify | ✅ `/products.json?limit=250&page=N` | **S** | Trae `variants[].available` → **`in_stock` real** |
-| **Construmart** (`construmart.cl`) | Magento 2 | REST cerrada. Grid HTML **sin precios**: son por sucursal (`customer_group_id`) y para un anónimo las 20 filas salen "Sin Stock" | **L** | Cadena nacional, la más grande de las no integradas. Necesita sesión por sucursal → Fase 1c |
+| **Construmart** (`construmart.cl`) | Magento 2 | ✅ REST cerrada → grid HTML **con la cookie `persistent_customer_group_id`**: sin ella no hay un solo precio, con ella el grid completo. Pagina con `?p=`, que su robots permite | **S** | Conectada el 2026-09-26, sucursal 35 (DEPARTAMENTAL). 19 llaves, ~217 listings con precio. **Su serie es de esa sucursal** |
 | **Kupfer** (`kupfer.cl`) | Magento 2 | ✅ REST cerrada (401) → grid HTML con `data-price-amount` y SKU propio. **Sin `?p=`**: su robots lo prohíbe | **S** | Conectada el 2026-09-24. Ferretería industrial: solo 24 productos mapean a la taxonomía |
-| **Kruuse** (`kruuse.cl`) | Next.js App Router | Payload RSC (`self.__next_f`), sin API JSON encontrada. Rutas `/cl/categories/<slug>` | **L** | Importador Scheppach. Catálogo chico y muy específico |
-| **Chilemat** (`chilemat.cl`) | sin determinar | HTTP 200, plataforma no identificada. Declara `Crawl-delay` en robots | **M?** | Requiere una sesión de inspección |
+| **Kruuse** (`kruuse.cl`) | Medusa + Next | ✅ **`/cl/product-feed.json`**: feed paginado que su propio `llms.txt` ofrece para indexar y su `robots.txt` permite a ClaudeBot. 3.753 productos, `limit` clamea honesto en 100 → 38 requests | **S** | **GTIN en el 99%** (la mejor identidad del sistema). Pero **92% del catálogo es `backorder`**: importador de maquinaria que vende a pedido. Sin conectar |
+| **Chilemat** (`chilemat.cl`) | SPA React + Firebase | ❌ **No vende**: su bundle declara `/noticias`, `/encuentra-ferreteria`, `/ferreterias`, `/concursos`, `/unete-ferretero` y **cero** rutas de producto, carrito, catálogo o precio. El sitemap solo trae páginas institucionales | — | Sitio corporativo de una cadena de franquicias con localizador de locales. **Descartada: no hay catálogo que scrapear** |
 | **MTS** (`mts.cl`) | — | ❌ **HTTP 403** a UA de Chrome | **L** | Anti-bot. No en las primeras fases |
-| **Imperial** (`imperial.cl`) | — | ❌ **HTTP 520** persistente (Cloudflare no alcanza el origen) | **?** | Puede ser caída temporal o bloqueo de IPs de datacenter. **Reintentar antes de descartar** |
+| **Imperial** (`imperial.cl`) | — | ❌ **HTTP 403 de Akamai** (`errors.edgesuite.net`) con UA propio, y con UA de navegador el servidor resetea el stream HTTP/2 | **L** | El 520 del primer relevamiento era el mismo WAF. **Descartada: es bloqueo, no caída** → mismo balde que MTS (Fase 6) |
 
 *(Sodimac y Easy ya están integradas.)*
 
@@ -185,7 +185,7 @@ tiendas, solo cambia la `base_url`.
 | **`woo_family.py`** | Urban Comercial (+ cualquier Woo con Store API) | `/wp-json/wc/store/v1/products` | precio y stock en el mismo JSON |
 | **`vtex_family.py`** | Colloky (+ los VTEX que se confirmen) | `/api/catalog_system/pub/products/search?_from=&_to=` | **EAN** en el payload → identidad de producto |
 | **`sfcc_family.py`** | Hites, La Polar, Tricot, ABCDin, Maicao | grid HTML paginado | 5 tiendas por un adaptador |
-| **`magento_html.py`** ✅ | Kupfer, Sparta, Andesgear (**no** Construmart) | grid HTML, **una request por categoría**: `?product_list_limit=36`, sin `?p=` | total exacto en `span.toolbar-number` → canario exacto en vez de estadístico |
+| **`magento_html.py`** ✅ | Kupfer, Construmart, Sparta, Andesgear | grid HTML. Pagina con `?p=` o trae una sola página, **según lo que permita el `robots.txt` de cada tienda** | total exacto en `span.toolbar-number` → canario exacto en vez de estadístico |
 | *(caso propio)* | Ferretek | `/rest/V1/products` abierta | es Magento pero con REST abierta: no comparte código con el grid HTML |
 
 **Limitación conocida de Shopify**: `products.json` **no expone `barcode`**
@@ -341,18 +341,39 @@ para encontrar:
   declara 24 productos y 7 de sus 10 hojas tienen cero: los productos están
   asignados al padre, que es anchor y los contiene.
 
-**1c. Investigación, sin compromiso de entrega:**
+**1c. Investigación — cerrada el 2026-09-26. Las cuatro respondidas:**
 
-- **Construmart**: reversear el endpoint que fija la sucursal (el botón "ENTRAR A
-  CONSTRUMART.CL" del `storePopup`, que hoy solo se ve como
-  `localStorage.selected_store_name` + un `customer_group_id` por tienda),
-  sostener una sesión con **una** sucursal de referencia de Santiago y aceptar
-  explícitamente que la serie de un SKU es la de esa sucursal. Es una decisión de
-  modelo —el sistema asume un precio por SKU por tienda—, no un adaptador más.
-- **Imperial**: reintentar. Si el 520 persiste una semana, es bloqueo, no caída.
-- **Chilemat** y **Kruuse**: una sesión de inspección cada una para decidir si
-  el adaptador vale lo que cuesta. Kruuse en particular es payload RSC de Next
-  App Router: frágil y de catálogo chico.
+- ✅ **Construmart: conectada.** No hacía falta sostener una sesión. El módulo es
+  `Construmart_CatalogPriceByGroup/js/store-popup` y lo único que su front hace
+  antes de recargar es escribir la cookie `persistent_customer_group_id`; con esa
+  cookie sola, el mismo listado que no tenía un solo `$` en 800 KB devuelve
+  precios. Sí hubo que aceptar la decisión de modelo: la serie es la de la
+  **sucursal 35 (DEPARTAMENTAL)**. 19 llaves, 219 listings, migración 19.
+- ❌ **Imperial: descartada.** Ya no da 520: da **403 de Akamai**
+  (`errors.edgesuite.net`) con UA propio y, con UA de navegador, el servidor
+  resetea el stream HTTP/2. El criterio del plan se cumplió al revés de lo
+  esperado: no era una caída temporal, es un WAF. Mismo balde que MTS.
+- ❌ **Chilemat: descartada, y conviene que quede escrito para no re-inspeccionarla.**
+  No es un e-commerce. Es un SPA de React con Firebase cuyo bundle declara
+  `/noticias`, `/encuentra-ferreteria`, `/ferreterias`, `/concursos`,
+  `/unete-ferretero` y **cero** ocurrencias de producto, carrito, catálogo, precio
+  o stock. Es el sitio corporativo de una cadena de franquicias con localizador
+  de locales.
+- 🟡 **Kruuse: vale la pena, y el plan la subestimaba — pero no por lo que
+  parecía.** No es payload RSC: corre **Medusa** y publica
+  `/cl/product-feed.json`, un feed paginado que su propio `llms.txt` ofrece para
+  "catalog discovery" y que su `robots.txt` **permite explícitamente a ClaudeBot**.
+  3.753 productos, `limit` clamea honesto en 100 (→ 38 requests por pasada),
+  **GTIN-13 en el 99%** —la mejor identidad del sistema junto a Ferretek—, marca y
+  SKU en el 100%, precios CLP enteros y `availability` de tres valores.
+
+  Lo que la frena: **3.467 de 3.753 productos son `backorder`** (221 `in_stock`).
+  Es un importador de maquinaria que vende a pedido, así que `backorder` y
+  `preorder` tienen que mapear a `in_stock=False` y la guarda del detector va a
+  rechazar casi todo. Su valor hoy es la identidad cross-store y la serie ya
+  construida para cuando un SKU entre en stock, no el volumen de publicación.
+  `category` viene en el 65%; mapean ~905 productos a `ferre-herramientas` y ~139
+  a `ferre-jardin` contando accesorios, ~650 descontando consumibles.
 - **MTS**: 403. Queda para la Fase 6.
 
 **Criterio de salida (30 días después):** cada tienda con ≥40% de su **cohorte**

@@ -227,13 +227,26 @@ la página 1 en el fixture y la verificación de centinelas— está en
   Con `=96`, Kupfer responde **HTTP 200 y sirve 12 productos** —su default—: no
   clampea al máximo, ignora el parámetro. Por eso `magento_html.PAGE_SIZE` es 36
   (lo que lista su `<select id="limiter">`) y por eso subirlo a ojo reduciría el
-  alcance a un cuarto sin un solo error. Esa familia además **no pagina a
-  propósito**: el `robots.txt` de Kupfer prohíbe `/*?p=`, así que trae cada
-  categoría en una request y reporta lo que no entró vía `CountingAdapter`.
-- **Construmart no publica precios sin elegir sucursal.** Cada sucursal es un
-  `customer_group_id`; para un anónimo el HTML del listado no trae un solo `$` y
-  todas las filas salen "Sin Stock". Su `products-render-info` contesta sin token
-  pero devuelve `final_price: 0`. No está conectada — ver PLAN_TIENDAS §1c.
+  alcance a un cuarto sin un solo error.
+- **Que una tienda de `magento_html` pagine o no lo decide su `robots.txt`.**
+  Kupfer prohíbe `/*?p=`, así que trae cada categoría en **una** request y reporta
+  lo que no entró vía `CountingAdapter` (`paginates = False`). Construmart no lo
+  prohíbe, así que pagina con el tamaño por defecto —sin mandar
+  `product_list_limit`, que roza su `Disallow: /*?limit=`— y corta en el
+  `#am-page-count` que la tienda declara, sin probar nunca una página pasada del
+  final.
+- **Construmart cotiza por sucursal.** Cada sucursal es un `customer_group_id`;
+  para un anónimo el HTML del listado no trae un solo `$` y todas las filas salen
+  "Sin Stock" (su `products-render-info` contesta sin token pero devuelve
+  `final_price: 0`). El adaptador manda la misma cookie que escribe su front,
+  `persistent_customer_group_id=35` (DEPARTAMENTAL, Santiago). **Su serie es la de
+  esa sucursal**: cambiar `ConstrumartAdapter.CUSTOMER_GROUP_ID` invalida el
+  histórico entero de la tienda, porque el p50 de un SKU quedaría mezclando dos
+  sucursales.
+- **En Construmart, `items_seen` es bastante mayor que `items_ok`, y está bien.**
+  Las filas "Sin Stock" de la sucursal vienen sin precio ni SKU: se enumeran
+  (cuentan para el total declarado, que el canario compara) y no se emiten. De 302
+  filas conectadas, ~217 traían precio.
 - **`in_stock` es ciego en Paris y Falabella**: hoy lo asumen `True`, así que la
   guarda de stock del detector no protege nada ahí. Se arregla en F3
   verificando la ficha solo del candidato (10–30 fetches/día, no 2.898).

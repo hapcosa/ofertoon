@@ -36,19 +36,23 @@ historia. Lo que falta para publicar ya no es baseline: es calibrar θ, y eso
 **no se puede antes del 2026-10-02** (ver "Cuándo empiezan a salir ofertas": la
 cuenta de 45 días que decía este handoff estaba mal).
 
-- **21.466 listings** en **10 tiendas activas** y 1.043.197 observaciones
-  (2026-09-24 17:00). Por tienda: falabella 9.147, paris 4.766, easy 2.140,
-  sodimac 1.989, ferretek 1.548, spdigital 642, pcfactory 588, prat 396,
-  urban 226, kupfer 24. De 21.270 baselines escritas, **9.083 tienen historia
-  suficiente** (`n_points>=30 AND n_days>=30`).
-- **530 tests con DB** (3:25 contra una base recién creada), **452 sin DB**
-  (78 salteados, 2,4 s). El handoff decía ~40 minutos: eso era el `TRUNCATE` de
+- **22.037 listings** en **11 tiendas activas** y 1.090.351 observaciones
+  (2026-09-26 15:30). Por tienda: falabella 9.257, paris 4.824, easy 2.248,
+  sodimac 2.000, ferretek 1.554, spdigital 643, pcfactory 600, prat 430,
+  urban 238, construmart 219, kupfer 24. De 21.554 baselines escritas, **9.303
+  tienen historia suficiente** (`n_points>=30 AND n_days>=30`).
+- **538 tests con DB** (3:54 contra una base recién creada), **460 sin DB**
+  (78 salteados, 2,6 s). El handoff decía ~40 minutos: eso era el `TRUNCATE` de
   `price_points` con datos, no la suite.
-- **Migraciones 01..18 aplicadas**, 0 pendientes.
-- **26 commits**, el último `aeea8d6`. Working tree limpio salvo los docs.
+- **Migraciones 01..19 aplicadas**, 0 pendientes.
+- **29 commits**, el último `docs: cerrar la Fase 1c`.
 - Servicios arriba: `postgres` (healthy), `scraper`, `bot`, `gate`,
   `paypal-webhook`, `publisher`, `cloudflared`. `scraper` corre la imagen
-  reconstruida el 2026-09-24 17:00 (fix de cadencia + familia Magento HTML).
+  reconstruida el 2026-09-26 15:26 (Construmart).
+- **La cadencia quedó arreglada y medido en vivo**: las pasadas van a 03:2x y
+  15:2x UTC (2 por día, ±10 min), y las mitades de día duplicadas que
+  `scripts.salud_serie` cuenta como `dup` cayeron de **13.293 el 24-sep a ~600**
+  por día. Antes del fix, cada despliegue metía una pasada extra.
 
 ### Incidente 2026-08-17 — el scraper llevaba 2 días sin correr el pipeline
 
@@ -338,11 +342,56 @@ referencia de Santiago, y aceptar explícitamente que la serie de un SKU es la d
 **esa** sucursal. Eso último es una decisión de modelo: hoy el sistema asume un
 precio por SKU por tienda.
 
+### Fase 1c del plan de tiendas — cerrada el 2026-09-26
+
+Era "investigación sin compromiso de entrega" y terminó con **una tienda
+conectada y tres preguntas respondidas**. El detalle largo está en
+PLAN_TIENDAS §1c; acá lo que hay que saber para operar:
+
+**Construmart entró** (`ConstrumartAdapter` en la familia `magento_html`,
+migración 19, 19 llaves, **219 listings**, primera pasada `ok` en las 19). No hizo
+falta reversear ninguna sesión: su front escribe la cookie
+`persistent_customer_group_id` y con esa cookie sola el listado devuelve precios.
+
+Lo que hay que tener presente sobre esta tienda, en orden de importancia:
+
+1. **Su serie es la de la sucursal 35 (DEPARTAMENTAL, Av. Departamental 541).**
+   Cada sucursal es un `customer_group_id` y hay 32. La señal es correcta porque
+   baseline y precio de hoy salen del mismo grupo, pero **la oferta vale ahí**, y
+   eso hay que decirlo en el copy si esta tienda llega a publicar. Cambiar
+   `ConstrumartAdapter.CUSTOMER_GROUP_ID` invalida el histórico entero.
+2. **`items_seen` mucho menor que las filas del grid es lo normal.** Las filas
+   "Sin Stock" de esa sucursal vienen sin precio ni SKU: se enumeran (y cuentan
+   para el total que el canario compara) pero no se emiten. De 302 filas
+   conectadas, 219 traían precio.
+3. **Pagina con `?p=`** porque su robots lo permite —al revés que Kupfer— y corta
+   en el `#am-page-count` que la tienda declara, así que nunca pide una página
+   pasada del final.
+4. **Trae marca en el 100% pero no aporta identidad**, porque la regla 6 pide GTIN
+   o (marca, modelo) y el grid no da modelo. Si algún día se quiere aprovechar,
+   está ahí; sacar el modelo del nombre sería fuzzy y eso está deliberadamente
+   afuera.
+
+**Las tres que no entraron:**
+
+| Tienda | Veredicto |
+|---|---|
+| **Imperial** | Descartada. Ya no da 520: da **403 de Akamai** y con UA de navegador resetea el stream HTTP/2. Es un WAF, no una caída. Mismo balde que MTS |
+| **Chilemat** | Descartada, **no es un e-commerce**: SPA de React + Firebase cuyo bundle declara noticias, localizador de ferreterías y concursos, y cero rutas de producto, carrito o precio. No re-inspeccionarla |
+| **Kruuse** | **Vale la pena y no está conectada.** Corre Medusa y publica `/cl/product-feed.json` —que su `llms.txt` ofrece para indexar y su robots permite a ClaudeBot—: 3.753 productos, **GTIN en el 99%**, 38 requests por pasada. El freno: **3.467 de 3.753 son `backorder`** (221 `in_stock`), así que publicaría casi nada; su valor es la identidad cross-store |
+
+**Si se retoma Kruuse**, lo que ya está medido: `limit` clamea honesto en 100 (y
+lo reporta, al revés de Magento), `category` viene en el 65%, `sale_price` en 0 de
+3.753, 2 productos superan `MAX_PLAUSIBLE_CLP` y son máquinas industriales reales
+(no centinelas), y `backorder`/`preorder` tienen que mapear a `in_stock=False`.
+
 ## Lo que sigue, en orden
 
-1. **Fase 1c del plan de tiendas** — Construmart (la sesión por sucursal, que es
-   la decisión de modelo descrita arriba), reintentar Imperial (daba HTTP 520) e
-   inspeccionar Chilemat y Kruuse. Nada de esto tiene compromiso de entrega.
+1. **Calibrar θ** es lo próximo que mueve la aguja, y no antes del 2026-10-02.
+   Las tiendas nuevas (Kupfer 24-sep, Construmart 26-sep) no participan: les
+   faltan 30 días. Si hay ganas de conectar algo más mientras se espera, lo que
+   está listo para decidir es **Kruuse** (ver arriba) y la **Fase 2** (Doite y
+   Lippi son XS, reusan la familia Shopify).
 2. **Calibrar θ** (no antes del 2026-10-02; con volumen, ~mediados de octubre).
    El output de
    `pricing/backtest.py` **es** el gate: precisión ≥80% con ≥3 ofertas/día.
