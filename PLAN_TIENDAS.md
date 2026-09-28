@@ -370,10 +370,26 @@ para encontrar:
   Lo que la frena: **3.467 de 3.753 productos son `backorder`** (221 `in_stock`).
   Es un importador de maquinaria que vende a pedido, así que `backorder` y
   `preorder` tienen que mapear a `in_stock=False` y la guarda del detector va a
-  rechazar casi todo. Su valor hoy es la identidad cross-store y la serie ya
-  construida para cuando un SKU entre en stock, no el volumen de publicación.
+  rechazar casi todo. Su valor hoy es la identidad cross-store, no el volumen de
+  publicación.
   `category` viene en el 65%; mapean ~905 productos a `ferre-herramientas` y ~139
   a `ferre-jardin` contando accesorios, ~650 descontando consumibles.
+
+  ⚠️ **Corrección del 2026-09-28: la serie de un `backorder` NO se está
+  construyendo.** Lo que se escribió acá y en la migración 20 —"la serie ya
+  construida para cuando un SKU entre en stock"— es falso. Los `price_points` sí
+  se acumulan (628 de 628 listings tienen observaciones), pero
+  `compute_baseline` (`pricing/baselines.py:149`) filtra `if in_stock` **al
+  computar**, sobre los puntos crudos: los 532 listings en backorder no tienen
+  baseline ni `n_days`, y esos puntos van a seguir filtrándose para siempre. El
+  reloj de `MIN_POINTS=30` / `MIN_DAYS=30` de un producto en backorder **arranca
+  el día que aparece stock**, no el día que lo empezamos a observar. Medido hoy:
+  `kruuse: 628 listings | 628 con observaciones | 96 con baseline`.
+
+  El filtro está bien —un precio que nadie puede pagar no debe entrar al p50—;
+  lo que estaba mal era la expectativa. Consecuencia para la evaluación del
+  2026-10-26: esperar "≥1 candidato aceptado propio" es casi imposible, porque
+  solo 96 de sus 628 listings están construyendo baseline.
 - **MTS**: 403. Queda para la Fase 6.
 
 **Criterio de salida (30 días después):** cada tienda con ≥40% de su **cohorte**

@@ -39,10 +39,16 @@ pedido, no un retailer con stock. Acá `in_stock` es `True` **solo** para
 `in_stock`: una oferta de algo que no se puede comprar hoy no es una oferta, y la
 guarda de stock del detector va a rechazar casi todo lo de esta tienda.
 
-Eso no la hace inútil: la serie se construye igual y queda lista para el día en
-que un SKU entre en stock, y el 99% de GTIN mejora el copy de **todas** las demás
+Eso no la hace inútil: el 99% de GTIN mejora el copy de **todas** las demás
 tiendas ("más barato que en Paris"). Pero el volumen de publicación esperado es
 bajo, y eso está asumido.
+
+Lo que **no** hay que esperar (corregido el 2026-09-28; la migración 20 dice lo
+contrario y quedó vieja): que la serie de un `backorder` se construya igual "y
+quede lista para cuando entre en stock". Los `price_points` se acumulan, pero
+`compute_baseline` filtra `if in_stock` sobre los puntos crudos, así que un
+listing sin stock no tiene baseline ni `n_days` y esos puntos se filtran para
+siempre. Su reloj de `MIN_DAYS` arranca el día que aparece stock.
 """
 from __future__ import annotations
 
