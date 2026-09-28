@@ -1,4 +1,4 @@
-"""La fase de pricing: recomputa baselines y corre el detector.
+"""La fase de pricing: recomputa baselines, corre el detector y asigna identidad.
 
 Es la pieza que hasta F3 no existía. `baselines.py` y `detector.py` estaban
 escritos y testeados pero no los invocaba nadie en producción: el único
@@ -28,6 +28,7 @@ from dataclasses import dataclass
 import asyncpg
 
 import db
+from catalog import identity
 from pricing import baselines, detector
 
 logger = logging.getLogger("pricing.pipeline")
@@ -37,22 +38,41 @@ logger = logging.getLogger("pricing.pipeline")
 class PipelineStats:
     baselines: baselines.BaselineStats
     detector: detector.DetectorStats
+    #: `None` cuando la asignación de identidad falló. No es lo mismo que una
+    #: corrida con todo en cero, que significa "no había nada que vincular".
+    identity: identity.IdentityStats | None = None
 
     def __str__(self) -> str:
-        return f"baselines[{self.baselines}] detector[{self.detector}]"
+        ident = "falló" if self.identity is None else str(self.identity)
+        return (
+            f"baselines[{self.baselines}] detector[{self.detector}] "
+            f"identidad[{ident}]"
+        )
 
 
 async def run(pool: asyncpg.Pool) -> PipelineStats:
-    """Recomputa baselines y evalúa las observaciones nuevas. Idempotente.
+    """Recomputa baselines, evalúa las observaciones nuevas y vincula
+    listings a `products`. Idempotente.
 
-    El orden es obligatorio: el detector lee `listing_baselines`, así que
-    correrlo antes de recomputar mediría el precio de hoy contra la referencia
-    de ayer.
+    El orden de los dos primeros es obligatorio: el detector lee
+    `listing_baselines`, así que correrlo antes de recomputar mediría el precio
+    de hoy contra la referencia de ayer. La identidad, en cambio, va última
+    porque es independiente: no alimenta al detector.
     """
     baseline_stats = await baselines.recompute_all(pool)
     detector_stats = await detector.run(pool)
 
-    stats = PipelineStats(baseline_stats, detector_stats)
+    # La identidad va última y aislada por el mismo criterio con el que el
+    # runner aísla toda esta fase: no alimenta al detector —solo el copy del
+    # mensaje—, así que un fallo suyo no puede costar la corrida de la señal,
+    # que ya quedó persistida arriba. Se rehace sola en la próxima pasada.
+    try:
+        identity_stats = await identity.assign_products(pool)
+    except Exception:
+        logger.exception("la asignación de identidad falló; el pricing ya corrió")
+        identity_stats = None
+
+    stats = PipelineStats(baseline_stats, detector_stats, identity_stats)
     # Este log es el que distingue "el job no corrió" de "el job corrió y
     # descartó todo". Durante el cold-start (hasta ~2026-09-02) el resultado
     # correcto es 0 aceptados con todo el catálogo rechazado por `history`, y

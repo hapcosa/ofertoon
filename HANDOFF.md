@@ -406,6 +406,20 @@ saber para operar:
    rechazar casi todo lo suyo — correctamente. Al evaluarla el 2026-10-26, el
    criterio de "≥1 candidato aceptado propio" puede no cumplirse por esta razón y
    no por inestabilidad de catálogo: ahí la decisión es de producto.
+
+   ⚠️ **Corrección del 2026-09-28.** Este archivo y la migración 20 decían que
+   "la serie se construye igual y queda lista para cuando un SKU entre en
+   stock". **Es falso.** Los `price_points` sí se acumulan —628 de 628 listings
+   tienen observaciones—, pero `compute_baseline`
+   (`pricing/baselines.py:149`) filtra `if in_stock` al computar, sobre los
+   puntos crudos, así que los 532 en backorder **no tienen baseline ni
+   `n_days`** y esos puntos van a seguir filtrándose para siempre. El reloj de
+   `MIN_POINTS=30` / `MIN_DAYS=30` arranca el día que aparece stock, no el día
+   que empezamos a observar. Medido: `628 listings | 628 con observaciones | 96
+   con baseline`. El filtro está bien; la expectativa escrita estaba mal.
+   La migración 20 ya está aplicada y **no se edita** (checksum): su comentario
+   queda viejo a propósito y la corrección vive acá y en PLAN_TIENDAS §1c.
+   Andesgear no tiene este problema (2.768 de 2.768 con baseline).
 3. **Las 3 llaves de 4 productos salen `partial` sus primeras 3 corridas** por el
    piso absoluto del canario. Está previsto en la migración; a la cuarta pasada la
    mediana toma el control.
@@ -435,8 +449,44 @@ Dos lecturas, las dos importantes:
   barato que en Paris" no se destraba conectando más ferreterías: se destraba
   cuando dos tiendas que venden lo mismo traigan las dos el código.
 
-Wirearlo es chico (una llamada en `pricing/pipeline.py` + su test) y **no está
-hecho**: es una decisión pendiente, no un olvido de esta sesión.
+**Wireado el 2026-09-28.** `pricing/pipeline.py` llama a `assign_products()`
+después de baselines y detector, dentro de su propio `try`: la identidad no
+alimenta al detector, así que un fallo suyo no puede costar la corrida de la
+señal que ya quedó persistida. `PipelineStats.identity` es `None` cuando falla —
+`None` y no un stats en cero, porque "falló" no es "no había nada que vincular".
+`tests/test_pipeline.py` cubre las dos cosas; es un test de cableado, que es
+justo lo que faltaba: la función era correcta, nadie la invocaba.
+
+Simulado en seco contra la DB de producción antes de wirearlo (3.401 listings
+elegibles, cabe en un `batch_size` de 5.000):
+
+| | |
+|---|---|
+| escaneados / vinculados | **3.401 / 3.401** (0 sin identidad) |
+| `products` a crear | **3.357** (3.216 por GTIN, 185 por marca+modelo) |
+| products con **2+ tiendas** | **11** — 8 paris+spdigital, 3 ferretek+urban |
+
+Dos cosas que salieron de esa simulación y no estaban escritas:
+
+1. **Falta el consumidor, no solo el productor.** `cross_store_prices()` no lo
+   llama nadie y `publisher/formatter.py` solo emite "El más barato en 60 días",
+   que sale de la historia propia del listing. Poblar `products` es condición
+   **necesaria y no suficiente**: el copy "más barato que en Paris" sigue sin
+   existir en el código. Escribirlo es una decisión de producto con retorno hoy
+   casi nulo (11 products cruzados), y el publisher está inerte a propósito.
+2. **Una tienda repite el mismo GTIN en dos listings propios** — Paris publica el
+   GS51MPP con `store_sku` numérico (`218673999`) y otra vez alfanumérico
+   (`EAGASW7UCP-1`). Medidos: 13 GTIN así en Paris, 13 en Ferretek, 1 en SP
+   Digital. Comparten `product_id`, que es correcto, pero `cross_store_prices()`
+   solo filtraba `o.id <> l.id`: habría devuelto el gemelo y el copy habría dicho
+   "más barato que en Paris" sobre una oferta **de Paris**. Corregido a
+   `o.store_id <> l.store_id`, con test. Era un bug latente que wirear la
+   identidad **activaba**.
+
+⚠️ **Lo wireado todavía no corrió contra producción.** `products` sigue en 0
+filas: el cambio está en el working tree, el contenedor del scraper **no** se
+reconstruyó y la próxima pasada corre con la imagen vieja. Para activarlo hace
+falta `docker compose up -d --build scraper`, que es una decisión de despliegue.
 
 ### Fase 2 — inspeccionada el 2026-09-26, no arrancó y hay que saber por qué
 

@@ -189,16 +189,23 @@ la página 1 en el fixture y la verificación de centinelas— está en
   upsert usa `COALESCE`.
 - **Falabella, Sodimac, Easy y PC Factory NO exponen GTIN ni modelo en el
   listado** (auditado contra payload real). Habría que abrir fichas (F3).
-- ⚠️ **`catalog/identity.assign_products()` no tiene llamador.** El GTIN crudo SÍ
-  se guarda (`listings.gtin_raw`, 3.216 de 22.665 listings al 2026-09-26; ver
-  migración 07, que existe justo para no perderlo), pero nadie corre el paso que
-  puebla `products` y linkea `listings.product_id`: las dos tablas están en cero.
-  O sea que hoy **ninguna oferta puede decir "más barato que en Paris"**. No es
-  pérdida de datos —el insumo está guardado y el paso se puede correr cuando
-  sea—, pero la afirmación de que "~875 listings tienen identidad" que traía este
-  archivo era falsa. Ojo con la expectativa: hoy solo **11 `gtin_raw` están
-  compartidos por 2+ tiendas**, porque las tiendas con GTIN (Ferretek, Kruuse,
-  Paris, SP Digital) casi no se solapan en catálogo.
+- **La identidad ya corre, pero el copy cross-store todavía no existe.**
+  `catalog/identity.assign_products()` estuvo escrita y **sin llamador** hasta el
+  2026-09-28 (`products` en 0 con 3.216 `gtin_raw` guardados); ahora la invoca
+  `pricing/pipeline.py`, última y aislada en su propio `try`, porque no alimenta
+  al detector y un fallo suyo no puede costar la corrida de la señal. Lo que
+  **sigue faltando** es el consumidor: `cross_store_prices()` no lo llama nadie y
+  `publisher/formatter.py` solo produce "El más barato en 60 días", que sale de
+  la historia propia del listing. O sea que poblar `products` es condición
+  necesaria y no suficiente: **ninguna oferta dice todavía "más barato que en
+  Paris"**. Ojo con la expectativa cuando se escriba: medido el 2026-09-28, de
+  3.357 products solo **11 tienen 2+ tiendas** (8 paris+spdigital, 3
+  ferretek+urban), porque las tiendas con GTIN casi no se solapan en catálogo.
+- **Una tienda repite el mismo GTIN en dos listings propios.** Paris publica el
+  mismo SKU con `store_sku` numérico y alfanumérico (13 GTIN así; 13 en Ferretek,
+  1 en SP Digital). Comparten `product_id`, que es correcto, pero por eso
+  `cross_store_prices()` filtra `o.store_id <> l.store_id`: sin eso el copy diría
+  "más barato que en Paris" sobre una oferta **de Paris**.
 - **Ferretek bloquea por User-Agent.** El Varnish que tiene adelante responde
   `403 Empty UA blocked` a cualquier cosa que no parezca un navegador —el
   `robots.txt` incluido—, así que su adaptador manda `BROWSER_USER_AGENT`. Es el
