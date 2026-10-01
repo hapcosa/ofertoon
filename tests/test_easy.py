@@ -295,3 +295,48 @@ async def test_otros_errores_http_siguen_propagando():
     with pytest.raises(FetchError):
         async for _ in EasyAdapter(_Http(), []).discover(CATEGORY):
             pass
+
+
+# -----------------------------------------------------------------------------
+# El juego completo de headers de navegador (Fase 6)
+# -----------------------------------------------------------------------------
+# Medido el 2026-10-01: de las 8 tiendas que el plan tenía como "bloqueadas por
+# 403", cinco pasan el borde solo con los headers que cualquier navegador manda
+# —Tottus y Nike dan 200 directo— y tres siguen en 403 duro con bot management.
+# Lo que las delataba no era el User-Agent: era la AUSENCIA de `Accept-Language`,
+# `Accept-Encoding` y la familia `Sec-Fetch-*`.
+
+
+def test_browser_headers_no_se_identifica_como_bot():
+    from scrapers.http import BROWSER_HEADERS
+
+    assert "ofertascl-bot" not in BROWSER_HEADERS["User-Agent"]
+
+
+def test_browser_headers_trae_lo_que_delataba_al_cliente_pelado():
+    """Estos tres grupos son los que marcan la diferencia entre 403 y 200."""
+    from scrapers.http import BROWSER_HEADERS
+
+    assert BROWSER_HEADERS["Accept-Language"].startswith("es-CL")
+    assert "br" in BROWSER_HEADERS["Accept-Encoding"]
+    for h in ("Sec-Fetch-Dest", "Sec-Fetch-Mode", "Sec-Fetch-Site", "Sec-Fetch-User"):
+        assert h in BROWSER_HEADERS
+
+
+def test_la_variante_json_es_coherente_con_una_xhr():
+    """Un `Sec-Fetch-Mode: navigate` pidiendo JSON es incoherente y lo marcan."""
+    from scrapers.http import BROWSER_HEADERS, BROWSER_HEADERS_JSON
+
+    assert BROWSER_HEADERS_JSON["Accept"] == "application/json"
+    assert BROWSER_HEADERS_JSON["Sec-Fetch-Mode"] == "cors"
+    assert BROWSER_HEADERS_JSON["Sec-Fetch-Dest"] == "empty"
+    # El resto se hereda: un solo lugar donde mantener el UA y el idioma.
+    assert BROWSER_HEADERS_JSON["User-Agent"] == BROWSER_HEADERS["User-Agent"]
+    assert BROWSER_HEADERS_JSON["Accept-Language"] == BROWSER_HEADERS["Accept-Language"]
+
+
+def test_el_default_sigue_identificandose_como_bot():
+    """Lo nuevo es por adaptador: el default no pierde la honestidad."""
+    from scrapers.http import DEFAULT_USER_AGENT
+
+    assert "ofertascl-bot" in DEFAULT_USER_AGENT

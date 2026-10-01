@@ -38,6 +38,72 @@ BROWSER_USER_AGENT = (
     "Chrome/126.0.0.0 Safari/537.36"
 )
 
+#: El juego completo de headers que manda un navegador. Para las tiendas cuyo
+#: borde no mira el User-Agent sino la **ausencia** de los headers que cualquier
+#: navegador envía — sobre todo `Accept-Language`, `Accept-Encoding` y la familia
+#: `Sec-Fetch-*`, que son los que delatan a un cliente HTTP pelado.
+#:
+#: Medido el 2026-10-01 sobre las 8 tiendas que el plan tenía como "bloqueadas
+#: por 403" (PLAN_TIENDAS Fase 6). Con `BROWSER_USER_AGENT` solo contra con esto:
+#:
+#:     Tottus       403 → 200
+#:     Nike         403 → 200
+#:     Unimarc      403 → pasa el borde (su API VTEX contesta 500, le faltan params)
+#:     PC Express   403 → pasa el borde (404: hay que descubrir las rutas)
+#:     Adidas       403 → robots.txt 200 (la home sigue 403, es Akamai)
+#:
+#: No abre todo, y eso está bien: Decathlon, Nice One y MTS siguen en 403 duro
+#: con Cloudflare. **Ahí se para.** Pasar un bot management de verdad pide
+#: fingerprint de TLS o un navegador headless, y este scraper es deliberadamente
+#: `httpx` + parseo posicional, sin browser. Una tienda que de verdad no nos
+#: quiere, no nos tiene.
+#:
+#: Igual que `BROWSER_USER_AGENT`: se usa **por adaptador**, nunca como default.
+BROWSER_HEADERS = {
+    "User-Agent": BROWSER_USER_AGENT,
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;q=0.9,"
+        "image/avif,image/webp,*/*;q=0.8"
+    ),
+    "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Sec-Ch-Ua": '"Chromium";v="126", "Not;A=Brand";v="24"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Linux"',
+    "Upgrade-Insecure-Requests": "1",
+    "Connection": "keep-alive",
+}
+
+#: La variante para llamadas XHR/API: mismo borde, otro `Accept` y otra familia
+#: `Sec-Fetch-*`. Un `Sec-Fetch-Mode: navigate` pidiendo JSON es incoherente y
+#: algunos bordes lo marcan.
+BROWSER_HEADERS_JSON = {
+    **BROWSER_HEADERS,
+    "Accept": "application/json",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+}
+
+#: Qué cuenta como respuesta buena. **206 está acá por VTEX**: su API pública de
+#: catálogo (`/api/catalog_system/pub/products/search`) contesta `206 Partial
+#: Content` SIEMPRE, porque el rango pedido con `_from`/`_to` es por definición
+#: parcial respecto del total que declara en el header `Resources`. No es un
+#: error ni una degradación: es la respuesta normal y completa para ese rango.
+#:
+#: Sin esto, cualquier adaptador VTEX muere en el primer fetch con
+#: `FetchError: HTTP 206` — y VTEX es la plataforma de buena parte del retail
+#: chileno (Nike, Colloky y las cinco de la Fase 3).
+#:
+#: Se listan los códigos uno por uno en vez de aceptar todo 2xx a propósito: un
+#: 204 sin cuerpo devolvería `""` y el parser lo leería como catálogo vacío, que
+#: es exactamente el fallo silencioso que `NotAListingPage` existe para evitar.
+SUCCESS_STATUS = frozenset({200, 206})
+
 RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 
@@ -134,6 +200,22 @@ class HttpClient:
         rps: float | None = None,
         headers: dict[str, str] | None = None,
     ) -> str:
+        text, _ = await self._request("GET", url, rps=rps, headers=headers)
+        return text
+
+    async def get_with_headers(
+        self,
+        url: str,
+        *,
+        rps: float | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> tuple[str, dict[str, str]]:
+        """Como `get_text` pero devuelve también los headers de respuesta.
+
+        Lo pide el chequeo exacto de completitud: VTEX no pone el total de la
+        categoría en el cuerpo sino en `Resources: 0-49/2546`. Leer ese header es
+        la diferencia entre el canario estadístico (una inferencia) y el exacto.
+        """
         return await self._request("GET", url, rps=rps, headers=headers)
 
     async def post_json(
@@ -151,7 +233,8 @@ class HttpClient:
         fixtures se saltea acá a propósito — la clave sería la URL, y dos POST a
         la misma URL con cuerpos distintos colisionarían.
         """
-        return await self._request("POST", url, rps=rps, headers=headers, json=payload)
+        text, _ = await self._request("POST", url, rps=rps, headers=headers, json=payload)
+        return text
 
     async def _request(
         self,
@@ -161,10 +244,14 @@ class HttpClient:
         rps: float | None,
         headers: dict[str, str] | None,
         json: object | None = None,
-    ) -> str:
+    ) -> tuple[str, dict[str, str]]:
+        """`(cuerpo, headers)`. Los headers importan para el canario exacto:
+        VTEX declara el total de la categoría en `Resources: 0-49/2546`, que es
+        justo lo que `CountingAdapter` necesita y no viene en el cuerpo."""
         cached = self._cache_path(url) if method == "GET" else None
         if cached is not None and cached.exists():
-            return cached.read_text(encoding="utf-8")
+            # Una respuesta congelada como fixture no tiene headers que ofrecer.
+            return cached.read_text(encoding="utf-8"), {}
 
         host = httpx.URL(url).host or "unknown"
         last_exc: Exception | None = None
@@ -178,11 +265,11 @@ class HttpClient:
             except httpx.HTTPError as exc:
                 last_exc = exc
             else:
-                if response.status_code == 200:
+                if response.status_code in SUCCESS_STATUS:
                     text = response.text
                     if cached is not None:
                         cached.write_text(text, encoding="utf-8")
-                    return text
+                    return text, dict(response.headers)
                 if response.status_code not in RETRYABLE_STATUS:
                     raise FetchError(
                         f"{url} -> HTTP {response.status_code}",
