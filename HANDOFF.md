@@ -1,4 +1,4 @@
-# Handoff Ofertoon — estado al 2026-09-01
+# Handoff Ofertoon — estado al 2026-10-01
 
 Pegá el bloque de abajo como primer mensaje de la próxima sesión.
 
@@ -142,8 +142,14 @@ entrypoint era `backtest.py`, una herramienta offline.
   una función pura (`select`) sobre dataclasses; solo la query que la alimenta
   tiene I/O.
 - **`publisher/`** — `daemon.py` (reloj propio), `poster.py` (reserva → envía →
-  confirma) y `formatter.py` (el mensaje). **Levantado e inerte**:
-  `PUBLISHER_ENABLED=false`. `deal_posts` está vacía.
+  confirma) y `formatter.py` (el mensaje). **Levantado y publicando desde el
+  2026-09-21**: `PUBLISHER_ENABLED=true`. Es una decisión deliberada de adelantar
+  el canal al backtest, no un descuido — pero significa que lo que sale está
+  medido contra los θ de partida, **sin calibrar**. Al 2026-09-29: 48 filas en
+  `deal_posts`, **6 por día sin faltar uno** (la cuota del ranker), descuentos
+  entre 0,226 y 0,620. Los 48 tienen `outcome_label` nulo: ninguno pasó por
+  `label_outcome`, así que **no son evidencia de precisión**, son el material que
+  el backtest va a etiquetar.
 - **Migración 14** — `detected_at` pasa a ser el `observed_at` de la observación
   y `UNIQUE(listing_id, detected_at)` hace el job re-ejecutable.
 
@@ -179,11 +185,12 @@ tecno-notebooks     0.25        9   0.2       0       0          9          —
 | Historia suficiente | **2026-09-01** | ✅ hecho. 8.750 baselines publicables al 21-sep |
 | Primera señal etiquetable | **2026-10-02** | pendiente. Es el piso duro, y con una sola cohorte de señales |
 | Backtest con volumen para fijar θ | **~mediados de octubre** | pendiente. Un θ por categoría necesita más de un día de señales maduras |
-| `PUBLISHER_ENABLED=true` | después del backtest | pendiente. Antes de eso el canal recibiría ofertas medidas contra θ sin calibrar |
+| `PUBLISHER_ENABLED=true` | **2026-09-21** | ✅ hecho, **adelantado a propósito**. El canal recibe 6/día medidas contra θ sin calibrar: es prueba en vivo del formato y del gate, no señal validada. Lo que sigue pendiente es re-evaluar esas ofertas cuando el backtest fije θ |
 
-Hasta entonces el detector va a producir candidatos que **no hay que publicar
-todavía**: son la materia prima del backtest. Con la baseline ya reparada, los
-que se acumulen desde el 1-sep 18:13 sí son dataset limpio.
+Con la baseline ya reparada, los candidatos que se acumulen desde el 1-sep 18:13
+son dataset limpio para el backtest. Que el publisher ya esté sacando 6 por día
+**no los valida**: son los mismos candidatos, y el backtest los va a etiquetar
+igual. Lo que cambió el 21-sep es que además salen al canal.
 
 ### El canario — tres arreglos, 2026-09-01
 
@@ -473,7 +480,8 @@ Dos cosas que salieron de esa simulación y no estaban escritas:
    que sale de la historia propia del listing. Poblar `products` es condición
    **necesaria y no suficiente**: el copy "más barato que en Paris" sigue sin
    existir en el código. Escribirlo es una decisión de producto con retorno hoy
-   casi nulo (11 products cruzados), y el publisher está inerte a propósito.
+   casi nulo (11 products cruzados). Ojo que el publisher **no** está inerte: lo que
+   sale al canal usa el copy que ya existe, "El más barato en 60 días".
 2. **Una tienda repite el mismo GTIN en dos listings propios** — Paris publica el
    GS51MPP con `store_sku` numérico (`218673999`) y otra vez alfanumérico
    (`EAGASW7UCP-1`). Medidos: 13 GTIN así en Paris, 13 en Ferretek, 1 en SP
@@ -579,8 +587,642 @@ estaban activos para Kupfer y Construmart, con fixture propio en los tests:
   ahí "Precio habitual" (el rótulo del precio tachado), lo que marcaba agotados
   justo a los 14 de 36 productos CON descuento.
 
+### El canario de Prat que se calló solo — diagnosticado el 2026-09-28
+
+`prat` / `herramientas-electricas` cayó de **345 a 131 items el 2026-09-25**,
+estuvo `partial` cuatro corridas y volvió a `ok` el 27-sep **sin que nadie
+arreglara nada**. Diagnóstico completo:
+
+**No fue el adaptador.** Comprobado en vivo contra el endpoint:
+`?limit=250&page=1` devuelve 131 productos y `page=2` devuelve 0 — fin legítimo,
+no tope de paginación, y `limit=250` ni siquiera ata con 131.
+
+**Fue la tienda.** Su propio `collections.json` lo publica:
+
+```
+herramientas-electricas   products_count=150   updated_at=2026-09-25T16:28:37-03:00
+maquinarias               products_count= 32   updated_at=2026-09-25T16:21:05-03:00
+```
+
+El `updated_at` cae exactamente en la corrida que se cayó: el comerciante re-curó
+la colección a mano y de paso repobló `maquinarias`.
+
+**Y es peor que "rotación de catálogo".** Bajé las 39 páginas de su
+`/products.json` (9.466 variantes) y crucé los SKUs:
+
+| | |
+|---|---:|
+| listings que la colección dejó de mostrar | **246** |
+| …que **siguen a la venta** en la tienda | **240 (98%)** |
+| …borrados de verdad del catálogo | **6** |
+
+O sea que 240 series murieron por una decisión editorial, no porque los productos
+dejaran de existir.
+
+**Lo que separa una vitrina de un catálogo es la tasa de stock:**
+
+```
+jardin (llave)                49 variantes    49 con stock (100%)
+herramientas-electricas      131 variantes    71 con stock ( 54%)
+herramientas-y-maquinarias 1.089 variantes 1.088 con stock (100%)
+catálogo completo          9.466 variantes 6.698 con stock ( 71%)
+```
+
+`jardin` y el paraguas están **filtrados por disponibilidad**; la vitrina no. Eso
+explica de una la anomalía de Prat que estaba anotada y sin medir: de sus 430
+listings, los **204 sin baseline son EXACTAMENTE los que nunca se observaron con
+stock**, y los 204 caen en `ferre-herramientas`. `ferre-jardin` tiene 49 de 49.
+
+```
+ferre-herramientas | sin baseline | nunca tuvo stock | 204
+ferre-herramientas | con baseline | tuvo stock       | 177
+ferre-jardin       | con baseline | tuvo stock       |  49
+```
+
+**Arreglo: migración 22**, `herramientas-electricas` → `herramientas-y-maquinarias`
+(la vieja queda `is_active=false`, no se borra: 11 corridas la referencian por
+texto). Medido antes de aplicarla: pasa a observar 1.089 listings en vez de 131,
+recupera 101 de los 240 SKUs vivos, es disjunta de `jardin` (0 SKUs compartidos),
+y de los 131 actuales deja de observar 60 que son **exactamente los 60 agotados**
+— no se pierde ni una serie viva. Las series no se reinician: `listings` es único
+por `(store_id, store_sku)` y la llave no entra en esa identidad.
+
+⚠️ **La evaluación de Prat se corre al 2026-10-28**, no al 10-23: el reloj de
+`MIN_DAYS` arranca de cero para los ~1.000 SKUs que entran hoy.
+
+⚠️ **La llave nueva todavía no corrió cuando se escribió esto.** La migración se
+aplicó a las 15:34 UTC del 28-sep y la pasada de las 15:16 ya estaba en marcha, así
+que usó la vieja (`items_seen = 131`): `db.load_store_targets` se consulta una vez
+al arrancar la pasada, no por tienda. Su primera corrida real es la siguiente
+pasada — y la del 29-sep 03:16 murió antes de llegar a Prat (ver el incidente de
+esa pasada más abajo).
+
+✅ **Verificado en la pasada del 2026-09-29 15:16 UTC**, la primera que la alcanzó:
+
+```
+prat | herramientas-y-maquinarias | ok | items_seen=1089 | items_ok=1089
+prat | jardin                     | ok | items_seen=  49 | items_ok=  49
+```
+
+1.089 clavado contra lo que la migración predijo, y `ok` en el canario. La llave
+vieja no volvió a aparecer.
+
+**Dos supuestos que este caso rompió, y valen para cualquier tienda:**
+
+1. **Las colecciones no son necesariamente jerárquicas.** La migración 15 asumió
+   paraguas ⊇ hojas. En Prat, `herramientas-electricas` tenía solo **71 de sus
+   131** SKUs dentro de `herramientas-y-maquinarias`. Hay que verificarlo sobre
+   SKUs, no deducirlo del nombre.
+2. **El canario se calla solo ante un cambio de nivel, en ~4 corridas.** Con
+   `CANARY_WINDOW=7`, cuatro corridas al nivel nuevo vuelven la mediana el nivel
+   nuevo. Es deliberado (así sigue a un catálogo que cambia de verdad), pero
+   significa que el `partial` dura ~2 días y después **no queda ninguna alarma**.
+   Un `ok` posterior NO dice que se haya resuelto. Si una tienda cae de nivel, el
+   diagnóstico se hace en esa ventana o no se hace.
+
+⚠️ Dos cosas que NO hay que hacer con esta tienda:
+`accesorios-herramientas-electricas` está contenida al 100% en el paraguas y
+duplicaría observaciones; y el `products_count` de `collections.json` **no sirve**
+como total declarado para un `CountingAdapter`, porque cuenta productos no
+publicados en el canal online (150 vs 131 servidos, 1.123 vs 1.089 en el
+paraguas) y dejaría el canario en `partial` para siempre.
+
+### La pasada del 2026-09-29 03:16 UTC perdió 62 de 129 objetivos
+
+El día quedó con **1.481 `price_points`** contra los ~33.000 de un día normal
+(**4%**) y **una sola de las 13 tiendas** con datos. Ninguna alerta salió.
+
+**Qué pasó, en orden:**
+
+1. Fallos de DNS **intermitentes desde el primer objetivo** — `andesgear/hombre/calzado`
+   a las 03:16:08 ya salió `failed` con `FetchError: Temporary failure in name
+   resolution`, y de ahí en más `ok` y `failed` intercalados. No fue una caída
+   limpia: fue el enlace perdiendo paquetes a ráfagas.
+2. El host **rebooteó a las 03:58 UTC** (00:58 local) — un apagado ordenado
+   (`systemd-poweroff`, boot 25 s después), no un corte. Eso cortó la pasada en
+   medio de Ferretek. Las 8 tiendas que venían después en el orden alfabético
+   —kruuse, kupfer, paris, pcfactory, prat, sodimac, spdigital, urban— **nunca
+   corrieron**, así que no dejaron ni una fila en `scrape_runs`.
+3. El proceso murió dentro de `run_once`, o sea **antes** de `run_pricing` y de
+   `send_alert` (`runner.py:445-462`). Por eso `deal_candidates` y
+   `listing_baselines` no tienen una sola fila del 29-sep, y por eso el arreglo
+   del 19-ago —leer el agujero del Postgres local, que sobrevive a la caída de
+   red— **no sirvió acá**: nunca llegó a ejecutarse.
+4. Docker lo reinició (`restart: unless-stopped`), el proceso nuevo falló otra vez
+   en `db.create_pool` porque el DNS tampoco resolvía `postgres`, y el tercer
+   intento a las 03:58:53 arrancó bien. `espera_hasta_proxima` ancló al
+   `MIN(started_at)` de la pasada muerta (03:16) y durmió 11,3 h, que es el
+   comportamiento correcto: el reinicio no metió una pasada extra.
+
+**La causa raíz no está en el repo.** `dockerd` loguea los timeouts contra el
+resolver de la LAN:
+
+```
+[resolver] failed to query external DNS server dns-server="udp:192.168.1.254:53"
+    error="read udp ...->192.168.1.254:53: i/o timeout" question="api.telegram.org"
+```
+
+El host sale por un **adaptador WiFi USB** (`wlp0s20f0u8`): señal buena (−49 dBm)
+y **3.774 beacons perdidos**. En las 2 h previas a mediodía del 29-sep hubo 350
+fallos de DNS para `api.telegram.org`, 98 para `data.tradingview.com`, 856 para
+`api.bitget.com` (eso es signalsTrading) y 23 para `argotunnel.com` —cloudflared
+reconectando—. Medido en ese momento, el router y 1.1.1.1 y 8.8.8.8 resolvían
+**10/10**: los fallos son a ráfagas, así que **cambiar de resolver no arregla
+nada**. Es distinto de la degradación del resolver de Docker en contenedores de
+larga vida que está anotada más abajo: ahí el contenedor viejo era el problema,
+acá el contenedor tenía 13 h y el que no contesta es el router.
+
+**Y ninguna de las tres guardas lo vio. Cada una mira algo que no era esto:**
+
+| guarda | por qué no disparó |
+|---|---|
+| `db.dias_sin_observaciones` | solo detecta días **completamente** vacíos. Un día al 4% de su volumen pasa como sano |
+| `GAP_LOOKBACK_DAYS = 3` (`db.py:255`) | la ventana es de 3 días, así que el agujero del 18-19 de septiembre **ya es invisible** para la alerta |
+| el canario de `runner.py` | compara `items_seen` contra la mediana de las últimas 7 corridas **de esa llave**. Los 62 objetivos que nunca corrieron no dejan fila, y sin fila no hay nada que comparar |
+
+Lo que falta es una guarda **por volumen de pasada**: comparar el total de
+observaciones de la pasada contra la mediana de las últimas N, y subir
+`GAP_LOOKBACK_DAYS`. Sin eso, el modo de falla "la pasada corrió a medias" no
+tiene alarma — y ya pasó tres veces (19-ago, 18-20-sep, 29-sep).
+
+**La pasada siguiente lo demostró.** La de las 15:16 UTC corrió entera —129 de 129,
+127 `ok` y 2 `partial` de paginación de Andesgear— y su alerta salió bien, con el
+texto "2 degradadas de 129". De la pasada de las 03:16, que había perdido 62
+objetivos ocho horas antes, **no dijo una palabra**: `gap_days` mira 09-26, 09-27 y
+09-28, los tres con datos, así que volvió vacío. El incidente se cerró sin que
+ninguna alerta lo nombrara nunca.
+
+**Estado del día tras la recuperación** (las dos pasadas juntas):
+
+```
+2026-09-27   32.050 puntos | 17.213 listings
+2026-09-28   33.136 puntos | 17.032 listings
+2026-09-29   19.361 puntos | 17.585 listings   ← una pasada y media, no dos
+```
+
+Menos puntos (se perdió media pasada, y eso no se recupera) pero **más listings que
+ningún día anterior**: son los ~1.089 de la llave nueva de Prat entrando. El
+pipeline corrió completo a las 15:41-15:42: 26.151 baselines escritas, 9.593 con
+historia suficiente, 17.367 evaluados por el detector con 68 aceptados, e
+identidad vinculando 15 listings (ya convergió).
+
+
+## La guarda por volumen de pasada (2026-10-01)
+
+**Escrita, con tests, y verificada contra la DB de producción.** Es la que
+faltaba: el modo de falla "la pasada corrió a medias" ya había pasado tres veces
+(19-ago, 18-20-sep, 29-sep) y no lo veía **ninguna** de las tres guardas
+existentes. Eso estaba demostrado, no supuesto — la alerta del 29-sep a las 15:16
+salió bien y dijo "2 degradadas de 129", de la pasada que ocho horas antes había
+perdido 62 objetivos no dijo una palabra.
+
+Por qué cada guarda era ciega:
+
+| guarda | por qué no disparó |
+|---|---|
+| `db.dias_sin_observaciones` | solo ve días **completamente** vacíos; el 29-sep tenía 19.361 puntos y pasó como sano |
+| `runner.canary_verdict` | compara cada target contra su propia historia: los 62 objetivos que nunca corrieron no dejaron fila, y los 67 que sí corrieron salieron `ok` porque individualmente estaban bien |
+| los `outcomes` de la pasada | el proceso murió **dentro** de `run_once`, o sea antes de `run_pricing` y de `send_alert`: nunca llegaron al mensaje |
+
+Qué se escribió:
+
+- **`db.volumen_por_pasada(conn, limite=N)`** → `[(inicio, items_ok), …]` de la
+  más nueva a la más vieja. Reconstruye la pasada agrupando por el hueco: dos
+  corridas separadas por más de `PASS_WINDOW` son de pasadas distintas, el mismo
+  criterio que `ultima_pasada` y por el mismo motivo (`scrape_runs` tiene una fila
+  por (tienda, llave), no una por pasada). Suma **`items_ok`, no `items_seen`**:
+  lo que la guarda vigila es cuánta serie entró, y un target que enumera 900 y no
+  persiste ninguno no se nota en `items_seen`.
+- **`runner.pasadas_flacas(volumenes)`** → `[PasadaFlaca, …]`, pura y testeable
+  sin DB. Mediana de las últimas 7, dispara por debajo del 60%.
+- **`alerts.format_summary(outcomes, gap_days, flacas)`** — tercera sección del
+  mismo mensaje, ordenada de lo más viejo y grave a lo más nuevo: agujero →
+  pasada flaca → targets degradados de ahora.
+- **`db.GAP_LOOKBACK_DAYS` subió de 3 a 7.** Con 3 días, el agujero del 18-19-sep
+  —descubierto cinco días después— ya era invisible: una caída de viernes a la
+  que se llega el lunes caía afuera de la ventana y no se reportaba **nunca**. El
+  ciclo real de atención es el fin de semana.
+
+**Calibración, medida y no a ojo.** Sobre las 113 pasadas del 4-ago al 29-sep:
+la pasada sana más flaca quedó en **0,89** de su mediana móvil y los ocho
+incidentes reales entre **0,00 y 0,09**. Entre 0,89 y 0,09 no hay nada, así que
+el umbral exacto no es delicado —cualquier valor del medio da los mismos 8
+aciertos y 0 falsos positivos— y por eso quedó en 0,40, el mismo
+`CANARY_DROP_RATIO` que ya existía, para no agregar un número más que justificar.
+Hay un test que fija justamente eso (`test_el_umbral_exacto_no_es_delicado`).
+
+**El falso positivo que importaba descartar**: apagar una tienda con
+`stores.is_active = false` baja el volumen de golpe. Medido, la más grande
+(Falabella, 25,3% del volumen) deja el ratio en **0,75 — no dispara**. Hace falta
+apagar dos tiendas grandes a la vez, y eso merece un aviso. Kruuse, la candidata
+real a apagarse el 26-oct, es el 3,7%.
+
+**Verificado contra prod** (no solo en tests): corriendo la guarda sobre las 21
+pasadas reales del 22-sep al 1-oct detecta **exactamente una**, la del 29-sep
+03:16 (1.481 obs vs mediana 16.509, 91% menos), y ninguna otra.
+
+**Lo que hereda del canario y hay que saber**: el autoapagado. Con la ventana
+entera en cero ya no hay vara contra la cual comparar, así que una racha larga
+deja de avisar **a la quinta pasada**. Las 48 h del 18-sep son exactamente 4
+pasadas caídas, o sea el límite. Ahí la que cubre es la de agujero, que un día
+vacío no se autoanestesia. Está en un test con ese nombre.
+
+**Tests**: `tests/test_guarda_volumen.py` (12 puros + 7 contra DB) y 7 nuevos en
+`tests/test_alerts.py`. Suite entera: **603 passed con DB** (4:03), 510 passed /
+92 skipped sin DB (2,5 s).
+
+⚠️ **Falta desplegarla**: el Dockerfile **copia** las fuentes, así que el cambio
+no llega al scraper que está corriendo. Es `docker compose up -d --build scraper`
+y **no dispara una pasada extra** (`espera_hasta_proxima` ancla al
+`MIN(started_at)` de la última). No se hizo en esta sesión porque nadie lo pidió.
+
+### Efecto colateral en los tests de agujero
+
+Subir `GAP_LOOKBACK_DAYS` rompió 3 tests de `test_deteccion_agujero.py`, y el
+diagnóstico importa: **no era un cambio de comportamiento**, era que esos tests
+sembraban 4 días fijos y asumían la ventana de 3, así que los días de más
+quedaban sin sembrar y se reportaban como agujeros legítimos. Se los desacopló de
+la constante (`_serie_completa` siembra la ventana entera y saca los días que el
+test quiere ver faltando) y se agregó
+`test_la_ventana_llega_a_una_caida_de_hace_cinco_dias`, que es el que ahora sujeta
+el valor nuevo y explica por qué.
+
+## Dos cosas nuevas que salieron al verificar el estado (2026-10-01)
+
+Ninguna es del trabajo de esta sesión; salieron de mirar la DB antes de escribir
+este handoff. **Ninguna se tocó.**
+
+1. **Andesgear pasó de 1-2 `partial` por pasada a 15 de 25, y es un escalón, no
+   ruido**: 1-2 del 26 al 29-sep, **10** el 30-sep 03h, **15** el 30-sep 15h,
+   **15** el 1-oct 03h. Todas son del chequeo exacto de `CountingAdapter`
+   ("226 de 245 que declara la tienda"), con faltantes chicos (2 a 28 items) en
+   casi todas sus llaves a la vez. Ojo con una diferencia que no es obvia: este
+   canario **no se autoanestesia** —es exacto, no estadístico—, así que los 15 van
+   a seguir ahí hasta que alguien los mire. Y Andesgear es justo la tienda cuyas
+   baselines maduran el **2026-10-26**, la misma fecha de la decisión de
+   liquidación de temporada.
+2. **Prat falló 3 de sus últimas 4 pasadas** (30-sep 15:36 y 1-oct 03:44, las dos
+   categorías, `FetchError: agotados 3 reintentos` en la **página 1**). En esas
+   mismas pasadas las otras 12 tiendas anduvieron, así que no es una caída general
+   del host. Probado a mano el 1-oct, su `/products.json` responde **HTTP 200 con
+   250 productos, con y sin User-Agent**: la tienda está sana y los fallos fueron
+   transitorios, consistentes con las ráfagas de DNS ya documentadas (que no se
+   arreglan desde el repo). **Por qué igual importa**: el reloj de `MIN_DAYS` de
+   Prat arrancó de cero el 29-sep con la llave nueva y su aceptación se evalúa el
+   **2026-10-28**; cada pasada que Prat pierde es un día que no cuenta. Vale
+   mirarlo en la próxima sesión, y la guarda nueva **no** lo va a reportar: Prat
+   es el 2,3% del volumen.
+
+
+## La liquidación de temporada, decidida (2026-10-01)
+
+**Decisión de producto tomada: la liquidación es una oferta y va al canal.** El
+precio baja de verdad, el suscriptor compra barato algo que estaba caro. Cierra
+la pregunta que PLAN_TIENDAS §1.3 dejaba abierta y que tenía fecha límite 26-oct
+por Andesgear.
+
+**El detector no había que tocarlo** — ya las aceptaba: `detect_ramp` exige un
+alza sostenida ANTES de la baja y una liquidación baja sin haber subido, así que
+`ramp_flag` queda en False. Lo que estaba mal era la **medición**, y por eso
+importaba antes de calibrar: como θ sale del backtest, etiquetar `fake` una
+liquidación empujaba θ hacia arriba hasta dejar afuera justo las mejores ofertas
+de vestuario y calzado. Se iba a calibrar en contra de lo que el canal quiere
+publicar.
+
+La corrección es `LABEL_LIQUIDATION`, con el discriminante mirando el **pasado**:
+
+```
+el pozo se quedó abajo (no se recuperó ≥10% en 30 días):
+    price <  piso de 60 días  → liquidación: precio nunca visto     → ACIERTO
+    price >= piso de 60 días  → inflado que volvió a su nivel real  → falso
+```
+
+Dos razones que lo hacen defendible y no un relajo del criterio. Una: un
+candidato **aceptado** ya pasó la guarda 3 del detector (`ramp_flag` →
+`reject_reason = 'ramp'`), que es la que caza el "subo y después descuento", así
+que entre los aceptados el inflado ya se filtró. Dos: el inflado-normalizado
+vuelve a un nivel que **ya existía** en la ventana; la liquidación va por debajo
+de todo lo observado.
+
+⚠️ **El detalle que costó un test y no es obvio**: el piso se calcula con la serie
+**hasta ayer** (`backtest.piso_previo`), NO con el `min_60d` de la baseline. La
+pasada de la mañana ya trae el precio nuevo, así que ese `min_60d` —que es la
+historia hasta la observación de la tarde— ya incluye la bajada y
+`price < min_60d` **nunca se cumple**. Con el `min_60d` la etiqueta nueva no
+servía para nada: una liquidación de libro seguía saliendo `fake`. Mirar menos
+datos no es look-ahead, es la versión conservadora. Hay cuatro tests sobre
+`piso_previo`, uno de ellos específicamente sobre este corte.
+
+La liquidación **cuenta como acierto en `precision`** y lleva **columna propia en
+el reporte**, con un aviso cuando pasa la mitad de los aciertos: un canal cuya
+precisión viene toda de liquidación es un outlet, no un canal de ofertas, y eso
+hay que verlo ANTES de fijar θ.
+
+**Un test viejo cambió de expectativa, y está bien**:
+`test_replay_respeta_el_cooldown` afirmaba `label == fake` sobre una baja
+sostenida — que es exactamente la forma de una liquidación. Ahora afirma
+`LABEL_LIQUIDATION`. Lo que ese test prueba es el cooldown y eso no cambió; la
+aserción de etiqueta era incidental. El inflado que vuelve a su nivel sigue
+saliendo `fake` y tiene su propio test.
+
+## El backtest ya sabe excluir días degradados (2026-10-01)
+
+Era condición para que la calibración de mañana valga algo, y no existía.
+
+`backtest.DIAS_DEGRADADOS` documenta los tres (18, 19 y 29 de septiembre) y
+`--exclude-day` es repetible. **El daño no estaba donde parecía**: `replay_listing`
+ya salteaba los días sin observaciones, así que un día vacío nunca emitió
+señales — pero sí contaba en el **divisor** de señales/día, que es la mitad del
+gate de F1. El numerador pierde las señales y el denominador igual cuenta el día:
+sobre 30 días con los tres adentro, el volumen sale 10% abajo.
+
+Sobre el 29-sep hay un matiz que conviene saber: su **pasada de la tarde sí
+corrió**, y `replay_listing` toma la última observación del día igual que
+producción, así que la emisión de ese día es legítima. Lo que distorsiona es el
+**peso en el p50**, porque `percentile` corre sobre los puntos crudos y casi todos
+los listings tienen 1 punto en vez de 2. Es menos grave que los otros dos.
+
+Decisiones tomadas acá:
+
+- **No se excluyen solos.** Cambiar el divisor del gate en silencio sería peor que
+  el problema. Pero el comando **avisa** si el rango toca uno sin excluirlo, y el
+  reporte declara al pie qué días se excluyeron — un divisor del gate que se mueve
+  sin decirlo no se puede auditar después.
+- **Los días excluidos siguen alimentando la baseline.** Borrarles los puntos
+  sería la segunda implementación divergente que la regla de no-look-ahead
+  prohíbe. Lo que un día degradado invalida no es la historia —la historia es la
+  que hubo— sino su derecho a contar como día de mercado.
+
+**Verificado contra prod**, las dos mitades:
+
+```
+--from 2026-09-28 --to 2026-09-30                    → WARNING: incluye 2026-09-29 sin excluir
+                                                       3 días de mercado, 0 excluidos
+--from 2026-09-28 --to 2026-09-30 --exclude-day 2026-09-29
+                                                     → 2 días de mercado, 1 excluidos
+```
+
+Y un smoke test del camino entero sobre `tecno-tv` (1.216 listings, 09-01→09-05):
+corre, las columnas nuevas renderizan, y **todas las señales salen `s/madurar`** —
+que es la confirmación de por qué la calibración es desde el 2026-10-02 y no hoy:
+una señal del 1-sep necesita hasta el 1-oct 23:59 para etiquetarse.
+
+**Tests**: 13 nuevos en `tests/test_backtest.py` (9 de liquidación + 4 de
+`piso_previo`) más los 9 de exclusión de días. Suite entera: **624 passed con DB**
+(4:09), 531 passed / 93 skipped sin DB.
+
+## Las tres del producto, agregadas al plan (2026-10-01)
+
+Vienen de una observación contra los datos y era correcta: **el canal no saca
+ofertas de ropa, zapatillas ni cosas chicas**. Las 63 ofertas publicadas tienen
+ticket p50 **$279.990** y solo 12 por debajo de $50.000; el p50 de `tecno-tv` es
+$1.579.990.
+
+**El ranker NO es la causa** — se verificó antes de tocar nada.
+`detector.compute_score` excluye el precio absoluto a propósito ("ponderar por
+ticket inundaría los canales de electrónica cara") y está bien así. La causa es la
+composición del catálogo: de 9.729 baselines maduras, **72% está sobre $150.000** y
+solo 12% bajo $50.000. El detector sí acepta barato (448 aceptados bajo $50.000)
+pero el pool viene 6:1 en contra.
+
+Quedó en PLAN_TIENDAS §4bis:
+
+1. **Fase 3 — Ropa: DESBLOQUEADA.** Estaba trabada por la decisión de liquidación.
+   Las 5 tiendas y su orden no cambian (Colloky → Hites → La Polar → Tricot →
+   ABCDin).
+2. **Fase 3b — Calzado urbano 🆕.** Hoy hay Andesgear y nada más: 393 listings y es
+   calzado **outdoor**, no hay zapatilla urbana en el sistema. Sparta primero (ya
+   auditada: 1.080 en `zapatillas.html`, ~200 llaves de facetas porque su robots
+   prohíbe query strings), después Decathlon/Nike/Adidas, que son el mismo patrón
+   de bloqueo 403. **Decidir al conectar** si reusa `deporte-calzado` o abre
+   `ropa-calzado`: reusar evita un θ nuevo sin calibrar y 30 días más de espera.
+3. **Fase 3c — Audio y accesorios 🆕 — era un HUECO del plan, no un pendiente.**
+   Audio y accesorios no se mencionaban en ninguna fase de PLAN_TIENDAS. Hoy hay
+   **47 audífonos, 19 con baseline madura, 0 publicados**, y son residuo
+   incidental de `tecno-celulares` de Falabella y Paris. Es la fase **más barata
+   de todo el plan**: no necesita adaptador nuevo —Falabella, Paris, PC Factory y
+   SP Digital ya tienen audio y sus cuatro familias ya están escritas—, solo una
+   migración con la categoría y llaves nuevas. Recomendado `tecno-audio` sola
+   antes que `tecno-accesorios` ancha: un θ porcentual único sobre cosas de $8.000
+   y de $400.000 no significa nada. ⚠️ Las llaves nuevas tienen que ser
+   **disjuntas** de `tecno-celulares` sobre SKUs reales: hoy los 47 audífonos
+   entran por ahí.
+
+**Estado de tiendas del plan: 13 conectadas de ~27.** Falta completa la Fase 3
+(0 de 5), Ripley, Fase 5 (Winpy, MacOnline) y las 7 bloqueadas por 403 de la
+Fase 6.
+
+## Desplegado y aplicado el 2026-10-01
+
+**1. La guarda por volumen está en producción y disparó bien.** Rebuild a las
+14:27; el log dijo `última pasada hace poco; la próxima en 0.8 h`, o sea que el
+ancla al `MIN(started_at)` hizo lo suyo y **no metió pasada extra**. La pasada de
+las 15:16 cerró con 129 corridas / 16.724 obs y la guarda reportó exactamente un
+incidente, el real:
+
+```
+📉 OfertasCL — 1 pasada(s) a medias:
+  2026-09-29 03:16 UTC — 1.481 obs vs mediana 16.509 (91% menos)
+```
+
+Tres veces había pasado ese modo de falla sin una sola alarma (19-ago, 18-20-sep,
+29-sep). Ahora tiene una.
+
+**2. Migración 23 — `tecno-audio`** (θ 0.200, 11 llaves, 4 tiendas ya conectadas,
+cero adaptadores nuevos).
+
+**3. Migración 24 — `ropa-calzado`** (θ 0.350, 2 llaves de Falabella). Zapatilla
+urbana sin esperar a Sparta ni a Decathlon: Falabella ya la tenía.
+
+Estado: **24 migraciones, 12 categorías, 142 objetivos activos** (eran 10 y 129).
+Las 13 llaves nuevas corren en la pasada del **2026-10-02 03:16** — los targets se
+cargan una vez al arrancar la pasada. Las dos categorías se evalúan el
+**2026-10-31**.
+
+⚠️ **Pisé una trampa que ya estaba documentada y vale repetirla**: el primer
+`docker compose run --rm db-migrate` dijo *"0 migración(es) aplicada(s)"*. La
+imagen de `db-migrate` se había construido a las 14:27 y la migración se escribió
+a las 14:40 — **el Dockerfile copia las fuentes**. Con migraciones es más
+engañoso que con código, porque no falla: dice que no hay nada que aplicar. Va
+`docker compose run --rm --build db-migrate`.
+
+### Lo que se verificó antes de cada migración, y lo que casi se cuela
+
+Todas las llaves se verificaron **por contenido con su propio adaptador**, no por
+HTTP 200, y todas por **disjunción sobre SKUs reales**. Dos hallazgos que valen:
+
+- **Falabella miente de una forma que la guarda del adaptador no ve.**
+  `cat2049/Audifonos`, `cat1012/Audio` y `cat70028/Audio` devuelven 200, 60
+  productos y **pasan `NotAListingPage`** — con impresoras, soportes de TV y
+  cámaras. Si una entraba, 30 días de serie de precios de impresoras bajo
+  `tecno-audio`. El tamiz que las separó fue contar qué fracción de los nombres
+  coincide con la categoría (la buena: 99%; esas tres: ~0%). Está en CLAUDE.md.
+- **`FalabellaAdapter` no deduplica entre categorías.** `cat2083/Zapatillas` es el
+  paraguas de `Zapatillas-Hombre`/`-Mujer` (solapa 7% y 20%) y esas dos solapan 4%
+  entre sí. En Andesgear eso lo salva `dedupe_across_categories`; acá no existe,
+  así que entró solo el paraguas.
+- **Un bug de mi propio clasificador**: "Botines-Mujer = 32% calzado" era el
+  patrón `botin` contra nombres que dicen "Botín". Normalizar tildes antes de
+  comparar no es cosmético. Con tildes normalizadas da 99%.
+
+### Decisiones tomadas por cuenta propia
+
+- **`tecno-audio` acotada a audio**, no `tecno-accesorios` ancha: un θ porcentual
+  único sobre cosas de $8.000 y de $400.000 no significa nada. Aprobada.
+- **`ropa-calzado` nueva en vez de reusar `deporte-calzado`**, y se midió para
+  decidirlo: 66%/60% moda-urbano contra 22%/1% deportivo. `deporte-calzado` se
+  llama "Calzado outdoor" y su θ=0.30 se eligió para ese comportamiento.
+- **θ 0.350 medido, no copiado**: el 56-58% del catálogo de calzado Falabella ya
+  declara ≥30% de descuento, así que a 0.30 el umbral no filtra nada. Es el mismo
+  argumento con el que la migración 21 puso `deporte-vestuario` en 0.35.
+- **SP Digital: las 4 hojas, no el padre `Audio`** (3.622 declarados, pero es
+  padre de 8 hojas e incluye cables y grabadoras; con filtro de stock las hojas
+  suman 55).
+
+### Lo que esto le hace al ticket del canal
+
+El problema medido era que el 72% de las baselines maduras está sobre $150.000 y
+lo publicado tiene ticket p50 $279.990. Lo nuevo:
+
+```
+cat2083/Zapatillas       ticket p50 $48.990   mínimo  $9.990
+cat690245/Botines-Mujer  ticket p50 $41.990   mínimo  $7.990
+```
+
+Recién se nota el **2026-10-31**, cuando esas baselines maduren.
+
+## Prat estaba caído por User-Agent, arreglado y desplegado (2026-10-01)
+
+**Esto era un apagón real y yo lo había llamado transitorio. Me equivoqué.** En la
+sesión anterior reporté los fallos de Prat como ráfagas de DNS porque probándolo a
+mano con `httpx` respondía 200. Lo que no hice fue probarlo **con su adaptador**.
+
+Prat acumuló **6 corridas fallidas seguidas** (3 pasadas completas, 30-sep 15:36 →
+1-oct 15:37, las dos categorías) sin una sola observación. Causa real: **HTTP 429
+por User-Agent**. Aislado el 2026-10-01 con 4 intentos de cada uno contra la misma
+URL:
+
+```
+DEFAULT_USER_AGENT  (termina en "(+ofertascl-bot)")  → HTTP 429  × 4
+BROWSER_USER_AGENT  (idéntico, sin ese sufijo)       → HTTP 200  × 4
+```
+
+**El 429 es lo que lo hizo caro**: parece límite de tasa legítimo, así que la
+reacción natural es bajar `rate_limit_rps` — y eso no lo arregla nunca. Es el mismo
+caso que el Varnish de Ferretek y el UA-sniffing de Easy, con otro código.
+
+Fix: `PratAdapter._headers = {"User-Agent": BROWSER_USER_AGENT}`, el patrón que ya
+usaban Easy y Ferretek. Se agregó `_headers` a `_ShopifyFamilyAdapter` (default
+`None`, o sea que la familia **no** pierde el token de bot: solo lo sobreescribe
+quien lo necesita) y se pasa en el `get_text`. Verificado contra la tienda real:
+`jardin` 49 productos (lo mismo que antes del apagón) y
+`herramientas-y-maquinarias` 300+ (son 1.089). 3 tests nuevos, incluido uno que
+prueba la cadena entera — si `_headers` no llega al `get_text`, el fix no sirve.
+
+Desplegado con rebuild del scraper; el log confirma `la próxima en 11.1 h`, o sea
+sin pasada extra. **Costo real**: Prat perdió 3 pasadas de serie que no se
+recuperan, con su reloj de `MIN_DAYS` arrancado de cero el 29-sep. Su evaluación
+sigue siendo el 2026-10-28, pero con tres pasadas menos de las esperadas.
+
+## Andesgear: diagnosticado, y la conclusión es NO tocar nada (2026-10-01)
+
+También acá corrijo lo que dije antes. Reporté los 15 `partial` como "un escalón,
+no ruido" que "va a seguir ahí hasta que alguien lo mire". **Las dos cosas estaban
+mal**: fue una ráfaga de 3 pasadas (10, 15, 15) y **se resolvió sola** — la pasada
+del 1-oct 15:16 volvió a 2.
+
+Diagnóstico definitivo, recorriendo `hombre/top` página por página el 2026-10-01:
+
+```
+toolbar-number declara: 518      #am-page-count: 22      24 filas por página
+22 × 24 = 528 ≥ 518 ✓            duplicados: 0           deriva: 0
+```
+
+O sea que **el adaptador está correcto** y la paginación es estable cuando el
+catálogo está quieto. Los faltantes de 1 a 9 ítems son deriva: el total se lee en
+la página 1 y no se vuelve a mirar (decisión deliberada, está en el código), así
+que un producto insertado mientras paginamos se escapa. La ráfaga coincidió
+exactamente con la ventana en que los totales declarados crecían más rápido
+(`hombre/top` 502→515→515→518, `mujer/top` 241→250→252): Andesgear estaba
+actualizando catálogo.
+
+También se descartó la hipótesis del corte temprano: **cero** warnings
+`pagina_repetida` en el log.
+
+**Por qué NO se le pone una tolerancia al chequeo exacto**, aunque era lo primero
+que iba a hacer: la distribución medida sobre las 50 corridas históricas es un
+continuo de **0,771 a 0,998** (p50 0,976), sin hueco. A diferencia de la guarda por
+volumen —donde las sanas daban 0,89 y los incidentes 0,09, con un abismo en medio—
+acá cualquier umbral sería inventado. Y taparía el único caso que sí informa:
+`mujer/calzado` 162 de 210, que son **dos páginas enteras** perdidas.
+
+Impacto real en la serie: nulo. Perder 1-9 observaciones de 518 en una pasada no
+mueve un p50 que pide `MIN_POINTS=30` sobre 30 días.
+
+## Nike conectada y la familia VTEX escrita (2026-10-01, migración 25)
+
+Salió de la Fase 6: el 403 de Nike era **solo por headers**. Con
+`http.BROWSER_HEADERS` su API pública de catálogo VTEX está abierta.
+
+**Se escribió la familia, no un adaptador suelto** — `scrapers/stores/vtex_family.py`.
+VTEX es la plataforma de buena parte del retail chileno y el plan ya la quería para
+Colloky y la Fase 3, así que ese trabajo queda hecho.
+
+Por qué Nike es la mejor relación costo/valor del plan:
+
+- **2.554 productos en ~57 requests por pasada.** La pasada entera son ~2.900.
+- **100% de cobertura de EAN** en las 6 subcategorías. Es lo más valioso:
+  CLAUDE.md registra que de 3.357 `products` solo **11** tienen 2+ tiendas porque
+  las tiendas con GTIN casi no se solapan.
+- **Es zapatilla urbana de marca**, lo que la Fase 3b quería de Sparta (~200 llaves
+  de facetas) y Decathlon (bloqueada de verdad).
+
+### Dos arreglos en infraestructura compartida que cualquier VTEX futura necesita
+
+1. **`http.SUCCESS_STATUS = {200, 206}`.** VTEX contesta **206 siempre** (el rango
+   de `_from`/`_to` es parcial respecto del total). `_request` solo aceptaba 200, así
+   que el primer fetch moría con `FetchError: HTTP 206`. Se listan los códigos uno
+   por uno y no "todo 2xx": un 204 sin cuerpo devolvería `""` y el parser lo leería
+   como catálogo vacío.
+2. **`HttpClient.get_with_headers`.** El total de la categoría viene en el header
+   `Resources: 0-49/2546`, no en el cuerpo, y es la fuente del canario **exacto**.
+   `get_text` sigue con la misma firma: nada existente cambió (561 tests en verde).
+
+### Decisiones de diseño del adaptador
+
+- **Uno por producto, no uno por talle.** VTEX da un `product` con N `items` y los
+  items son los talles, todos al mismo precio. El talle que da el precio es el
+  **disponible más barato**; `in_stock` mira todos.
+- **Llaves = subcategorías, no la raíz.** VTEX corta la paginación en ~2.500 y la
+  raíz `nike` declara 2.389. El adaptador avisa cuando una llave supera el tope.
+- **Disjunción verificada, y era la pregunta correcta**: `snkrs` podía ser paraguas
+  de `nike` (la trampa de `cat2083/Zapatillas` en la migración 24). Intersección
+  **0** sobre itemIds en los dos pares (calzado 5.916 vs 1.858; ropa 2.445 vs 232).
+- **Mapeo**: calzado → `ropa-calzado` (θ 0.350, misma cosa que trae Falabella);
+  ropa → `deporte-vestuario` (θ 0.350, muestreado: poleras, pantalones, polerones,
+  chaquetas = sportswear). Reusar evita un θ nuevo sin calibrar.
+
+⚠️ **`nike/accesorios` (272 SKUs) quedó AFUERA a propósito y es decisión pendiente.**
+Son **gorros y calcetines**: no son `deporte-equipamiento` (θ 0.250: carpas,
+mochilas, escalada) y meterlos en `deporte-vestuario` haría que el nombre mienta.
+Son ticket bajo ($14.990 un pack), justo lo que al canal le falta, así que vale
+resolverlo — con una categoría `ropa-accesorios` propia, no colándolos.
+
+⚠️ **SNKRS tiene poco stock y es esperable**: son lanzamientos limitados, 11 de 119
+en calzado y 10 de 45 en ropa disponibles. Se conectaron porque cuestan 4 requests,
+pero no esperes volumen publicable de ahí.
+
+**Estado: 25 migraciones, 14 tiendas activas, 146 objetivos, 12 categorías.** Las 4
+llaves nuevas corren en la pasada del 2026-10-02 03:16. Se evalúa el 2026-10-31.
+Desplegado con rebuild; el log confirma `la próxima en 9.7 h`, sin pasada extra.
+
+**Tests**: `tests/test_vtex_family.py`, 23 nuevos contra el fixture real
+(`tests/fixtures/nike_catalog_calzado.json`). Suite: **561 passed**.
+
 ## Lo que sigue, en orden
 
+0. **La guarda por volumen quedó cerrada** (ver la sección de arriba). Lo único
+   que le falta es el `docker compose up -d --build scraper`.
 1. **Calibrar θ** es lo próximo que mueve la aguja, y no antes del 2026-10-02
    (con volumen, ~mediados de octubre). El output de `pricing/backtest.py` **es**
    el gate: precisión ≥80% con ≥3 ofertas/día. Los θ de
@@ -588,19 +1230,23 @@ estaban activos para Kupfer y Construmart, con fixture propio en los tests:
    calibrados. Ninguna de las cuatro tiendas conectadas esta semana participa
    (Kupfer 24-sep; Construmart, Kruuse y Andesgear 26-sep): les faltan 30 días y
    se evalúan el 24 y el 26 de octubre.
-2. **Tres decisiones quedaron sobre la mesa**, ninguna urgente: wirear
-   `assign_products` (identidad), qué hacer con la liquidación en el backtest
-   (§1.3, recién importa al calibrar `deporte-*`), y si Sparta vale ~200 llaves de
-   facetas.
+2. **De las tres decisiones que estaban sobre la mesa quedan menos.**
+   `assign_products` se wireó el 28-sep y la liquidación se decidió el 1-oct
+   (§1.3: es una oferta, va al canal). Sigue abierta **Sparta** —~200 llaves de
+   facetas— y ahora tiene un motivo de producto para resolverse: es la única
+   fuente de zapatilla urbana del plan (Fase 3b).
 3. **Probar el funnel con un pago real.** Lo verificado es el trial: PayPal creó
    la suscripción y mandó el `CREATED` con firma válida, pero nadie pagó, así que
    `PAYMENT.SALE.COMPLETED` —el evento que valida los 6.00 contra `price_usd`—
    nunca corrió. **Es el único eslabón sin verificar entre acá y cobrar.** Hoy
    hay 1 membresía (`vip`, `expired`/`kicked`, la del owner) y el plan vivo es
    `P-8TJ137481H7582421NJYMG5A` a 6.00 USD.
-4. **Prender el publisher** (`PUBLISHER_ENABLED=true`), **después del backtest**,
-   no solo después del 1-sep. Ver DEPLOY.md §10. Hoy la variable no está ni
-   definida en `.env` y el daemon arranca con `enabled=False`, que es lo correcto.
+4. **Re-evaluar lo que el publisher ya está sacando.** Se prendió el 2026-09-21
+   (`PUBLISHER_ENABLED=true`), **antes** del backtest y a propósito: el `.env` de
+   prod lo tiene en `true` y el daemon arranca con `enabled=True`. Ver DEPLOY.md
+   §10 para el apagado de urgencia. Lo pendiente ya no es prenderlo, es medir con
+   el backtest cuántas de esas ofertas aguantan θ calibrado — y decidir si el
+   canal sigue publicando mientras tanto.
 5. **Verificar `in_stock` en la ficha** solo para el candidato (10–30
    fetches/día, no 2.898). Hoy Paris y Falabella lo asumen `True` y la guarda de
    stock es ciega. Quedó fuera de F3.

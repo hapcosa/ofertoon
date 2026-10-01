@@ -61,12 +61,49 @@ de ropa o deportes es **un adaptador + categorías nuevas + θ nuevos sin
 calibrar + su propia ventana de 30 días + su propia calibración**. No es el
 mismo trabajo y no debería ir en la misma fase.
 
-Y hay un problema de dominio, no de ingeniería, que hay que resolver antes de
+Y hay un problema de dominio, no de ingeniería, que había que resolver antes de
 escribir una línea de ropa: **la liquidación de fin de temporada es un descuento
 real que se ve exactamente como un escalón permanente**, que es justo el patrón
-que `backtest.py` etiqueta como `fake`. El detector, tal como está, va a
-rechazar las mejores ofertas de vestuario o a etiquetarlas mal. Eso se decide
-antes, no durante.
+que `backtest.py` etiquetaba como `fake`.
+
+#### DECIDIDO el 2026-10-01: la liquidación es una oferta y va al canal
+
+El precio baja de verdad, el suscriptor compra barato algo que estaba caro. **No
+se filtra.** Esto cierra la decisión que este plan dejaba abierta y desbloquea
+las Fases 3 y 3b.
+
+Lo que había que corregir no era el detector —ya las aceptaba: `detect_ramp`
+exige un alza sostenida ANTES de la baja, y una liquidación baja sin haber
+subido, así que `ramp_flag` queda en False—. Era la **medición**: como θ sale del
+backtest, etiquetar `fake` una liquidación empujaba θ hacia arriba hasta dejar
+afuera justo las mejores ofertas de vestuario y calzado. Se iba a calibrar en
+contra de lo que el canal quiere publicar.
+
+La corrección es una tercera etiqueta, `LABEL_LIQUIDATION`, y el discriminante
+mira el **pasado**, que es dato duro, no el futuro:
+
+```
+el pozo se quedó abajo:
+    price <  piso de 60 días  → liquidación: precio nunca visto     → ACIERTO
+    price >= piso de 60 días  → inflado que volvió a su nivel real  → falso
+```
+
+Dos cosas que la hacen defendible. Una: un candidato **aceptado** ya pasó la
+guarda 3 del detector (`ramp_flag` → `reject_reason = 'ramp'`), que es la que caza
+el "subo y después descuento", así que entre los aceptados el inflado ya se
+filtró antes de llegar al etiquetado. Dos: el inflado-normalizado vuelve a un
+nivel que **ya existía** en la ventana (el precio de antes de inflar), mientras
+que una liquidación va por debajo de todo lo observado.
+
+El piso se calcula con la serie **hasta ayer** (`backtest.piso_previo`), no con el
+`min_60d` de la baseline: la pasada de la mañana ya trae el precio nuevo, así que
+ese `min_60d` incluye la bajada y `price < min_60d` nunca se cumpliría. Costó un
+test y está fijado.
+
+La liquidación cuenta como acierto en `precision` **y lleva columna propia en el
+reporte**, con un aviso cuando pasa la mitad de los aciertos: un canal cuya
+precisión viene toda de liquidación es un outlet, no un canal de ofertas, y eso
+hay que poder verlo antes de fijar θ.
 
 ---
 
@@ -85,7 +122,7 @@ y donde caen las cuatro tiendas que aportaste.
 |---|---|---|---|---|
 | **Ferretek** (`ferretek.cl`) | Magento 2 | ✅ **REST abierta sin token**: `/rest/V1/products` → **48.454 productos**, con `price`, `sku`, `marca` | **S** | El `sku` parece EAN-13 (`2615000001008`) → identidad posible. Catálogo de repuestos de maquinaria (Stens, Oregon, Rotary): muy de nicho |
 | **Urban Comercial** (`urbancomercial.cl`) | WooCommerce | ✅ **Store API pública**: `/wp-json/wc/store/v1/products` → JSON con precio y stock | **S** | Herramientas de marca (Dewalt visto en el primer item) |
-| **Ferretería Prat** (`ferreteriaprat.cl`) | Shopify | ✅ `/products.json?limit=250&page=N` | **S** | Trae `variants[].available` → **`in_stock` real** |
+| **Ferretería Prat** (`ferreteriaprat.cl`) | Shopify | ✅ `/products.json?limit=250&page=N` | **S** | Conectada el 2026-09-23. Trae `variants[].available` → **`in_stock` real**. Llaves: `herramientas-y-maquinarias` (1.089) + `jardin` (49); la vitrina `herramientas-electricas` se desactivó en la migración 22 |
 | **Construmart** (`construmart.cl`) | Magento 2 | ✅ REST cerrada → grid HTML **con la cookie `persistent_customer_group_id`**: sin ella no hay un solo precio, con ella el grid completo. Pagina con `?p=`, que su robots permite | **S** | Conectada el 2026-09-26, sucursal 35 (DEPARTAMENTAL). 19 llaves, ~217 listings con precio. **Su serie es de esa sucursal** |
 | **Kupfer** (`kupfer.cl`) | Magento 2 | ✅ REST cerrada (401) → grid HTML con `data-price-amount` y SKU propio. **Sin `?p=`**: su robots lo prohíbe | **S** | Conectada el 2026-09-24. Ferretería industrial: solo 24 productos mapean a la taxonomía |
 | **Kruuse** (`kruuse.cl`) | Medusa + Next | ✅ **`/cl/product-feed.json`**: feed paginado que su propio `llms.txt` ofrece para indexar y su `robots.txt` permite a ClaudeBot. 3.772 productos, `limit` clamea honesto en 100 → 38 requests | **S** | Conectada el 2026-09-26: 24 llaves, 628 listings, **GTIN en el 99%**. Pero **92% del catálogo es `backorder`** (96 de sus 628 listings disponibles): importador de maquinaria que vende a pedido |
@@ -163,6 +200,103 @@ agregue un piso absoluto de ahorro en CLP.
 | Preunic (`preunic.cl`) | Next.js | sin determinar |
 | Salcobrand (`salcobrand.cl`) | sin determinar | sin determinar |
 | Maicao (`maicao.cl`) | Salesforce CC | grid HTML |
+
+#### Auditoría de los 6 supermercados grandes — 2026-10-01
+
+Pedidos explícitamente por producto. **Las seis están bloqueadas o movidas**, y es
+el grupo más duro del plan: ninguna tiene hoy una vía limpia. Medido con UA de
+navegador:
+
+| Tienda | robots.txt | Vía de catálogo | Veredicto |
+|---|---|---|---|
+| **Jumbo** | 200, con la firma VTEX (`Disallow: *?map=`) | `/api/catalog_system/pub/*` → **404** en las 4 rutas estándar (`products/search`, `category/tree`, graphql IO, `sessions`). Migró a `provider-jumbo.ecomm.cencosud.com`, que da **403**. `sitemap.xml` sí responde (153 KB) | **L** — sin API pública; quedaría sitemap → ficha por ficha |
+| **Santa Isabel** | igual que Jumbo (mismo stack Cencosud) | idéntico: 404 en todas | **L** — se resuelve junto con Jumbo |
+| **Lider** | **200, y `Disallow: /search*`** | `super.lider.cl/search?q=` responde **200 con precios en `__NEXT_DATA__`** (996 KB, contiene `priceInfo`) — o sea que técnicamente funciona | ⚠️ **DECISIÓN, ver abajo** |
+| **aCuenta** | ConnectError + `CERTIFICATE_VERIFY_FAILED` | — | **L** — el dominio no resuelve con certificado válido |
+| **Unimarc** | **403 hasta en el `robots.txt`**, con UA de navegador y sin UA | — | **L** — bloqueo de borde tipo Fase 6 |
+| **Tottus** | 200 | sitio **403**, API **503** | **L** — bloqueo de borde tipo Fase 6 |
+
+#### Lider: el tecnicismo NO hace falta — hay vía limpia (2026-10-01)
+
+Se aprobó usar el tecnicismo del `robots.txt`, pero buscando primero apareció una
+vía **inequívocamente permitida**, que además es mejor:
+
+- Las fichas viven en **`/ip/<categoría>/<slug>/<ean>`**, y `/ip` **no está en
+  ningún `Disallow`** (la lista completa es `/cart`, `/tu-cuenta`, `/checkout`,
+  `/search`, `/wallet`, `/thankyou`, `/opiniones`, `/orchestra`).
+- El `robots.txt` **ofrece** cuatro sitemaps, y ahí está el catálogo entero.
+- Las fichas traen precio (`"price":4990` + schema.org) **y la URL trae el EAN**.
+
+Medido sobre los 21 `productSitemap*.xml`: **102.880 productos, 221 categorías,
+100% con EAN en la URL**. Ese 100% de EAN es lo más valioso de todo:
+CLAUDE.md registra que de 3.357 `products` solo 11 tienen 2+ tiendas porque las
+tiendas con GTIN no se solapan. Lider sola cambiaría eso.
+
+⚠️ **Pero el presupuesto de fetches no da, y por lejos.** Es ficha por ficha:
+
+```
+top  5 categorías:  41.586 SKUs →  83.172 fetches/día
+top 10 categorías:  54.318 SKUs → 108.636 fetches/día
+el sistema ENTERO hoy:            ~5.800 fetches/día
+```
+
+Y un dato que cambia el encuadre: **el top de Lider no es supermercado.** Es
+`vestuario` 15.699, `muebles-y-decoracion` 10.219, `jugueteria` 6.854,
+`libreria` 4.951, `tecnologia` 3.863. `supermercado` propiamente son 2.625.
+
+#### Medido el peso real: "todo" no entra en este host
+
+Se pidió conectar Lider completa. **No es viable, y es físico, no una decisión de
+alcance.** Medido sobre 5 fichas reales: **752 KB en el cable cada una** (gzip
+declarado, pero el HTML ya viene casi incompresible) y 1,0–1,9 s de latencia.
+
+```
+102.880 SKUs × 752 KB  →   73,8 GB por pasada   =  147,6 GB/día a 2 pasadas
+tiempo: 42,9 h secuencial · 5,4 h con 8 concurrentes · 2,7 h con 16
+```
+
+El tiempo se arregla con concurrencia. **El tráfico no**: 147,6 GB/día salen por el
+adaptador WiFi USB del host, el mismo que tiene 3.774 beacons perdidos y ráfagas de
+fallos de DNS documentadas como irreparables desde el repo.
+
+Se buscó un endpoint liviano y **no hay**: el `/_next/data/<buildId>/...json` de
+Next.js devuelve **404** (buildId `production_20260831T100751610Z-es-CL`). Son 752 KB
+por precio, sin atajo.
+
+Con un presupuesto de ~5 GB/día —que para ese enlace ya es mucho— el techo es
+**~3.500 SKUs por pasada**. Alcanza para `supermercado` (2.625) o para `tecnologia`
+(3.863), no para las dos.
+
+Así que Lider entra solo como **tajada chica y elegida a mano** (p. ej. `vinos`
+1.390 + `snacks-y-picoteo` 848 = 2.238 SKUs ≈ 4.476 fetches/día, que ya es casi
+todo el presupuesto actual), y es la primera tienda cuyo costo es **por SKU y no
+por página de listado**. Eso es una decisión de producto con un número al lado, no
+un detalle de implementación.
+
+⚠️ **La decisión de Lider sobre el tecnicismo queda sin efecto.** Su `robots.txt` dice
+`Disallow: /search*`, y `/search` es justamente la única vía que funciona y trae
+precios. Hay un tecnicismo: los `Disallow` están escritos **después** del grupo
+`User-agent: Googlebot-Image`, así que por la especificación pertenecen a ese
+grupo y el grupo `User-agent: *` queda sin reglas — o sea, todo permitido. Pero la
+intención del sitio es evidente. Este repo respetó robots cada vez que le costó
+alcance (Kupfer: una request por categoría; Construmart: sin `limit`; Sparta:
+bloqueada entera; SP Digital: `rate_limit_rps = 0.2`), así que **apoyarse en el
+tecnicismo sería la primera excepción y no la tomo por mi cuenta.**
+
+La alternativa limpia en Lider: su robots **ofrece cuatro sitemaps** (incluido
+`/v/nc/sitemap/sitemap.xml`), que es el dueño del sitio invitando a recorrer URLs
+de producto. Pero eso es ficha por ficha, y el diseño del scraper es por listado —
+un supermercado son decenas de miles de SKUs y el presupuesto de fetches no da.
+
+**Prerrequisito que sigue vigente y ahora está medido**: el piso absoluto de ahorro
+en CLP. `detector.compute_score` es `discount_real*100 + below_floor*50` y
+**excluye el precio absoluto a propósito**, así que un 40% sobre $990 (ahorro
+$400) puntúa igual que un 40% sobre $990.000. Lo que acota el daño hoy es
+`ranker.MAX_PER_CATEGORY_PER_DAY = 2`: con supermercado como **una** categoría, se
+lleva como máximo 2 de las 6 ofertas del día. Si se parte en varias
+(lácteos, limpieza, …), cada una se lleva 2 y el canal se inunda. **Si entra
+supermercado, entra como una sola categoría hasta que el ranker tenga piso en
+CLP.**
 
 ### 2.7 Agregadores — no son tiendas y no se publican
 
@@ -309,6 +443,13 @@ Lo que se aprendió conectándolas, que cambia lo que decía este plan:
 - **Confirmación de la regla 1 con dato propio**: el `compare_at_price` de Prat
   declara **exactamente 10,0% en 249 de 250 productos**, rango 10,0%..10,0%. No
   es un descuento: es un margen fijo sobre todo el catálogo.
+- **Una llave puede ser una vitrina, y elegirla mal cuesta las series**
+  *(aprendido el 2026-09-28, no el 23)*. La migración 15 eligió
+  `herramientas-electricas` creyendo que era un paraguas. Era una colección
+  curada a mano: el 2026-09-25 la tienda la reeditó y bajó de 345 a 131 items.
+  **240 de los 246 listings que dejó de mostrar seguían a la venta** (cruzado
+  contra las 39 páginas de su `/products.json`, 9.466 variantes). El tamiz está
+  en el §5.2 del checklist y el reemplazo en la migración 22.
 
 **1b. Las de grid HTML — cerrada el 2026-09-24, con una sola tienda de dos.**
 
@@ -426,9 +567,14 @@ plan completo, pero depende de la Fase 1 para existir.
 
    O sea que la decisión es **de calibración y se toma con datos**: aceptar que se
    filtren, o agregarle al backtest una etiqueta para "se quedó abajo pero fue una
-   ganga real". Mientras no se decida, nada se publica igual
-   (`PUBLISHER_ENABLED=false`) y la serie se acumula, que es lo único que no se
-   recupera después.
+   ganga real".
+
+   ⚠️ Y ya no hay red de contención: el publisher está encendido desde el
+   2026-09-21 y las tres `deporte-*` están en las categorías del tier `vip`. Que
+   todavía no haya salido ninguna oferta de deportes es solo porque Andesgear se
+   conectó el 26-sep y sus baselines no maduran hasta el **2026-10-26**. Desde esa
+   fecha las liquidaciones de temporada salen al canal medidas contra θ de partida,
+   sin que nadie las haya calibrado. La decisión se toma **antes** del 26-oct.
 
 | Orden | Tienda | Costo | Estado al 2026-09-26 |
 |---|---|---|---|
@@ -512,11 +658,206 @@ PC Express, Tottus**. Son las de mayor valor de marca y las de mayor costo. Una
 sola sesión dedicada a resolver el patrón de bloqueo sirve para todas, y es la
 única fase donde hay que mirar headers y fingerprint.
 
+#### RESUELTA (parcialmente) el 2026-10-01 — y la hipótesis era otra
+
+El plan asumía que había que "mirar headers y fingerprint". **Fingerprint no hizo
+falta en ninguna**: lo que delataba al scraper no era el User-Agent sino la
+**ausencia** de los headers que cualquier navegador manda, sobre todo
+`Accept-Language`, `Accept-Encoding` y la familia `Sec-Fetch-*`. Con el UA de
+navegador solo contra el juego completo (`http.BROWSER_HEADERS`):
+
+| Tienda | Borde | UA solo | Headers completos | Estado |
+|---|---|---|---|---|
+| **Nike** | Cloudflare | 403 | **200** + **API VTEX pública abierta** | ✅ **CONECTADA 2026-10-01 (migración 25)** |
+| **Tottus** | Cloudflare | 403 | home **200**, pero catálogo **503/526** | 🟡 el borde pasa; el ORIGEN falla |
+| **Unimarc** | — | 403 | home sigue **403**; API VTEX **500 en todo** | ❌ corregido: es callejón sin salida |
+| **PC Express** | LiteSpeed | 403 | **pasa**: 404 en robots y sitemap | 🟡 falta descubrir rutas |
+| **Adidas** | Akamai | 403 | **robots.txt 200**, home sigue 403 | 🟡 parcial |
+| **Decathlon** | Cloudflare | 403 | 403 en todo (robots, sitemap, API VTEX) | ❌ bot management |
+| **Nice One** | Cloudflare | 403 | 403 en todo | ❌ bot management |
+| **MTS** | Cloudflare | 403 | 403 en todo | ❌ bot management |
+
+#### Lo verificado después, que corrige dos de las filas
+
+- **Nike es el premio, y está lista.** Su API VTEX pública responde: `products/search`
+  da **HTTP 206** y `category/tree/3` da 200. `Resources: 0-49/2546` → **2.546
+  productos**, o sea **51 requests por pasada**: nada. El payload trae todo lo que
+  `RawProduct` pide y además **`ean`** (`194500874862` en el Air Force 1), que
+  alimenta `catalog/identity.py`. Árbol: `nike` (calzado, ropa, accesorios) y
+  `snkrs`. **Es zapatilla urbana con GTIN**, justo lo que la Fase 3b quería de
+  Sparta y Decathlon, con una fracción del costo.
+- **Tottus NO está usable, me equivoqué al cantarla.** Ese 200 era la **home**.
+  Las rutas de catálogo dan **503** (API VTEX) y **526** (categoría y búsqueda).
+  526 es error de certificado del origen detrás de Cloudflare: el borde nos deja
+  pasar y el origen está roto para esas rutas. Puede ser transitorio — reintentar
+  antes de invertir en su adaptador.
+- **Unimarc es callejón sin salida.** Su home sigue en **403** con headers
+  completos, y su API VTEX devuelve **500 uniforme en los 7 endpoints probados**
+  (`products/search` con y sin `sc`/`ft`, `category/tree`, `brand/list`). Un 500
+  igual en todo no es un parámetro que falte: la API de catálogo está deshabilitada
+  en ese host. Sale del grupo 🟡 y pasa al duro.
+
+#### Navegador headless: PROBADO el 2026-10-01, y NO funciona
+
+Se pidió implementarlo para las tres que httpx no puede. Se instaló Playwright +
+Chromium y se probó de verdad. **Falla igual.** No es una objeción de diseño: es un
+resultado medido, y conviene que quede para que nadie lo vuelva a intentar.
+
+| Intento | Decathlon | Nice One | MTS |
+|---|---|---|---|
+| httpx + `BROWSER_HEADERS` | 403 | 403 | 403 |
+| Chromium headless-shell | 403 | 403 | 403 (página de bloqueo explícita) |
+| Chromium completo + `--disable-blink-features=AutomationControlled`, viewport 1920×1080, locale es-CL, `navigator.webdriver=False` verificado | **403** | **403** | **403** |
+
+La detección **no está en el JavaScript**: con `navigator.webdriver` en `False` y un
+Chromium real, sigue siendo 403. El header lo dice:
+
+```
+cf-mitigated: challenge      (Decathlon)
+server: cloudflare           cf-ray: ...-SCL
+```
+
+O sea que Cloudflare emite un **desafío interactivo** y nuestro cliente lo falla
+antes de llegar al contenido. El 403 llega incluso en `/robots.txt`, así que **no
+se puede ni leer la política del sitio** — que era la única razón por la que valía
+la pena encender el navegador.
+
+Nice One además redirige a `n1g.cl/Home/`, igual de bloqueado.
+
+Lo único que quedaría es una capa dedicada de anti-detección: parches de
+*stealth*, spoofing de fingerprint TLS/JA3, o un servicio que resuelva el
+challenge. **Eso no se construye**: es herramienta de evasión de un producto de
+seguridad, no identificarse correctamente, y además la pista apunta a reputación de
+IP (la del host lleva meses haciendo requests automatizados a 13 retailers), contra
+lo que ningún navegador ayuda — haría falta un proxy residencial.
+
+La vía limpia para estas tres sigue siendo **pedirles acceso** (feed, API o
+afiliados).
+
+⚠️ **Playwright quedó instalado solo en el `.venv` local (~250 MB con Chromium) y
+NO se agregó a `requirements.txt` ni al `Dockerfile`**: la imagen de producción
+sigue en 570 MB. Si no se le encuentra otro uso, se puede desinstalar sin tocar
+nada más.
+
+**Cinco de ocho pasan el borde con headers legítimos.** Las tres duras tienen bot
+management de verdad y **ahí se para**: pasarlo pide fingerprint de TLS o un
+navegador headless, y este scraper es deliberadamente httpx + parseo posicional,
+sin browser (ver §Stack). Una tienda que de verdad no nos quiere, no nos tiene.
+
+⚠️ Ojo con la ironía: **Decathlon era "la más valiosa de este grupo y justifica
+sola el esfuerzo"**, y es una de las tres que no cede. El valor del grupo quedó en
+Tottus y Nike.
+
+Entregable reusable: `http.BROWSER_HEADERS` y `http.BROWSER_HEADERS_JSON` (la
+variante coherente para XHR: un `Sec-Fetch-Mode: navigate` pidiendo JSON es
+incoherente y algunos bordes lo marcan). Igual que `BROWSER_USER_AGENT`, se usa
+**por adaptador y nunca como default** — el `DEFAULT_USER_AGENT` sigue
+identificándose como bot.
+
 **Decathlon es la más valiosa de este grupo** y justifica sola el esfuerzo.
 
 En paralelo: **decidir si supermercado y farmacia son parte del producto**
 (§2.6). Si la respuesta es sí, el ranker necesita antes un piso absoluto de
 ahorro en CLP.
+
+---
+
+## 4bis. Las tres que pidió el producto (2026-10-01)
+
+Vienen de una observación contra los datos: **el canal no saca ofertas de ropa,
+zapatillas ni cosas chicas**, y eso es verdad. Medido el 2026-10-01 sobre las 63
+ofertas publicadas: ticket p50 **$279.990**, solo 12 por debajo de $50.000, y el
+p50 de `tecno-tv` es $1.579.990.
+
+**El ranker no es la causa** y conviene no perder el tiempo ahí:
+`detector.compute_score` excluye el precio absoluto a propósito —"ponderar por
+ticket inundaría los canales de electrónica cara"— y está bien así. La causa es
+la composición del catálogo. De 9.729 baselines maduras:
+
+| tramo | listings | |
+|---|---|---|
+| < $20.000 | 607 | |
+| $20–50k | 576 | **12% bajo $50.000** |
+| $50–150k | 1.497 | |
+| $150–500k | 4.075 | |
+| > $500.000 | 2.974 | **72% sobre $150.000** |
+
+El detector sí acepta barato (448 aceptados bajo $50.000), pero el pool viene
+6:1 en contra: la cuota sale cara sin que nadie la sesgue. Se arregla con
+catálogo y taxonomía, no con código.
+
+---
+
+### Fase 3 — Ropa y vestuario · DESBLOQUEADA
+
+Estaba trabada por la decisión de liquidación (§1.3), que se tomó el 2026-10-01.
+Las 5 tiendas y su orden no cambian (ver abajo). Lo que cambia es que ya se puede
+empezar, y que las categorías `ropa-*` nacen sabiendo que sus liquidaciones
+cuentan como aciertos.
+
+### Fase 3b — Calzado urbano y zapatillas ✅ ARRANCADA 2026-10-01 (migración 24)
+
+> **Segunda entrega, el mismo día: Nike (migración 25).** Salió de la Fase 6 — su
+> 403 era solo por headers. Se escribió `scrapers/stores/vtex_family.py`, o sea la
+> **familia VTEX completa**, que es la que el plan ya quería para Colloky y la
+> Fase 3 entera. **2.554 productos en ~57 requests por pasada y 100% de cobertura
+> de EAN**, que es lo que mueve la aguja de `catalog/identity`: hoy de 3.357
+> `products` solo 11 tienen 2+ tiendas. Mapeo: calzado (1.188 + 119) a
+> `ropa-calzado`, ropa (929 + 45) a `deporte-vestuario`. Verificado que `snkrs` NO
+> es paraguas de `nike` (intersección 0 sobre itemIds, en los dos pares).
+> **Sparta y Decathlon ya no son necesarias** para tener zapatilla urbana de marca.
+
+> **Lo hecho el 2026-10-01**, antes de Sparta y sin tocar un adaptador: Falabella
+> ya tenía zapatilla urbana. `ropa-calzado` (θ 0.350) con `cat2083/Zapatillas` y
+> `cat690245/Botines-Mujer`. **Categoría nueva y no `deporte-calzado` porque se
+> midió**: 66% y 60% moda/urbano contra 22% y 1% deportivo, y `deporte-calzado` es
+> "Calzado outdoor" con un θ elegido para ese comportamiento. El θ 0.350 también
+> es medido, no copiado: el 56-58% del catálogo ya declara ≥30%, o sea que a 0.30
+> el umbral no filtraría nada. **Y es lo que baja el ticket del canal**: p50
+> $48.990 y $41.990, mínimos $9.990 y $7.990, contra los $279.990 de lo publicado.
+> Sparta y Decathlon siguen en el plan para profundidad, ya no como bloqueo.
+
+Lo que hay hoy es **Andesgear y nada más**: 393 listings de `deporte-calzado`, y
+es calzado **outdoor**. No hay zapatillas urbanas en el sistema.
+
+| Orden | Tienda | Nota |
+|---|---|---|
+| 1 | **Sparta** | Ya auditada (§Fase 2): `zapatillas.html` declara 1.080. Su robots prohíbe toda URL con query string, así que **no se puede paginar**: las únicas tajadas disjuntas son ~200 facetas de marca (`/zapatillas/filtro/adidas.html`). Es la decisión que estaba pendiente y ahora tiene un motivo de producto para resolverse |
+| 2 | **Decathlon** | 403 hoy (Fase 6). El plan ya la marca como "la más valiosa de ese grupo" — esto lo confirma |
+| 3 | Nike, Adidas | 403 hoy. Mismo patrón de bloqueo que Decathlon: una sesión sirve para las tres |
+
+Reusa `deporte-calzado` o abre `ropa-calzado` según de qué surta Sparta. **Decidir
+al conectar, no antes**: si Sparta trae mayormente zapatilla deportiva, reusar la
+categoría existente evita un θ nuevo sin calibrar y 30 días más de espera.
+
+### Fase 3c — Audio y accesorios ✅ HECHA 2026-10-01 (migración 23)
+
+Esto no estaba en ninguna fase: lo busqué en este archivo y audio, audífonos y
+accesorios **no se mencionaban**. No es que estuviera postergado; faltaba.
+
+Estado medido el 2026-10-01: **47 audífonos en el catálogo, 19 ya con baseline
+madura, 0 publicados**. Son residuo incidental de `tecno-celulares` de Falabella
+y Paris —nadie los scrapea a propósito—, y con 47 de 25.429 listings no van a
+salir ni por casualidad.
+
+Entrega, en orden:
+
+1. **Migración con la categoría nueva** y su θ de partida. `tecno-audio` si se
+   acota a audio, `tecno-accesorios` si entra también teclado, mouse, cargador,
+   powerbank. **Recomendado: `tecno-audio` sola primero** — es la que el producto
+   pidió, y una categoría ancha con θ único mezcla cosas de $8.000 y de $400.000,
+   que es exactamente lo que vuelve inútil un umbral porcentual.
+2. **Llaves en las tiendas que ya están conectadas.** No requiere adaptador
+   nuevo: Falabella, Paris, PC Factory y SP Digital ya tienen audio en catálogo y
+   las cuatro familias ya están escritas. Es la fase más barata de todo el plan.
+   ⚠️ Verificar que las llaves nuevas sean **disjuntas** de `tecno-celulares`
+   sobre SKUs reales antes de meterlas en la migración: hoy los 47 audífonos
+   entran por ahí, y dos llaves solapadas escriben dos `price_points` del mismo
+   listing por pasada y lo hacen pesar el doble en su propio p50.
+3. 30 días de espera y recién ahí su primera oferta.
+
+Candidatas nuevas si hace falta profundidad, en orden de valor: **Nice One**
+(403, Fase 6) y **MacOnline** (Fase 5, accesorios Apple).
 
 ---
 
@@ -528,23 +869,31 @@ tienda, con lo que este plan agrega.
 1. **Inspección**: confirmar la vía (API o grid) y **releer el `robots.txt`**
    ese día. El `rate_limit_rps` sale del `Crawl-delay` declarado, no de lo que
    aguante el servidor.
-2. **Adaptador**: módulo en `scrapers/stores/` que implemente `StoreAdapter`.
+2. **Elegir la llave: ¿catálogo o vitrina?** Una colección curada a mano se ve
+   igual que un catálogo hasta que el comerciante la reedita y mata las series
+   (el caso Prat del 2026-09-25: −240 listings que **seguían a la venta**). El
+   tamiz barato es la tasa de stock de la llave contra la del catálogo entero:
+   una colección que trae ~100% disponible está filtrada por stock y es catálogo;
+   una muy por debajo es una vitrina editorial. Y **verificá la jerarquía sobre
+   SKUs, no sobre el nombre**: en Prat, `herramientas-electricas` tenía solo 71
+   de sus 131 SKUs dentro de `herramientas-y-maquinarias`.
+3. **Adaptador**: módulo en `scrapers/stores/` que implemente `StoreAdapter`.
    Si la familia existe, no se escribe código: solo la fila.
-3. **Fixture**: payload **real** en `tests/fixtures/`. Ojo con el engaño de la
+4. **Fixture**: payload **real** en `tests/fixtures/`. Ojo con el engaño de la
    página 1 (el caso Paris/EAN): si el campo aparece solo en los primeros N
    items, el fixture miente.
-4. **Migración numerada** con la fila en `stores` y sus `store_categories`,
+5. **Migración numerada** con la fila en `stores` y sus `store_categories`,
    mapeadas a la taxonomía canónica. Categorías nuevas → θ de partida explícito
    y anotado como **no calibrado**.
-5. **`MAX_PLAUSIBLE_CLP`**: verificar si la tienda usa centinelas como los
+6. **`MAX_PLAUSIBLE_CLP`**: verificar si la tienda usa centinelas como los
    $99.999.999.999 de Falabella. Un centinela envenena la baseline del SKU de
    forma permanente.
-6. **Canario**: la primera pasada no tiene historia, así que solo rige el piso
+7. **Canario**: la primera pasada no tiene historia, así que solo rige el piso
    absoluto de 5 items. Revisar a mano la tercera pasada, cuando la mediana de
    7 corridas empieza a tener sentido.
-7. **`docker compose up -d --build scraper`**. El Dockerfile copia las fuentes,
+8. **`docker compose up -d --build scraper`**. El Dockerfile copia las fuentes,
    no las monta.
-8. **Anotar la fecha de conexión.** El criterio de aceptación se evalúa 30 días
+9. **Anotar la fecha de conexión.** El criterio de aceptación se evalúa 30 días
    después de esa fecha, no antes.
 
 ---
