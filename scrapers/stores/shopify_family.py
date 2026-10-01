@@ -31,7 +31,7 @@ from typing import Any
 
 from catalog.normalize import clean_text, normalize_brand
 from scrapers.base import MAX_PLAUSIBLE_CLP, CategoryRef, RawProduct
-from scrapers.http import HttpClient
+from scrapers.http import BROWSER_USER_AGENT, HttpClient
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +217,10 @@ class _ShopifyFamilyAdapter:
     #: y los comerciantes ponen su propio nombre o un placeholder. Se comparan en
     #: casefold. Ante la duda se descarta: una marca equivocada degrada el copy.
     non_brand_vendors: frozenset[str] = frozenset()
+    #: Headers por request. `None` = los del `HttpClient`, que incluyen el token
+    #: `(+ofertascl-bot)` en el User-Agent. Una tienda que bloquea por ese token
+    #: lo sobreescribe con `BROWSER_USER_AGENT` (ver `PratAdapter`).
+    _headers: dict[str, str] | None = None
 
     def __init__(self, http: HttpClient, categories: Sequence[CategoryRef]) -> None:
         self._http = http
@@ -237,7 +241,9 @@ class _ShopifyFamilyAdapter:
 
         while page <= self.max_pages:
             raw = await self._http.get_text(
-                self._page_url(category, page), rps=self.rate_limit_rps
+                self._page_url(category, page),
+                rps=self.rate_limit_rps,
+                headers=self._headers,
             )
             scraped_at = datetime.now(timezone.utc)
             payload = json.loads(raw)
@@ -294,7 +300,33 @@ class PratAdapter(_ShopifyFamilyAdapter):
 
     `robots.txt` no declara `Crawl-delay` y permite el catálogo público, así que
     se usa el default conservador de la familia.
+
+    **Bloquea por User-Agent, y lo hace con 429 en vez de 403.** Verificado el
+    2026-10-01 aislando la variable, 4 intentos de cada uno contra la misma URL:
+    con `DEFAULT_USER_AGENT` responde **HTTP 429 las 4 veces**, con
+    `BROWSER_USER_AGENT` **HTTP 200 las 4 veces**. Los dos UA son idénticos salvo
+    el sufijo `(+ofertascl-bot)`, así que lo que bloquea es ese token, no la tasa.
+
+    El 429 es lo que hace esto peligroso: **parece un límite de tasa legítimo**, y
+    la reacción natural —bajar `rate_limit_rps`— no lo arregla nunca. Costó tres
+    pasadas completas (30-sep 15:36 → 1-oct 15:37, 6 corridas, las dos categorías,
+    `FetchError: agotados 3 reintentos`) en las que la tienda quedó sin una sola
+    observación. Es el mismo caso que el Varnish de Ferretek y el UA-sniffing de
+    Easy, con otro código de estado.
+
+    **No todas sus colecciones sirven como `store_key`.** Las que están filtradas
+    por disponibilidad (`jardin`, `herramientas-y-maquinarias`: 100% con stock)
+    son catálogo; las vitrinas curadas a mano no. `herramientas-electricas` era
+    una de esas y el 2026-09-25 la tienda la reeditó: de 345 items bajó a 131, y
+    240 de los 246 listings que dejó de mostrar **seguían a la venta**. Es una
+    decisión editorial del comerciante que mata series sin avisar, y el canario
+    solo se queja ~4 corridas —después la mediana alcanza el nivel nuevo—. Ver la
+    migración 22. Ojo también con que sus colecciones **no son jerárquicas**:
+    `herramientas-electricas` tenía solo 71 de sus 131 SKUs dentro del paraguas.
     """
+
+    #: Sin esto, HTTP 429 en todas las páginas. Ver el docstring.
+    _headers = {"User-Agent": BROWSER_USER_AGENT}
 
     slug = "prat"
     base_url = "https://ferreteriaprat.cl"

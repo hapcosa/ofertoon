@@ -187,3 +187,60 @@ async def test_pagina_1_vacia_es_error_de_configuracion():
     with pytest.raises(NotAListingPage):
         async for _ in PratAdapter(http, []).discover(CATEGORY):
             pass
+
+
+# -----------------------------------------------------------------------------
+# Prat bloquea por User-Agent, y lo hace con 429
+# -----------------------------------------------------------------------------
+# Verificado el 2026-10-01 aislando la variable, 4 intentos de cada uno contra la
+# misma URL: con `DEFAULT_USER_AGENT` responde HTTP 429 las 4 veces, con
+# `BROWSER_USER_AGENT` HTTP 200 las 4 veces. Los dos UA son idénticos salvo el
+# sufijo `(+ofertascl-bot)`, así que lo que bloquea es ese token y no la tasa.
+#
+# El 429 es lo que hace esto caro: parece límite de tasa legítimo, y bajar
+# `rate_limit_rps` —la reacción natural— no lo arregla nunca. Costó tres pasadas
+# completas (30-sep 15:36 → 1-oct 15:37, 6 corridas, las dos categorías) en las
+# que Prat no dejó una sola observación, justo cuando su reloj de MIN_DAYS había
+# arrancado de cero con la llave nueva de la migración 22.
+
+
+def test_prat_manda_user_agent_de_navegador():
+    """Sin esto son 429 en todas las páginas. Mismo caso que Easy y Ferretek."""
+    from scrapers.http import BROWSER_USER_AGENT
+
+    assert PratAdapter._headers is not None
+    assert PratAdapter._headers["User-Agent"] == BROWSER_USER_AGENT
+    # Lo que la tienda bloquea es el token, no el UA entero.
+    assert "ofertascl-bot" not in PratAdapter._headers["User-Agent"]
+
+
+def test_la_familia_shopify_no_fuerza_ua_de_navegador_por_defecto():
+    """Solo las tiendas que lo necesitan lo piden.
+
+    El `DEFAULT_USER_AGENT` se identifica como bot a propósito; sacárselo a toda
+    la familia porque una tienda lo bloquea sería perder esa honestidad en las
+    que no hace falta.
+    """
+    from scrapers.stores.shopify_family import _ShopifyFamilyAdapter
+
+    assert _ShopifyFamilyAdapter._headers is None
+
+
+async def test_los_headers_del_adaptador_llegan_al_fetch(monkeypatch):
+    """La cadena completa: si `_headers` no se pasa al `get_text`, el fix no sirve."""
+    from scrapers.http import BROWSER_USER_AGENT
+
+    vistos = []
+
+    class FakeHttp:
+        async def get_text(self, url, *, rps=None, headers=None):
+            vistos.append(headers)
+            return '{"products": []}'
+
+    cat = CategoryRef(slug="ferre-jardin", store_key="jardin", label="Jardín")
+    ad = PratAdapter(FakeHttp(), [cat])
+    with pytest.raises(NotAListingPage):
+        async for _ in ad.discover(cat):
+            pass
+
+    assert vistos == [{"User-Agent": BROWSER_USER_AGENT}]
