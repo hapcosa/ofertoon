@@ -62,11 +62,25 @@ async def _observar(conn, listing_id: int, dia: date) -> None:
     )
 
 
+async def _serie_completa(conn, listing_id, hoy, *, salvo=()) -> None:
+    """Observa todos los días de la ventana menos los de `salvo`.
+
+    Se siembra la ventana ENTERA en vez de un puñado de días fijos: estos tests
+    se escribieron contra `GAP_LOOKBACK_DAYS = 3` sembrando cuatro días, así que
+    al ampliar la ventana a 7 fallaron los tres por los días de más que quedaban
+    sin sembrar — no por un cambio de comportamiento. Lo que prueban es el
+    contrato (qué cuenta como agujero), no cuánto mide la ventana; eso lo fija
+    `test_la_ventana_llega_a_una_caida_de_hace_cinco_dias`.
+    """
+    for atras in range(1, db_module.GAP_LOOKBACK_DAYS + 1):
+        if atras not in salvo:
+            await _observar(conn, listing_id, hoy - timedelta(days=atras))
+
+
 async def test_serie_continua_no_reporta_nada(db_conn):
     listing_id = await _listing(db_conn)
     hoy = date.today()
-    for atras in range(1, 5):
-        await _observar(db_conn, listing_id, hoy - timedelta(days=atras))
+    await _serie_completa(db_conn, listing_id, hoy)
     assert await db_module.dias_sin_observaciones(db_conn) == []
 
 
@@ -74,18 +88,31 @@ async def test_encuentra_el_dia_que_falta(db_conn):
     """El patrón del 18-sep: un día entero sin una sola fila."""
     listing_id = await _listing(db_conn)
     hoy = date.today()
-    await _observar(db_conn, listing_id, hoy - timedelta(days=1))
-    # falta hoy-2
-    await _observar(db_conn, listing_id, hoy - timedelta(days=3))
+    await _serie_completa(db_conn, listing_id, hoy, salvo=(2,))
     assert await db_module.dias_sin_observaciones(db_conn) == [hoy - timedelta(days=2)]
 
 
 async def test_reporta_los_agujeros_del_mas_viejo_al_mas_nuevo(db_conn):
     listing_id = await _listing(db_conn)
     hoy = date.today()
-    await _observar(db_conn, listing_id, hoy - timedelta(days=1))
+    await _serie_completa(db_conn, listing_id, hoy, salvo=(2, 3))
     faltantes = await db_module.dias_sin_observaciones(db_conn)
     assert faltantes == [hoy - timedelta(days=3), hoy - timedelta(days=2)]
+
+
+async def test_la_ventana_llega_a_una_caida_de_hace_cinco_dias(db_conn):
+    """Por qué la ventana pasó de 3 días a 7, y el test que lo sujeta.
+
+    El agujero del 18-19 de septiembre de 2026 se descubrió CINCO días después,
+    mirando `price_points` a mano. Con la ventana de 3 días esta consulta ya no
+    lo veía: una caída de viernes a la que se llega el lunes caía afuera y no se
+    reportaba nunca. El ciclo real de atención de un operador es el fin de
+    semana, así que la ventana tiene que cubrirlo.
+    """
+    listing_id = await _listing(db_conn)
+    hoy = date.today()
+    await _serie_completa(db_conn, listing_id, hoy, salvo=(5,))
+    assert hoy - timedelta(days=5) in await db_module.dias_sin_observaciones(db_conn)
 
 
 async def test_hoy_nunca_cuenta_como_agujero(db_conn):

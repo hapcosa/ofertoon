@@ -34,7 +34,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import db
-from alerts import RunOutcome, format_summary, send_alert
+from alerts import PasadaFlaca, RunOutcome, format_summary, send_alert
 from scrapers.base import CategoryRef, CountingAdapter, RawProduct, StoreAdapter
 from scrapers.http import HttpClient
 
@@ -116,6 +116,86 @@ def canary_verdict(
             f"{len(history)} corridas ({drop}% menos)"
         )
     return "ok", None
+
+
+#: Cuántas pasadas hacia atrás se revisan por volumen. 14 son 7 días a la
+#: cadencia actual de 2 pasadas/día, la misma ventana que `db.GAP_LOOKBACK_DAYS`
+#: y por el mismo motivo: que un incidente de viernes siga reportándose el lunes.
+#: Se cuenta en pasadas y no en días a propósito — la unidad del modo de falla
+#: es la pasada, y si mañana la cadencia fuera de 3 por día, "7 días" cambiaría
+#: en silencio cuántas se revisan.
+PASS_VOLUME_LOOKBACK = 14
+
+#: Contra cuántas pasadas previas se compara. Mismo razonamiento que
+#: `CANARY_WINDOW`: largo para promediar el ruido, corto para seguir un catálogo
+#: que crece de verdad. Conectar una tienda nueva sube el volumen de golpe
+#: (10.869 → 16.500 entre el 23 y el 27 de septiembre de 2026) y la mediana
+#: móvil lo absorbe en ~4 pasadas.
+PASS_VOLUME_WINDOW = 7
+
+#: Con menos historia que esto no se evalúa nada. A diferencia del canario por
+#: target, acá NO hay piso absoluto de respaldo: cuántas observaciones escribe
+#: una pasada depende de cuántas tiendas estén conectadas, así que un número
+#: fijo sería una constante para revisar cada vez que se agrega una. Mejor ciego
+#: que gritando por ruido.
+PASS_VOLUME_MIN_HISTORY = 3
+
+#: Misma vara que `CANARY_DROP_RATIO`, y no por copiar el número: medido sobre
+#: las 113 pasadas del 4 de agosto al 29 de septiembre de 2026, la pasada sana
+#: más flaca quedó en 0,89 de su mediana móvil y los ocho incidentes reales
+#: cayeron entre 0,00 y 0,09. Entre 0,89 y 0,09 no hay nada, así que el umbral
+#: exacto no es delicado — cualquier valor del medio da los mismos 8 aciertos y
+#: 0 falsos positivos. Queda en 0,40 para no introducir un número más que
+#: justificar.
+PASS_VOLUME_DROP_RATIO = 0.40
+
+
+def pasadas_flacas(
+    volumenes: Sequence[tuple[datetime, int]],
+    *,
+    lookback: int = PASS_VOLUME_LOOKBACK,
+    window: int = PASS_VOLUME_WINDOW,
+    min_history: int = PASS_VOLUME_MIN_HISTORY,
+    drop_ratio: float = PASS_VOLUME_DROP_RATIO,
+) -> list[PasadaFlaca]:
+    """Pasadas que escribieron mucho menos que la mediana de las previas.
+
+    `volumenes` viene de `db.volumen_por_pasada`, de la más nueva a la más
+    vieja; el resultado sale al revés, como `dias_sin_observaciones`: primero lo
+    más viejo, que es lo que hace falta explicar.
+
+    Es el canario de `canary_verdict` una altura más arriba. El de allá compara
+    un target contra su propia historia y por eso es ciego al modo de falla que
+    importa acá: cuando la pasada muere a mitad, los targets que no llegaron a
+    correr no dejan fila que comparar, y los que sí corrieron salieron
+    perfectos. Ninguna corrida individual está mal; lo que falta son corridas.
+
+    Mediana y no promedio: el 15 de agosto de 2026 una pasada escribió 1.659.450
+    observaciones (el backfill de la migración al host nuevo) y el 24 de
+    septiembre otra escribió 39.333. Un promedio arrastrado por esos dos habría
+    dejado la vara arriba del volumen normal y marcado flaca a cada pasada sana
+    de la semana siguiente.
+
+    Sin historia suficiente no se opina, y con mediana 0 tampoco: después de
+    cuatro pasadas caídas seguidas la mediana móvil ES cero y la guarda se apaga
+    sola. Es el mismo autoapagado que ya tiene el canario por target (ver
+    CLAUDE.md): el diagnóstico se hace en esa ventana o no se hace.
+    """
+    flacas: list[PasadaFlaca] = []
+    for i, (inicio, observaciones) in enumerate(volumenes[:lookback]):
+        historia = [obs for _, obs in volumenes[i + 1 : i + 1 + window]]
+        if len(historia) < min_history:
+            continue
+        mediana = statistics.median(historia)
+        if mediana <= 0:
+            continue
+        if observaciones < mediana * (1 - drop_ratio):
+            flacas.append(
+                PasadaFlaca(
+                    inicio=inicio, observaciones=observaciones, mediana=mediana
+                )
+            )
+    return list(reversed(flacas))
 
 
 def resolve_adapter(path: str) -> type:
@@ -453,12 +533,19 @@ async def main() -> int:
             if not args.dry_run:
                 if not args.skip_pricing:
                     await run_pricing(pool)
-                # El agujero se consulta a la DB local, que es lo único que
-                # sobrevive a la caída de red que lo causó: la alerta de esa
-                # caída no pudo salir por el mismo motivo que falló el scraping.
+                # El agujero y las pasadas flacas se consultan a la DB local,
+                # que es lo único que sobrevive a la caída de red que los causó:
+                # la alerta de esa caída no pudo salir por el mismo motivo que
+                # falló el scraping. `outcomes` solo conoce la pasada de ahora, y
+                # el incidente que hay que reportar es casi siempre el anterior.
                 async with pool.acquire() as conn:
                     gap = await db.dias_sin_observaciones(conn)
-                await send_alert(format_summary(outcomes, gap))
+                    volumenes = await db.volumen_por_pasada(
+                        conn, limite=PASS_VOLUME_LOOKBACK + PASS_VOLUME_WINDOW
+                    )
+                await send_alert(
+                    format_summary(outcomes, gap, pasadas_flacas(volumenes))
+                )
             if args.once or stopping.is_set():
                 break
     finally:

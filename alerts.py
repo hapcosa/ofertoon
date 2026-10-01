@@ -17,6 +17,15 @@ estado que sobrevive a esa caída es la serie misma, que vive en el Postgres
 local: por eso el agujero se detecta leyendo la DB y se reporta en la primera
 pasada que SÍ logra hablar con Telegram.
 
+**La pasada a medias es un tercer caso, y no lo veía ninguna de las dos guardas
+anteriores** (ver `flacas`). El 29 de septiembre de 2026 una pasada perdió 62 de
+129 objetivos y escribió 1.481 observaciones contra las ~16.500 de siempre. No
+hubo alerta: el día no quedó vacío —así que `dias_sin_observaciones` lo vio
+sano—, el proceso murió dentro de `run_once` —así que sus propios `outcomes`
+nunca llegaron acá— y los 62 objetivos que no corrieron no dejaron fila en
+`scrape_runs`, que es lo único que el canario por target mira. Tres guardas y
+ninguna disparó.
+
 Configuración (ambas opcionales; sin ellas el módulo es un no-op y solo loguea):
     ALERT_BOT_TOKEN   token del bot que manda el aviso
     ALERT_CHAT_ID     chat destino (tu DM o un canal privado de operación)
@@ -27,7 +36,7 @@ import logging
 import os
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 logger = logging.getLogger("alerts")
 
@@ -50,51 +59,88 @@ class RunOutcome:
     error: str | None = None
 
 
+@dataclass(frozen=True)
+class PasadaFlaca:
+    """Una pasada que escribió mucho menos de lo que viene escribiendo."""
+
+    inicio: datetime
+    observaciones: int
+    mediana: float
+
+
+def _miles(n: float) -> str:
+    """16509 → '16.509'. Separador chileno, igual que el resto del proyecto."""
+    return f"{int(n):,}".replace(",", ".")
+
+
 def format_summary(
-    outcomes: Sequence[RunOutcome], gap_days: Sequence[date] = ()
+    outcomes: Sequence[RunOutcome],
+    gap_days: Sequence[date] = (),
+    flacas: Sequence[PasadaFlaca] = (),
 ) -> str | None:
     """Mensaje de la pasada, o `None` si no hay nada que reportar.
 
     `gap_days` son días completos sin ninguna observación
-    (`db.dias_sin_observaciones`). Se reportan aunque la pasada haya salido
-    verde: son la evidencia de una caída anterior cuya propia alerta no pudo
-    salir.
+    (`db.dias_sin_observaciones`). `flacas` son pasadas que corrieron a medias
+    (`runner.pasadas_flacas`). Las dos se reportan aunque la pasada de ahora
+    haya salido verde: son la evidencia de una caída anterior cuya propia alerta
+    no pudo salir.
+
+    Las secciones van de lo más viejo y más grave a lo más nuevo: un agujero
+    perdió la serie entera de esos días, una pasada flaca perdió medio día, y
+    los targets degradados de la pasada de ahora son el problema del momento.
     """
     bad = [o for o in outcomes if o.status in ("failed", "partial")]
-    if not bad and not gap_days:
+    if not bad and not gap_days and not flacas:
         return None
+
+    secciones: list[str] = []
 
     if gap_days:
         dias = ", ".join(d.isoformat() for d in gap_days)
-        aviso = (
+        secciones.append(
             f"🕳️ OfertasCL — {len(gap_days)} día(s) SIN observaciones: {dias}\n"
             "La serie tiene un agujero: nadie scrapeó o falló todo. "
             "Afecta n_days de cada listing y deja al backtest sin candidatos "
             "esos días."
         )
-        if not bad:
-            return aviso
 
-    failed = [o for o in bad if o.status == "failed"]
-    partial = [o for o in bad if o.status == "partial"]
-    total = len(outcomes)
-
-    header = (
-        f"⚠️ OfertasCL — pasada con {len(failed)} fallo(s) y "
-        f"{len(partial)} degradada(s) de {total} corridas"
-    )
-    lines = ([aviso, ""] if gap_days else []) + [header, ""]
-    for outcome in failed + partial:
-        icon = "❌" if outcome.status == "failed" else "🟡"
-        lines.append(
-            f"{icon} {outcome.store_slug}/{outcome.category_slug} "
-            f"[{outcome.store_key}] — {outcome.items_seen} items"
-            + (f": {outcome.error}" if outcome.error else "")
+    if flacas:
+        detalle = "\n".join(
+            f"  {f.inicio:%Y-%m-%d %H:%M} UTC — {_miles(f.observaciones)} obs "
+            f"vs mediana {_miles(f.mediana)} "
+            f"({round((1 - f.observaciones / f.mediana) * 100)}% menos)"
+            for f in flacas
         )
-        if len(lines) - 2 >= MAX_LINES:
-            lines.append(f"… y {len(bad) - MAX_LINES} más")
-            break
-    return "\n".join(lines)
+        secciones.append(
+            f"📉 OfertasCL — {len(flacas)} pasada(s) a medias:\n{detalle}\n"
+            "La pasada corrió pero escribió una fracción de lo normal. El día no "
+            "queda vacío, así que el aviso de agujero no la ve, y los objetivos "
+            "que nunca corrieron no dejan fila, así que el canario por target "
+            "tampoco. Ese medio día pesa menos en el p50 de cada listing."
+        )
+
+    if bad:
+        failed = [o for o in bad if o.status == "failed"]
+        partial = [o for o in bad if o.status == "partial"]
+        lines = [
+            f"⚠️ OfertasCL — pasada con {len(failed)} fallo(s) y "
+            f"{len(partial)} degradada(s) de {len(outcomes)} corridas",
+            "",
+        ]
+        for outcome in failed + partial:
+            icon = "❌" if outcome.status == "failed" else "🟡"
+            lines.append(
+                f"{icon} {outcome.store_slug}/{outcome.category_slug} "
+                f"[{outcome.store_key}] — {outcome.items_seen} items"
+                + (f": {outcome.error}" if outcome.error else "")
+            )
+            if len(lines) - 2 >= MAX_LINES:
+                lines.append(f"… y {len(bad) - MAX_LINES} más")
+                break
+        secciones.append("\n".join(lines))
+
+    return "\n\n".join(secciones)
 
 
 async def send_alert(text: str | None) -> bool:

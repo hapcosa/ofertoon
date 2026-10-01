@@ -247,12 +247,18 @@ async def finish_run(
     )
 
 
-#: Cuántos días hacia atrás se buscan agujeros en la serie. Corto a propósito:
-#: el aviso tiene que salir cuando el scraper se recupera y después callarse
-#: solo, sin estado que mantener ni tabla que marcar como "ya notificado". Con 3
-#: días, una caída se reporta en la primera pasada que vuelve a hablar con
-#: Telegram y deja de aparecer tres días después.
-GAP_LOOKBACK_DAYS = 3
+#: Cuántos días hacia atrás se buscan agujeros en la serie. El aviso tiene que
+#: salir cuando el scraper se recupera y después callarse solo, sin estado que
+#: mantener ni tabla que marcar como "ya notificado": el corte es la ventana.
+#:
+#: Eran 3 días, y 3 días es más corto que el tiempo que tarda un operador en
+#: mirar. El agujero del 18-19 de septiembre de 2026 se descubrió cinco días
+#: después, o sea que esta consulta ya no lo veía: una caída de viernes a la que
+#: se llega el lunes caía afuera de la ventana y no se reportaba NUNCA. Con 7
+#: días el aviso sobrevive a un fin de semana, que es el ciclo real de atención.
+#: El costo es repetir el mismo aviso en 14 pasadas en vez de 6; el mensaje dice
+#: cuántos días son y desaparece solo.
+GAP_LOOKBACK_DAYS = 7
 
 
 async def dias_sin_observaciones(
@@ -318,3 +324,59 @@ async def ultima_pasada(conn: asyncpg.Connection) -> datetime | None:
                              - INTERVAL '{PASS_WINDOW}'
         """
     )
+
+
+#: Cuántas pasadas se traen para evaluar volumen. Son las `evaluar` que se
+#: reportan más las que hacen de historia, y quien las reparte es el runner.
+#:
+#: El scan se acota a 30 días por costo: `scrape_runs` crece ~300 filas/día y la
+#: función window tiene que ordenarlas enteras. Con 2 pasadas/día, 30 días son
+#: 60 pasadas y el límite que manda es siempre el `LIMIT`, nunca la fecha.
+VOLUME_SCAN_DAYS = 30
+
+
+async def volumen_por_pasada(
+    conn: asyncpg.Connection, *, limite: int
+) -> list[tuple[datetime, int]]:
+    """`(inicio, observaciones escritas)` por pasada, de la más nueva a la más vieja.
+
+    `scrape_runs` no tiene una fila por pasada sino una por (tienda, llave), y
+    esas filas arrancan escalonadas a lo largo de los ~13 min que la pasada
+    tarda en recorrer las tiendas. La pasada se reconstruye agrupando por el
+    hueco: dos corridas separadas por más de `PASS_WINDOW` son de pasadas
+    distintas. Es el mismo criterio que usa `ultima_pasada`, por el mismo motivo.
+
+    Se suma `items_ok` —observaciones NUEVAS escritas— y no `items_seen`, porque
+    lo que esta guarda vigila es cuánta serie entró. Un target que enumera 900
+    productos y no logra persistir ninguno es exactamente el agujero que hay que
+    ver, y en `items_seen` no se nota.
+
+    Una corrida que murió a mitad queda en 'running' con `items_ok` en 0 hasta
+    que `sweep_stale_runs` la cierre, así que su volumen real no se cuenta. El
+    sesgo es hacia subestimar, que del lado seguro de una guarda de "faltó
+    volumen" es el lado correcto.
+    """
+    rows = await conn.fetch(
+        f"""
+        WITH corridas AS (
+            SELECT started_at, items_ok,
+                   CASE WHEN started_at - LAG(started_at) OVER (ORDER BY started_at)
+                             > INTERVAL '{PASS_WINDOW}'
+                        THEN 1 ELSE 0 END AS corte
+              FROM scrape_runs
+             WHERE started_at >= NOW() - ($1::int) * INTERVAL '1 day'
+        ), pasadas AS (
+            SELECT SUM(corte) OVER (ORDER BY started_at) AS pasada,
+                   started_at, items_ok
+              FROM corridas
+        )
+        SELECT MIN(started_at) AS inicio, SUM(items_ok)::int AS observaciones
+          FROM pasadas
+         GROUP BY pasada
+         ORDER BY inicio DESC
+         LIMIT $2
+        """,
+        VOLUME_SCAN_DAYS,
+        limite,
+    )
+    return [(r["inicio"], int(r["observaciones"])) for r in rows]
