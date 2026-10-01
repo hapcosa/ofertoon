@@ -94,6 +94,7 @@ class TelegramClient:
         parse_mode: str | None = None,
         *,
         disable_web_page_preview: bool = True,
+        message_thread_id: int | None = None,
     ) -> int | None:
         """Publica un mensaje y devuelve `message_id`; falla como no-op.
 
@@ -105,6 +106,14 @@ class TelegramClient:
         alerta o un DM no quieren card). El publisher de ofertas lo pone en
         False a propósito — la card del link ES la foto del producto, y así no
         hay que subir una imagen que puede fallar.
+
+        `message_thread_id` es el tema de un grupo-foro. Se agrega al payload
+        **solo cuando viene**, igual que `parse_mode` y por el mismo motivo: este
+        archivo es un port de signalsTrading y sus llamadores de allá —gate, DMs,
+        alertas— mandan a chats que no son foros. Un `message_thread_id` nulo
+        explícito en el payload haría fallar esas llamadas con
+        `MESSAGE_THREAD_NOT_FOUND`, así que el default conserva el contrato
+        original byte por byte.
         """
         if chat_id is None:
             logger.warning("telegram_send_skipped — tier channel_id missing")
@@ -116,6 +125,8 @@ class TelegramClient:
         }
         if parse_mode is not None:
             payload["parse_mode"] = parse_mode
+        if message_thread_id is not None:
+            payload["message_thread_id"] = message_thread_id
         result = await self._call("sendMessage", payload)
         if result is None:
             return None

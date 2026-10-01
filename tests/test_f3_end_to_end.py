@@ -81,7 +81,13 @@ class FakeTelegram:
         self._next_id = 1000
 
     async def send_message(
-        self, chat_id, text, parse_mode=None, *, disable_web_page_preview=True
+        self,
+        chat_id,
+        text,
+        parse_mode=None,
+        *,
+        disable_web_page_preview=True,
+        message_thread_id=None,
     ):
         if self.fail:
             return None
@@ -92,6 +98,7 @@ class FakeTelegram:
                 "text": text,
                 "parse_mode": parse_mode,
                 "preview": not disable_web_page_preview,
+                "thread_id": message_thread_id,
             }
         )
         return self._next_id

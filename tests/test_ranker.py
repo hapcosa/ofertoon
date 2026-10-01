@@ -235,3 +235,40 @@ def test_el_dia_calendario_se_calcula_igual_desde_utc() -> None:
     start, end = ranker.local_day_bounds(tarde_utc)
     assert start.astimezone(TZ).date().isoformat() == "2026-08-04"
     assert start <= tarde_utc < end
+
+
+# -----------------------------------------------------------------------------
+# Cuota por tema (migración 26). La unidad de cuota deja de ser el canal.
+# -----------------------------------------------------------------------------
+
+
+def test_la_cuota_del_tema_reemplaza_la_del_canal() -> None:
+    """Un tema con cuota 1 publica uno, aunque el canal permita seis."""
+    candidatos = [make(i, store_id=i, category_id=i) for i in range(1, 5)]
+
+    assert len(ranker.select(candidatos, posted=PostedToday(), now=NOW)) == 4
+    elegidos = ranker.select(candidatos, posted=PostedToday(), now=NOW, max_per_day=1)
+    assert len(elegidos) == 1
+
+
+def test_la_cuota_del_tema_cuenta_lo_ya_publicado_en_ese_tema() -> None:
+    """Con cuota 2 y uno ya publicado hoy en el tema, queda lugar para uno."""
+    candidatos = [make(i, store_id=i, category_id=i) for i in range(1, 5)]
+    posted = PostedToday(total=1, by_store={9: 1}, by_category={9: 1})
+
+    elegidos = ranker.select(candidatos, posted=posted, now=NOW, max_per_day=2)
+    assert len(elegidos) == 1
+
+
+def test_cuota_cero_apaga_el_tema_sin_apagar_el_resto() -> None:
+    """`daily_quota = 0` es la forma de silenciar un tema sin borrarlo."""
+    candidatos = [make(1)]
+    assert ranker.select(candidatos, posted=PostedToday(), now=NOW, max_per_day=0) == []
+
+
+def test_el_default_sigue_siendo_la_cuota_del_canal() -> None:
+    """Sin `max_per_day` nada cambia: es el canal sin temas de antes de la 26."""
+    candidatos = [make(i, store_id=i, category_id=i) for i in range(1, 10)]
+
+    elegidos = ranker.select(candidatos, posted=PostedToday(), now=NOW)
+    assert len(elegidos) == ranker.MAX_PER_DAY

@@ -33,7 +33,12 @@ logger = logging.getLogger("curation.ranker")
 #: según el horario de verano, justo en el mejor momento para publicar.
 TZ = ZoneInfo("America/Santiago")
 
-#: Techo diario por canal.
+#: Techo diario por destino. Es el default y el techo del canal sin temas; un
+#: grupo-foro lo reemplaza por `telegram_topics.daily_quota`, porque con siete
+#: temas un techo global hace que el tema con volumen se coma los lugares de los
+#: demás (medido: Tecnología ~8,8 señales/día contra ~1,5 de Ferretería). El
+#: criterio del docstring se aplica entonces por tema, que es la unidad que el
+#: suscriptor lee —y mutea— por separado.
 MAX_PER_DAY = 6
 #: Que no sean seis de la misma tienda ni seis notebooks.
 MAX_PER_STORE_PER_DAY = 2
@@ -115,6 +120,7 @@ def select(
     posted: PostedToday,
     now: datetime,
     limit: int | None = None,
+    max_per_day: int = MAX_PER_DAY,
 ) -> list[Candidate]:
     """Los candidatos que pueden publicarse ahora, en orden de publicación.
 
@@ -126,6 +132,11 @@ def select(
 
     Devuelve `[]` cuando no toca publicar — fuera de ventana, cuota agotada o
     demasiado pronto desde el último post. El daemon llama con `limit=1`.
+
+    `max_per_day` es la cuota del destino: `MAX_PER_DAY` para un canal sin temas,
+    `telegram_topics.daily_quota` para un tema de grupo-foro. `posted` tiene que
+    venir del MISMO destino que la cuota, o el tope se aplica contra la cuenta
+    equivocada.
     """
     if not within_window(now):
         return []
@@ -134,7 +145,7 @@ def select(
         if now - posted.last_posted_at < timedelta(minutes=MIN_MINUTES_BETWEEN):
             return []
 
-    remaining = MAX_PER_DAY - posted.total
+    remaining = max_per_day - posted.total
     if remaining <= 0:
         return []
 
@@ -200,8 +211,16 @@ _CANDIDATES_SQL = """
       -- El ruteo canal↔categoría. El INNER JOIN es la guarda: un candidato de
       -- una categoría que no está ruteada a este tier simplemente no existe
       -- para él.
+      --
+      -- `$3` es el tema: cuando viene, el candidato además tiene que pertenecer a
+      -- una categoría mapeada A ESE tema. Una categoría del tier con `topic_id`
+      -- NULL no entra en ningún tema — queda muda, y de avisarlo se encarga
+      -- `publisher.poster`, porque desde acá es indistinguible de no tener
+      -- ofertas. Con `$3` NULL la query es la de siempre: el canal sin temas.
       JOIN telegram_tier_categories AS tc
-             ON tc.category_id = l.category_id AND tc.tier_id = $1
+             ON tc.category_id = l.category_id
+            AND tc.tier_id = $1
+            AND ($3::int IS NULL OR tc.topic_id = $3)
       LEFT JOIN categories        AS c ON c.id = l.category_id
       LEFT JOIN listing_baselines AS b ON b.listing_id = l.id
      WHERE dc.verdict = 'accepted'
@@ -215,17 +234,25 @@ _CANDIDATES_SQL = """
 
 
 async def load_candidates(
-    conn: asyncpg.Connection, *, tier_id: int, now: datetime
+    conn: asyncpg.Connection,
+    *,
+    tier_id: int,
+    now: datetime,
+    topic_id: int | None = None,
 ) -> list[Candidate]:
-    """Aceptados frescos y sin publicar en este canal."""
+    """Aceptados frescos y sin publicar en este canal (o en este tema)."""
     rows = await conn.fetch(
-        _CANDIDATES_SQL, tier_id, now - timedelta(hours=MAX_AGE_HOURS)
+        _CANDIDATES_SQL, tier_id, now - timedelta(hours=MAX_AGE_HOURS), topic_id
     )
     return [Candidate(**dict(row)) for row in rows]
 
 
 async def load_posted_today(
-    conn: asyncpg.Connection, *, tier_id: int, now: datetime
+    conn: asyncpg.Connection,
+    *,
+    tier_id: int,
+    now: datetime,
+    topic_id: int | None = None,
 ) -> PostedToday:
     """Cuánto se publicó hoy en este canal, en día calendario de Santiago.
 
@@ -233,6 +260,11 @@ async def load_posted_today(
     `telegram_message_id` NULL. Esa fila significa "se reservó y el envío pudo
     haber salido": contarla es el lado seguro de la duda — como mucho se publica
     una oferta menos hoy.
+
+    Con `topic_id` cuenta solo lo publicado en ese tema, que es la unidad de
+    cuota del grupo-foro. Las filas anteriores a la migración 26 tienen
+    `topic_id` NULL y por eso no cuentan para ningún tema: son del canal sin
+    temas, y mezclarlas haría que los temas nacieran con la cuota ya gastada.
     """
     day_start, day_end = local_day_bounds(now)
     rows = await conn.fetch(
@@ -244,10 +276,12 @@ async def load_posted_today(
          WHERE dp.tier_id = $1
            AND dp.posted_at >= $2
            AND dp.posted_at <  $3
+           AND ($4::int IS NULL OR dp.topic_id = $4)
         """,
         tier_id,
         day_start,
         day_end,
+        topic_id,
     )
 
     by_store: dict[int, int] = {}
@@ -263,15 +297,34 @@ async def load_posted_today(
 
 
 async def next_batch(
-    conn: asyncpg.Connection, *, tier_id: int, now: datetime, limit: int | None = 1
+    conn: asyncpg.Connection,
+    *,
+    tier_id: int,
+    now: datetime,
+    limit: int | None = 1,
+    topic_id: int | None = None,
+    max_per_day: int = MAX_PER_DAY,
 ) -> list[Candidate]:
-    """Qué publicar ahora mismo en este canal. `[]` es la respuesta normal."""
-    posted = await load_posted_today(conn, tier_id=tier_id, now=now)
-    candidates = await load_candidates(conn, tier_id=tier_id, now=now)
-    chosen = select(candidates, posted=posted, now=now, limit=limit)
+    """Qué publicar ahora mismo en este destino. `[]` es la respuesta normal.
+
+    El destino es el canal (`topic_id=None`, cuota `MAX_PER_DAY`) o un tema del
+    grupo (`topic_id` + su `daily_quota`). Los dos argumentos van juntos siempre:
+    contar los posts de un tema contra la cuota del canal entero dejaría a cada
+    tema publicando seis.
+    """
+    posted = await load_posted_today(
+        conn, tier_id=tier_id, now=now, topic_id=topic_id
+    )
+    candidates = await load_candidates(
+        conn, tier_id=tier_id, now=now, topic_id=topic_id
+    )
+    chosen = select(
+        candidates, posted=posted, now=now, limit=limit, max_per_day=max_per_day
+    )
     logger.debug(
-        "ranker tier=%s: %d candidatos, %d publicados hoy, %d elegidos",
+        "ranker tier=%s topic=%s: %d candidatos, %d publicados hoy, %d elegidos",
         tier_id,
+        topic_id,
         len(candidates),
         posted.total,
         len(chosen),

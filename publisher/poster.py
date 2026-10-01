@@ -47,6 +47,22 @@ class Tier:
     channel_id: int
 
 
+@dataclass(frozen=True)
+class Topic:
+    """Un tema de un grupo-foro: el destino real dentro del chat del tier.
+
+    `quota` es la cuota diaria del tema y no del canal — ver la migración 26 §3.
+    `thread_id` nunca es None acá: un tema sin cablear no es un destino y
+    `load_active_topics` no lo devuelve.
+    """
+
+    id: int
+    slug: str
+    name: str
+    thread_id: int
+    quota: int
+
+
 #: Resultado de un intento de publicación. Se distingue el duplicado del fallo
 #: porque significan cosas opuestas: el duplicado es la defensa funcionando, el
 #: fallo es algo roto que hay que mirar.
@@ -91,24 +107,108 @@ async def load_active_tiers(conn: asyncpg.Connection) -> list[Tier]:
     return [Tier(r["id"], r["slug"], int(r["telegram_channel_id"])) for r in rows]
 
 
+async def load_active_topics(conn: asyncpg.Connection, *, tier_id: int) -> list[Topic]:
+    """Temas que pueden recibir ofertas, el que hace más tiempo que no postea primero.
+
+    `message_thread_id IS NOT NULL` es la guarda equivalente a la del canal: un
+    tema sin cablear existe en la tabla pero no es un destino. Una lista vacía
+    significa "este tier no es un grupo-foro todavía" y el poster cae al canal
+    plano — así la migración 26 se pudo aplicar con el publisher encendido.
+
+    El orden es el round-robin, y no es cosmético: `run_once` publica un solo
+    mensaje por vuelta en todo el chat, así que con un orden fijo el primer tema
+    se quedaría siempre con el lugar. Tecnología produce ~8,8 señales/día contra
+    ~1,5 de Ferretería: ordenado por id, Ferretería no publicaría nunca. Por
+    último post ascendente con NULLS FIRST, el turno rota solo y el tema que
+    todavía no habló va primero.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT tp.id, tp.slug, tp.name, tp.message_thread_id, tp.daily_quota,
+               (SELECT MAX(dp.posted_at)
+                  FROM deal_posts AS dp
+                 WHERE dp.topic_id = tp.id) AS last_posted_at
+          FROM telegram_topics AS tp
+         WHERE tp.tier_id = $1
+           AND tp.is_active
+           AND tp.message_thread_id IS NOT NULL
+         ORDER BY last_posted_at ASC NULLS FIRST, tp.id
+        """,
+        tier_id,
+    )
+    return [
+        Topic(
+            r["id"],
+            r["slug"],
+            r["name"],
+            int(r["message_thread_id"]),
+            int(r["daily_quota"]),
+        )
+        for r in rows
+    ]
+
+
+async def warn_categories_without_topic(
+    conn: asyncpg.Connection, *, tier_id: int
+) -> list[str]:
+    """Categorías ruteadas al tier que no tienen tema: no se publican en ninguno.
+
+    Se avisa porque el síntoma es indistinguible del normal. Una categoría sin
+    `topic_id` simplemente no aparece en ninguna query de tema, así que deja de
+    publicar **en silencio** — exactamente como una categoría que no tiene
+    ofertas. Una categoría nueva nace sin tema, y ese es el momento en que esto
+    pasa.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT c.slug
+          FROM telegram_tier_categories AS tc
+          JOIN categories AS c ON c.id = tc.category_id
+         WHERE tc.tier_id = $1
+           AND tc.topic_id IS NULL
+         ORDER BY c.slug
+        """,
+        tier_id,
+    )
+    slugs = [r["slug"] for r in rows]
+    if slugs:
+        logger.warning(
+            "%d categoría(s) del tier %s sin tema asignado — no se publican en "
+            "ningún tema: %s",
+            len(slugs),
+            tier_id,
+            ", ".join(slugs),
+        )
+    return slugs
+
+
 async def _reserve(
     conn: asyncpg.Connection,
     *,
     candidate_id: int,
     tier_id: int,
     posted_at: datetime,
+    topic_id: int | None = None,
 ) -> int | None:
-    """Toma el turno para publicar. `None` si ya estaba tomado."""
+    """Toma el turno para publicar. `None` si ya estaba tomado.
+
+    El `ON CONFLICT` sigue siendo por (candidate_id, tier_id) y no incluye el
+    tema a propósito: un candidato tiene una categoría, que tiene un tema, así
+    que no puede ir a dos temas del mismo tier. Sumar el tema a la llave no
+    evitaría ningún duplicado y sí permitiría publicar lo mismo dos veces si
+    alguien duplicara el mapeo. Ver la migración 26 §5.
+    """
     row = await conn.fetchrow(
         """
-        INSERT INTO deal_posts (candidate_id, tier_id, posted_at)
-             VALUES ($1, $2, $3)
+        INSERT INTO deal_posts (candidate_id, tier_id, posted_at, topic_id)
+             VALUES ($1, $2, $3, $4)
         ON CONFLICT (candidate_id, tier_id) DO NOTHING
           RETURNING id
         """,
         candidate_id,
         tier_id,
         posted_at,
+        topic_id,
     )
     return row["id"] if row else None
 
@@ -120,22 +220,31 @@ async def publish_one(
     tier: Tier,
     candidate: Candidate,
     now: datetime | None = None,
+    topic: Topic | None = None,
 ) -> tuple[str, int | None]:
     """Reserva, publica y confirma.
 
     Devuelve `(PUBLISHED, message_id)`, `(DUPLICATE, None)` o `(FAILED, None)`.
+
+    Con `topic` el mensaje va al tema de ese grupo-foro; sin él, al chat plano
+    como hasta la migración 26.
     """
     now = now or datetime.now(timezone.utc)
+    destino = f"{tier.slug}/{topic.slug}" if topic else tier.slug
 
     async with pool.acquire() as conn:
         post_id = await _reserve(
-            conn, candidate_id=candidate.candidate_id, tier_id=tier.id, posted_at=now
+            conn,
+            candidate_id=candidate.candidate_id,
+            tier_id=tier.id,
+            posted_at=now,
+            topic_id=topic.id if topic else None,
         )
     if post_id is None:
         logger.info(
             "candidato %s ya publicado en %s — se saltea",
             candidate.candidate_id,
-            tier.slug,
+            destino,
         )
         return DUPLICATE, None
 
@@ -146,6 +255,7 @@ async def publish_one(
             "HTML",
             # La card del link es la foto del producto. Ver `publisher/formatter.py`.
             disable_web_page_preview=False,
+            message_thread_id=topic.thread_id if topic else None,
         )
     except Exception:
         # `TelegramClient` no lanza, pero `format_deal` sí podría ante un dato
@@ -166,7 +276,7 @@ async def publish_one(
             logger.warning(
                 "no se pudo publicar el candidato %s en %s; se reintenta",
                 candidate.candidate_id,
-                tier.slug,
+                destino,
             )
             return FAILED, None
 
@@ -179,7 +289,7 @@ async def publish_one(
     logger.info(
         "publicado candidato %s en %s (message_id=%s): %s",
         candidate.candidate_id,
-        tier.slug,
+        destino,
         message_id,
         candidate.name[:60],
     )
@@ -198,6 +308,13 @@ async def run_once(
     `limit_per_tier=1` es el default a propósito: el daemon despierta seguido y
     publica de a una, y el espaciado mínimo del ranker hace el resto. Publicar la
     cuota entera de una vuelta convertiría el canal en una ráfaga cada 12 h.
+
+    Con temas (migración 26) el destino es el par (chat, tema) y la cuota es de
+    cada tema, pero el límite por vuelta sigue siendo **uno por chat**: siete
+    temas publicando uno cada uno serían siete notificaciones juntas, que es la
+    ráfaga que el espaciado existe para evitar. El turno rota por orden de
+    `load_active_topics`, así que repartir entre temas es cuestión de vueltas, no
+    de mandar todo junto.
     """
     now = now or datetime.now(timezone.utc)
 
@@ -207,20 +324,45 @@ async def run_once(
     considered = published = failed = duplicates = 0
     for tier in tiers:
         async with pool.acquire() as conn:
-            batch: Sequence[Candidate] = await ranker.next_batch(
-                conn, tier_id=tier.id, now=now, limit=limit_per_tier
-            )
-        considered += len(batch)
-        for candidate in batch:
-            outcome, _ = await publish_one(
-                pool, client, tier=tier, candidate=candidate, now=now
-            )
-            if outcome == PUBLISHED:
-                published += 1
-            elif outcome == DUPLICATE:
-                duplicates += 1
-            else:
-                failed += 1
+            topics = await load_active_topics(conn, tier_id=tier.id)
+            if topics:
+                await warn_categories_without_topic(conn, tier_id=tier.id)
+
+        # Sin temas cableados, el canal plano de siempre. `destinos` es la lista
+        # de (tema, cuota) a recorrer; `None` es "el chat, sin thread".
+        destinos: list[Topic | None] = list(topics) if topics else [None]
+        #: Local al chat: `published` es el acumulado de todos los tiers, y usarlo
+        #: para cortar haría que el primer tier que publica deje muda la vuelta
+        #: entera del segundo.
+        publicados_aca = 0
+
+        for topic in destinos:
+            async with pool.acquire() as conn:
+                batch: Sequence[Candidate] = await ranker.next_batch(
+                    conn,
+                    tier_id=tier.id,
+                    now=now,
+                    limit=limit_per_tier,
+                    topic_id=topic.id if topic else None,
+                    max_per_day=topic.quota if topic else ranker.MAX_PER_DAY,
+                )
+            considered += len(batch)
+            for candidate in batch:
+                outcome, _ = await publish_one(
+                    pool, client, tier=tier, candidate=candidate, now=now, topic=topic
+                )
+                if outcome == PUBLISHED:
+                    published += 1
+                    publicados_aca += 1
+                elif outcome == DUPLICATE:
+                    duplicates += 1
+                else:
+                    failed += 1
+            # Un mensaje por chat por vuelta: si este tema publicó, los demás
+            # esperan la próxima. El duplicado y el fallo NO consumen el turno —
+            # el primero no mandó nada y el segundo liberó su reserva.
+            if publicados_aca and topic is not None:
+                break
 
     stats = PublishStats(len(tiers), considered, published, failed, duplicates)
     if considered or published:
