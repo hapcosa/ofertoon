@@ -22,7 +22,7 @@ from typing import Any
 
 from catalog.normalize import clean_text, normalize_brand, parse_clp
 from scrapers.base import MAX_PLAUSIBLE_CLP, CategoryRef, RawProduct
-from scrapers.http import HttpClient
+from scrapers.http import BROWSER_HEADERS, HttpClient
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +172,10 @@ class _FalabellaFamilyAdapter:
     #: (`cat70057/Notebooks`), así que NO se url-encodea: lleva `/` significativo.
     listing_path: str = ""
     max_pages: int = 20
+    #: Headers por request. `None` = los del `HttpClient`, que se identifican como
+    #: bot. Una tienda cuyo borde exige parecer un navegador lo sobreescribe (ver
+    #: `TottusAdapter`).
+    _headers: dict[str, str] | None = None
 
     def __init__(self, http: HttpClient, categories: Sequence[CategoryRef]) -> None:
         self._http = http
@@ -189,7 +193,9 @@ class _FalabellaFamilyAdapter:
 
         while page <= self.max_pages:
             url = self._page_url(category, page)
-            html = await self._http.get_text(url, rps=self.rate_limit_rps)
+            html = await self._http.get_text(
+                url, rps=self.rate_limit_rps, headers=self._headers
+            )
             scraped_at = datetime.now(timezone.utc)
             try:
                 products, pagination = parse_listing(
@@ -287,3 +293,76 @@ class SodimacAdapter(_FalabellaFamilyAdapter):
     slug = "sodimac"
     base_url = "https://www.sodimac.cl"
     listing_path = "/sodimac-cl/lista"
+
+
+class TottusAdapter(_FalabellaFamilyAdapter):
+    """El supermercado del grupo Falabella. `store_key` = `CATG27055/Despensa`.
+
+    **No es VTEX, y eso costó un descarte equivocado.** El plan la tenía como
+    "borde abierto, origen roto" porque su API de catálogo VTEX contesta 503 y las
+    rutas inventadas 526. Las dos cosas son ciertas y ninguna es un problema:
+    Tottus corre la plataforma de Falabella (`__NEXT_DATA__`, 641 menciones de
+    `falabella` en su home), así que **nunca tuvo una API VTEX** — el 503 es lo
+    que devuelve un upstream al que se le pide una ruta que no existe. Verificado
+    el 2026-10-01: con el `store_key` real da HTTP 200 y `parse_listing` lo
+    entiende sin una línea nueva.
+
+    Y el 200 de la home tampoco probaba nada: venía con `cf-cache-status: HIT` y
+    `age: 2381`, o sea de la cache de Cloudflare, no del origen.
+
+    **Exige el juego COMPLETO de headers de navegador**, no solo el User-Agent.
+    Aislado el 2026-10-01, 3 intentos de cada uno contra la misma URL:
+
+        DEFAULT_USER_AGENT      403 ×3
+        BROWSER_USER_AGENT      403 ×3   ← el UA solo NO alcanza
+        BROWSER_HEADERS         200 ×3
+
+    Es el caso que `http.BROWSER_HEADERS` documenta —lo que delata al cliente es
+    la ausencia de `Accept-Language`, `Accept-Encoding` y `Sec-Fetch-*`— y la
+    diferencia con Prat, donde el UA de navegador bastaba.
+
+    `max_pages` sube a 45 porque sus paraguas son grandes: Despensa declara 2.060
+    productos y a 48 por página son 43. Con el default de 20 se perdería más de la
+    mitad del catálogo **sin un solo error**, porque el corte por `max_pages` es
+    silencioso; lo único que lo delataría es el canario exacto contra `count`.
+
+    ⚠️ **`in_stock` es ciego acá, igual que en Falabella y Paris.** Su
+    `availability` no habla de stock sino de modos de envío (`expressShipping`,
+    `pickUpFromStoreShipping`), así que no sirve para la guarda del detector.
+    """
+
+    slug = "tottus"
+    base_url = "https://www.tottus.cl"
+    listing_path = "/tottus-cl/lista"
+    #: Sin esto, HTTP 403 en todas las páginas. Ver el docstring.
+    _headers = BROWSER_HEADERS
+    #: Despensa son 43 páginas. Ver el docstring.
+    max_pages = 45
+
+    #: Orden explícito por precio ascendente, y es lo que hace confiable su serie.
+    #:
+    #: Su default es `_score,desc` ("Recomendados"), un ranking de relevancia con
+    #: boost de publicidad que **cambia entre requests**: paginarlo devuelve
+    #: productos repetidos en el medio del catálogo y deja otros sin ver nunca.
+    #: Medido el 2026-10-01 sobre `Mascotas` (427 declarados, 9 páginas), tres
+    #: recorridos completos:
+    #:
+    #:     sin sortBy          435 filas → 389 únicos   cobertura 0,911
+    #:     _score,desc         435 filas → 389 únicos   cobertura 0,911
+    #:     currentPrice,asc    427 filas → 422 únicos   cobertura 0,988
+    #:
+    #: El perfil por página lo explica: con el orden por precio cada página aporta
+    #: casi 48 nuevos (48, 45, 48, 48, 48, 46, 48, 48, 43), con el default las
+    #: páginas 5 a 8 aportan 40, 46, 40 y 28. Y el default no es estable ni entre
+    #: corridas: dos recorridos del mismo día dieron 326 y 389 únicos.
+    #:
+    #: Lo que se gana no es cobertura por la cobertura: un SKU que aparece de
+    #: forma intermitente no acumula observaciones y nunca llega a `MIN_DAYS`, así
+    #: que con el orden inestable una fracción del catálogo jamás produce una
+    #: baseline. El precio tampoco es perfectamente estable —cambia dos veces al
+    #: día y mueve productos de página— pero es dos órdenes más estable que un
+    #: score de relevancia, y los números lo confirman.
+    SORT_BY = "derived.currentPrice%2Casc"
+
+    def _page_url(self, category: CategoryRef, page: int) -> str:
+        return f"{super()._page_url(category, page)}&sortBy={self.SORT_BY}"
