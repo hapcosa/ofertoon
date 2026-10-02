@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import importlib.util
 import logging
 import random
 import time
@@ -38,6 +39,36 @@ BROWSER_USER_AGENT = (
     "Chrome/126.0.0.0 Safari/537.36"
 )
 
+def _accept_encoding_soportado() -> str:
+    """Las compresiones que REALMENTE podemos descomprimir, en orden de preferencia.
+
+    No se escribe a mano, y por un bug medido el 2026-10-02: el header decía
+    `gzip, deflate, br` y **brotli no está instalado**, así que httpx no podía
+    descomprimir lo que nosotros mismos pedíamos. Una tienda que elige `br`
+    devuelve entonces un cuerpo binario con HTTP 200, y el parser lo lee como una
+    página sin productos — `NotAListingPage`, o sea un `failed` cuyo síntoma
+    aparenta "la tienda cambió de formato". Verificado contra Falabella, que SÍ
+    responde `br` cuando se lo ofrecen: 190 KB ilegibles contra 1.068 KB de HTML.
+
+    En producción no había daño todavía: de las dos tiendas que mandan estos
+    headers, Tottus y Nike, las dos responden `gzip` aunque se les ofrezca `br`.
+    O sea funcionaban por elección del servidor y no por diseño, y el día que su
+    CDN cambie de opinión fallan las dos en silencio.
+
+    Derivarlo de los módulos presentes cierra la clase de bug entera: el header no
+    puede volver a prometer lo que no sabemos leer, y si algún día se agrega
+    `brotli` a `requirements.txt` lo incluye solo. El costo es un poco de fidelidad
+    de navegador —Chrome siempre ofrece `br`— y está medido que no cuesta acceso:
+    con `gzip, deflate` Tottus sigue dando 200 y la API de Nike 206.
+    """
+    codecs = ["gzip", "deflate"]
+    # Los mismos que httpx mira para decidir si puede decodificar.
+    for modulo, token in (("brotli", "br"), ("brotlicffi", "br"), ("zstandard", "zstd")):
+        if importlib.util.find_spec(modulo) is not None and token not in codecs:
+            codecs.append(token)
+    return ", ".join(codecs)
+
+
 #: El juego completo de headers que manda un navegador. Para las tiendas cuyo
 #: borde no mira el User-Agent sino la **ausencia** de los headers que cualquier
 #: navegador envía — sobre todo `Accept-Language`, `Accept-Encoding` y la familia
@@ -66,7 +97,7 @@ BROWSER_HEADERS = {
         "image/avif,image/webp,*/*;q=0.8"
     ),
     "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
-    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Encoding": _accept_encoding_soportado(),
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
     "Sec-Fetch-Site": "none",

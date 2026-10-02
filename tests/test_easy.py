@@ -318,7 +318,11 @@ def test_browser_headers_trae_lo_que_delataba_al_cliente_pelado():
     from scrapers.http import BROWSER_HEADERS
 
     assert BROWSER_HEADERS["Accept-Language"].startswith("es-CL")
-    assert "br" in BROWSER_HEADERS["Accept-Encoding"]
+    # Lo que delata a un cliente pelado es la AUSENCIA del header, no que ofrezca
+    # `br`. Este assert pedía "br" y era la afirmación equivocada: pedíamos una
+    # compresión que no sabemos descomprimir — ver
+    # `test_no_prometemos_una_compresion_que_no_sabemos_leer`.
+    assert BROWSER_HEADERS["Accept-Encoding"]
     for h in ("Sec-Fetch-Dest", "Sec-Fetch-Mode", "Sec-Fetch-Site", "Sec-Fetch-User"):
         assert h in BROWSER_HEADERS
 
@@ -340,3 +344,33 @@ def test_el_default_sigue_identificandose_como_bot():
     from scrapers.http import DEFAULT_USER_AGENT
 
     assert "ofertascl-bot" in DEFAULT_USER_AGENT
+
+
+def test_no_prometemos_una_compresion_que_no_sabemos_leer():
+    """El bug del 2026-10-02: el header pedía `br` y brotli no estaba instalado.
+
+    Una tienda que elige `br` devuelve entonces un cuerpo binario con HTTP 200 y el
+    parser lo lee como página sin productos — un `failed` cuyo síntoma aparenta
+    "la tienda cambió de formato". Medido contra Falabella, que sí responde `br`
+    cuando se lo ofrecen: 190 KB ilegibles contra 1.068 KB de HTML.
+
+    Este test es la guarda de la clase entera: si alguien vuelve a escribir el
+    header a mano, o saca un codec de `requirements.txt`, acá se ve.
+    """
+    import importlib.util
+
+    from scrapers.http import BROWSER_HEADERS, BROWSER_HEADERS_JSON
+
+    disponibles = {"gzip", "deflate"}
+    if importlib.util.find_spec("brotli") or importlib.util.find_spec("brotlicffi"):
+        disponibles.add("br")
+    if importlib.util.find_spec("zstandard"):
+        disponibles.add("zstd")
+
+    for headers in (BROWSER_HEADERS, BROWSER_HEADERS_JSON):
+        pedidos = {t.strip() for t in headers["Accept-Encoding"].split(",")}
+        assert pedidos <= disponibles, (
+            f"se pide {pedidos - disponibles} y no hay con qué descomprimirlo"
+        )
+        # gzip siempre: sin él duplicamos el tráfico de un host que sale por WiFi USB.
+        assert "gzip" in pedidos
