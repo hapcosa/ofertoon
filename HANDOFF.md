@@ -1391,6 +1391,48 @@ documentada). Ojo con la guarda de volumen en los próximos días: su mediana m�
 tiene pasadas de 16.700 y de 31.000 mezcladas, y tarda ~4 pasadas en asentarse en
 el nivel nuevo.
 
+## 2026-10-02 (cont.): stock del candidato, y un bug de compresión
+
+### `publisher/stock.py` — no publicar lo que no se puede comprar
+
+Punto 8 del handoff, cerrado para tres de las cuatro tiendas ciegas. Antes de
+publicar se abre la ficha del candidato y se lee su disponibilidad; el resultado
+queda en `deal_candidates.stock_ok` (migración 30).
+
+- **Medido antes de construirlo: 2,5%.** De los 40 candidatos aceptados más
+  recientes de Falabella y Sodimac, 39 disponibles y 1 agotado. Es un pulido de ~1
+  oferta cada cinco días, **no un salto de precisión** — el detector ya acierta en
+  el 97,5% por este eje y el backtest no va a moverse.
+- ⚠️ **El lector tuvo un agujero exactamente donde importaba.** `isOutOfStock` está
+  en `pageProps` en algunas fichas y en `pageProps.productData` en otras; mirando
+  solo la primera, 2 de 14 fichas quedaban sin señal **y las dos estaban
+  agotadas**. Las que anidan el dato son justamente las que no traen `availability`
+  en el JSON-LD. Apareció al probar en vivo, no en los tests: **un lector de ficha
+  hay que probarlo contra fichas agotadas**. Con las dos ubicaciones, cobertura
+  100% sobre 18 fichas frescas (13 disponibles, 5 agotados, 0 sin señal).
+- **Paris queda afuera**: su ficha trae JSON-LD de Product pero sin
+  `offers.availability`. Devuelve `None`, que no bloquea.
+- La verificación en vivo del camino completo **se ejercita en la primera
+  publicación del 3-oct**: la cuota del 2 ya estaba agotada (6 posts) cuando se
+  desplegó, así que el ranker no devolvía candidatos y `stock_checked_at` sigue en 0.
+  Está cubierta por 16 tests y por la prueba contra fichas reales.
+
+### Un bug de compresión que no estaba haciendo daño todavía
+
+`BROWSER_HEADERS` pedía `Accept-Encoding: gzip, deflate, br` y **brotli no está
+instalado**: httpx no podía descomprimir lo que ofrecíamos. Una tienda que elige
+`br` devuelve un cuerpo binario con HTTP 200 y el parser lo lee como página sin
+productos — un `failed` cuyo síntoma aparenta "la tienda cambió de formato".
+
+Medido contra Falabella, que sí responde `br`: 190 KB ilegibles contra 1.068 KB de
+HTML. **No había daño porque las dos tiendas que mandan estos headers (Tottus,
+Nike) responden `gzip` por elección del servidor** — funcionaban por suerte, y el
+día que su CDN cambiara fallaban las dos a la vez. Ahora el header se deriva de los
+codecs presentes, así que no puede volver a desincronizarse.
+
+Lo encontré de casualidad, investigando la ficha de Falabella para el verificador
+de stock: su cuerpo llegaba binario.
+
 ## Lo que sigue, en orden
 
 0. **La guarda por volumen quedó cerrada** (ver la sección de arriba). Lo único

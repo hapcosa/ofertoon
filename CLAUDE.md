@@ -419,11 +419,33 @@ la página 1 en el fixture y la verificación de centinelas— está en
   Las filas "Sin Stock" de la sucursal vienen sin precio ni SKU: se enumeran
   (cuentan para el total declarado, que el canario compara) y no se emiten. De 302
   filas conectadas, ~217 traían precio.
-- **`in_stock` es ciego en Paris, Falabella y Tottus**: hoy lo asumen `True`, así
-  que la guarda de stock del detector no protege nada ahí. En Tottus el campo
-  `availability` existe y **es una trampa**: habla de modos de envío
-  (`expressShipping`, `pickUpFromStoreShipping`), no de stock. Se arregla en F3
-  verificando la ficha solo del candidato (10–30 fetches/día, no 2.898).
+- **`in_stock` sigue ciego en la INGESTA de Paris, Falabella, Sodimac y Tottus**
+  —lo asumen `True`, así que la guarda del detector no protege nada ahí— pero desde
+  el 2026-10-02 **el candidato se verifica en su ficha antes de publicar**
+  (`publisher/stock.py`, migración 30). En Tottus el campo `availability` del
+  LISTADO es una trampa: habla de modos de envío (`expressShipping`,
+  `pickUpFromStoreShipping`), no de stock.
+  Cuánto arreglaba, medido antes de construirlo: de los 40 candidatos aceptados más
+  recientes de Falabella y Sodimac, **39 disponibles y 1 agotado (2,5%)**. Es un
+  pulido de ~1 oferta cada cinco días, no un salto de precisión — no esperes ver el
+  efecto en el backtest. Paris queda afuera del verificador: su ficha trae JSON-LD
+  de Product pero **sin** `offers.availability`.
+- **`isOutOfStock` cambia de lugar entre fichas de la familia Falabella, y el
+  agujero cae justo donde importa.** Está en `pageProps.isOutOfStock` en algunas
+  fichas y en `pageProps.productData.isOutOfStock` en otras. Mirando solo la
+  primera, 2 de 14 fichas reales quedaban sin señal **y las dos estaban agotadas**:
+  las fichas que anidan el dato son justamente las que no traen `availability` en su
+  JSON-LD, así que el fallback "no sé, publico" se activaba en el único caso que la
+  guarda existe para atajar. Con las dos ubicaciones la cobertura es 100% sobre 18
+  fichas frescas de las tres tiendas. Moraleja general: **un lector de ficha hay que
+  probarlo contra fichas agotadas, no contra las que están a la venta** — el camino
+  feliz no ejercita la guarda.
+- **En la publicación, la duda no bloquea.** `publisher/stock.py` devuelve `None`
+  ante una tienda sin lector, una ficha que no responde o un formato cambiado, y
+  `None` publica: callar el canal es peor que una oferta agotada. Solo un `False`
+  explícito frena. El resultado se persiste (`deal_candidates.stock_ok`) porque un
+  candidato vive 13 h y el daemon despierta cada 300 s: sin eso serían ~150 fetches
+  de la misma ficha contra un presupuesto diario de 10-30.
 - **Un 503 de una API que la tienda NO USA no dice nada del origen.** Tottus
   estuvo descartada semanas como "el borde pasa, el origen falla" porque su API
   VTEX contesta 503 y sus rutas 526. Las dos cosas son ciertas y ninguna
