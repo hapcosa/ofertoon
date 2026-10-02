@@ -26,6 +26,7 @@ import signal
 import asyncpg
 
 from publisher.poster import run_once
+from scrapers.http import HttpClient
 from subscriptions.telegram_client import TelegramClient
 
 logger = logging.getLogger("publisher.daemon")
@@ -80,6 +81,10 @@ async def run(*, once: bool = False) -> None:
 
     pool = await asyncpg.create_pool(database_url, min_size=1, max_size=2)
     client = TelegramClient(token)
+    # Para verificar la disponibilidad del candidato en su ficha antes de publicar
+    # (migración 30). Son 10-30 fetches por día: un cliente de vida larga, no uno
+    # por vuelta, así el rate limit por host persiste entre ciclos.
+    http = HttpClient()
 
     stop_event = asyncio.Event()
 
@@ -104,7 +109,7 @@ async def run(*, once: bool = False) -> None:
         while not stop_event.is_set():
             if enabled:
                 try:
-                    await run_once(pool, client)
+                    await run_once(pool, client, http=http)
                 except Exception:
                     # Publicar es lo irreversible, pero fallar publicando no
                     # puede matar al daemon: el próximo ciclo reintenta y las
@@ -117,6 +122,7 @@ async def run(*, once: bool = False) -> None:
             except asyncio.TimeoutError:
                 pass
     finally:
+        await http.aclose()
         await pool.close()
         logger.info("publisher_daemon_stopped")
 

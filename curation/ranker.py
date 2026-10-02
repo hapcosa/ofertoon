@@ -80,6 +80,10 @@ class Candidate:
     detected_at: datetime
     #: p10 de la baseline vigente: el "piso habitual" de los últimos 60 días.
     p10: Decimal | None = None
+    #: Slug de la tienda. Lo usa `publisher.stock` para decidir si sabe leer su
+    #: ficha. Con default porque los tests puros del ranker construyen `Candidate`
+    #: a mano y la tienda no les importa.
+    store_slug: str | None = None
     #: Mínimo con stock de los 60 días PREVIOS a esta observación — excluyéndola.
     #: No se puede usar `listing_baselines.min_60d` para esto: las baselines se
     #: recomputan antes de correr el detector, así que ese mínimo ya incluye el
@@ -197,6 +201,7 @@ _CANDIDATES_SQL = """
            l.name_raw      AS name,
            l.url,
            s.name          AS store_name,
+           s.slug          AS store_slug,
            c.name          AS category_name,
            b.p10_60d       AS p10,
            (SELECT MIN(pp.price_effective)
@@ -224,6 +229,10 @@ _CANDIDATES_SQL = """
       LEFT JOIN categories        AS c ON c.id = l.category_id
       LEFT JOIN listing_baselines AS b ON b.listing_id = l.id
      WHERE dc.verdict = 'accepted'
+       -- Agotado en la ficha: no se publica. `NULL` (no se verificó, tienda sin
+       -- verificador, o la ficha no respondió) sí pasa — la duda no bloquea.
+       -- Ver `publisher/stock.py` y la migración 30.
+       AND dc.stock_ok IS NOT FALSE
        AND dc.detected_at >= $2
        AND NOT EXISTS (
            SELECT 1 FROM deal_posts AS dp

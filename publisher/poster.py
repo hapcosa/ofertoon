@@ -32,7 +32,9 @@ import asyncpg
 
 from curation import ranker
 from curation.ranker import Candidate
+from publisher import stock
 from publisher.formatter import format_deal
+from scrapers.http import HttpClient
 from subscriptions.telegram_client import TelegramClient
 
 logger = logging.getLogger("publisher.poster")
@@ -69,6 +71,10 @@ class Topic:
 PUBLISHED = "published"
 DUPLICATE = "duplicate"
 FAILED = "failed"
+#: La ficha dice que está agotado. Es la guarda funcionando, igual que el
+#: duplicado: no hay nada roto que mirar y el candidato no se reintenta porque el
+#: resultado quedó en `deal_candidates.stock_ok`.
+OUT_OF_STOCK = "out_of_stock"
 
 
 @dataclass(frozen=True)
@@ -78,13 +84,17 @@ class PublishStats:
     published: int = 0
     failed: int = 0
     skipped_duplicate: int = 0
+    skipped_out_of_stock: int = 0
 
     def __str__(self) -> str:
-        return (
+        base = (
             f"{self.tiers} canal(es), {self.considered} elegidos, "
             f"{self.published} publicados, {self.failed} fallidos, "
             f"{self.skipped_duplicate} duplicados salteados"
         )
+        if self.skipped_out_of_stock:
+            base += f", {self.skipped_out_of_stock} agotados en la ficha"
+        return base
 
 
 async def load_active_tiers(conn: asyncpg.Connection) -> list[Tier]:
@@ -182,6 +192,57 @@ async def warn_categories_without_topic(
     return slugs
 
 
+async def _registrar_stock(
+    pool: asyncpg.Pool, *, candidate_id: int, disponible: bool | None
+) -> None:
+    """Deja el resultado de la verificación en el candidato.
+
+    Se persiste incluso cuando es `None`: `stock_checked_at` es lo que distingue
+    "no se intentó" de "se intentó y no se supo", y sin eso un candidato cuya ficha
+    no responde se re-consultaría en cada vuelta del daemon — ~150 fetches de la
+    misma ficha contra un presupuesto diario de 10-30.
+    """
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE deal_candidates
+               SET stock_ok = $2, stock_checked_at = NOW()
+             WHERE id = $1
+            """,
+            candidate_id,
+            disponible,
+        )
+
+
+async def _hay_stock(
+    pool: asyncpg.Pool,
+    http: HttpClient | None,
+    *,
+    candidate: Candidate,
+    store_slug: str | None,
+) -> bool:
+    """¿Se puede publicar este candidato? Solo un `False` explícito lo frena.
+
+    Sin `http` no se verifica nada y se publica: es el comportamiento de antes de
+    la migración 30, y el que usan los tests que no quieren salir a la red.
+    """
+    # Sin lector para la tienda no se escribe nada: no hubo verificación, y
+    # registrarla mentiría en el dataset además de costar un UPDATE por vuelta.
+    if http is None or not stock.sabe_leer(store_slug):
+        return True
+
+    disponible = await stock.verificar(http, store_slug=store_slug, url=candidate.url)
+    await _registrar_stock(pool, candidate_id=candidate.candidate_id, disponible=disponible)
+    if disponible is False:
+        logger.info(
+            "candidato %s agotado en la ficha — no se publica: %s",
+            candidate.candidate_id,
+            candidate.name[:60],
+        )
+        return False
+    return True
+
+
 async def _reserve(
     conn: asyncpg.Connection,
     *,
@@ -221,6 +282,7 @@ async def publish_one(
     candidate: Candidate,
     now: datetime | None = None,
     topic: Topic | None = None,
+    http: HttpClient | None = None,
 ) -> tuple[str, int | None]:
     """Reserva, publica y confirma.
 
@@ -231,6 +293,13 @@ async def publish_one(
     """
     now = now or datetime.now(timezone.utc)
     destino = f"{tier.slug}/{topic.slug}" if topic else tier.slug
+
+    # Antes de reservar: una ficha que dice "agotado" no gasta el turno del
+    # candidato ni deja una fila en `deal_posts` que después haya que explicar.
+    if not await _hay_stock(
+        pool, http, candidate=candidate, store_slug=candidate.store_slug
+    ):
+        return OUT_OF_STOCK, None
 
     async with pool.acquire() as conn:
         post_id = await _reserve(
@@ -302,6 +371,7 @@ async def run_once(
     *,
     now: datetime | None = None,
     limit_per_tier: int | None = 1,
+    http: HttpClient | None = None,
 ) -> PublishStats:
     """Una vuelta del publisher sobre todos los canales activos.
 
@@ -321,7 +391,7 @@ async def run_once(
     async with pool.acquire() as conn:
         tiers = await load_active_tiers(conn)
 
-    considered = published = failed = duplicates = 0
+    considered = published = failed = duplicates = agotados = 0
     for tier in tiers:
         async with pool.acquire() as conn:
             topics = await load_active_topics(conn, tier_id=tier.id)
@@ -349,13 +419,21 @@ async def run_once(
             considered += len(batch)
             for candidate in batch:
                 outcome, _ = await publish_one(
-                    pool, client, tier=tier, candidate=candidate, now=now, topic=topic
+                    pool,
+                    client,
+                    tier=tier,
+                    candidate=candidate,
+                    now=now,
+                    topic=topic,
+                    http=http,
                 )
                 if outcome == PUBLISHED:
                     published += 1
                     publicados_aca += 1
                 elif outcome == DUPLICATE:
                     duplicates += 1
+                elif outcome == OUT_OF_STOCK:
+                    agotados += 1
                 else:
                     failed += 1
             # Un mensaje por chat por vuelta: si este tema publicó, los demás
@@ -364,7 +442,9 @@ async def run_once(
             if publicados_aca and topic is not None:
                 break
 
-    stats = PublishStats(len(tiers), considered, published, failed, duplicates)
+    stats = PublishStats(
+        len(tiers), considered, published, failed, duplicates, agotados
+    )
     if considered or published:
         logger.info("publisher: %s", stats)
     return stats
