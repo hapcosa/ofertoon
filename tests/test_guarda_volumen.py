@@ -158,15 +158,24 @@ def test_el_umbral_exacto_no_es_delicado():
 pytestmark_db = pytest.mark.asyncio
 
 
-async def _corrida(conn, cuando: datetime, items_ok: int, status: str = "ok") -> None:
+async def _corrida(
+    conn,
+    cuando: datetime,
+    items_ok: int,
+    status: str = "ok",
+    *,
+    parcial: bool = False,
+) -> None:
     store_id = await conn.fetchval("SELECT id FROM stores WHERE slug = 'falabella'")
     await conn.execute(
-        """INSERT INTO scrape_runs (store_id, started_at, finished_at, status, items_ok)
-                VALUES ($1, $2, $2, $3, $4)""",
+        """INSERT INTO scrape_runs (store_id, started_at, finished_at, status,
+                                    items_ok, is_partial_run)
+                VALUES ($1, $2, $2, $3, $4, $5)""",
         store_id,
         cuando,
         status,
         items_ok,
+        parcial,
     )
 
 
@@ -261,3 +270,41 @@ async def test_la_consulta_y_la_logica_encajan(db_conn):
 
     assert len(flacas) == 1
     assert flacas[0].observaciones == 1481
+
+
+# --- La corrida manual no es una pasada (migración 29) -----------------------
+
+
+@pytest.mark.asyncio
+async def test_una_corrida_parcial_no_cuenta_como_pasada(db_conn):
+    """`--once --store tottus` no es una pasada: recorre un subconjunto a propósito.
+
+    Sin esto, la guarda la lee como una pasada entera que escribió muy poco. Pasó
+    el 2026-10-01: 13 corridas manuales de diagnóstico quedaron reportadas como
+    pasada flaca (ratio 0,57) junto al incidente real del 29-sep. El ruido aparece
+    exactamente cuando la guarda tiene que estar limpia, porque uno corre pasadas
+    parciales justo mientras diagnostica.
+    """
+    pasada = datetime.now(timezone.utc) - timedelta(hours=18)
+    manual = datetime.now(timezone.utc) - timedelta(hours=6)
+    for minuto in (0, 13):
+        await _corrida(db_conn, pasada + timedelta(minutes=minuto), 5000)
+    await _corrida(db_conn, manual, 300, parcial=True)
+
+    assert await db_module.volumen_por_pasada(db_conn, limite=10) == [(pasada, 10000)]
+
+
+@pytest.mark.asyncio
+async def test_la_corrida_parcial_no_parte_la_pasada_que_la_rodea(db_conn):
+    """Se excluye en el WHERE, antes de agrupar, y por esto.
+
+    Si se filtrara después del `LAG`, una corrida manual en el medio de la pasada
+    dejaría un hueco artificial y partiría una pasada sana en dos — con las dos
+    mitades leyéndose como flacas.
+    """
+    inicio = datetime.now(timezone.utc) - timedelta(hours=6)
+    await _corrida(db_conn, inicio, 4000)
+    await _corrida(db_conn, inicio + timedelta(minutes=5), 300, parcial=True)
+    await _corrida(db_conn, inicio + timedelta(minutes=10), 4000)
+
+    assert await db_module.volumen_por_pasada(db_conn, limite=10) == [(inicio, 8000)]

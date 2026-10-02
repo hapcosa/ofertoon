@@ -96,6 +96,8 @@ async def test_historia_y_corrida_van_por_store_key(calls):
         "store_id": 6,
         "category_id": 1,
         "store_key": "Q2F0ZWdvcnk6MTIzOA==",
+        # La pasada del loop no está filtrada: es una pasada de verdad.
+        "is_partial_run": False,
     }
     assert outcome.status == "ok"
     assert (outcome.store_slug, outcome.store_key) == ("spdigital", "Q2F0ZWdvcnk6MTIzOA==")
@@ -167,3 +169,18 @@ async def test_lo_scrapeado_antes_del_fallo_se_persiste(calls):
     assert outcome.items_seen == 130
     assert outcome.items_ok == 130  # antes eran 100: los 30 del buffer se perdían
     assert calls["finish_args"]["items_ok"] == 130
+
+
+async def test_una_corrida_filtrada_se_marca_como_parcial(calls):
+    """Lo que la guarda de volumen usa para no leerla como pasada. Migración 29."""
+    calls["history"] = [88, 90, 89]
+    await runner.scrape_target(
+        FakePool(),
+        FakeAdapter(87),
+        TARGET,
+        store_id=6,
+        dry_run=False,
+        is_partial_run=True,
+    )
+
+    assert calls["start_args"]["is_partial_run"] is True

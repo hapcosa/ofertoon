@@ -163,16 +163,24 @@ async def start_run(
     store_id: int,
     category_id: int | None,
     store_key: str | None = None,
+    is_partial_run: bool = False,
 ) -> int:
+    """Abre una corrida. `is_partial_run` la marca como no-pasada.
+
+    Una corrida de `--store` o `--category` no es una pasada: recorre un
+    subconjunto de los objetivos a propósito. Queda marcada para que
+    `volumen_por_pasada` la excluya — ver la migración 29.
+    """
     return await conn.fetchval(
         """
-        INSERT INTO scrape_runs (store_id, category_id, store_key)
-             VALUES ($1, $2, $3)
+        INSERT INTO scrape_runs (store_id, category_id, store_key, is_partial_run)
+             VALUES ($1, $2, $3, $4)
           RETURNING id
         """,
         store_id,
         category_id,
         store_key,
+        is_partial_run,
     )
 
 
@@ -365,6 +373,9 @@ async def volumen_por_pasada(
                         THEN 1 ELSE 0 END AS corte
               FROM scrape_runs
              WHERE started_at >= NOW() - ($1::int) * INTERVAL '1 day'
+               -- Antes de agrupar, no después: una corrida manual en el medio de
+               -- la tarde no puede partir en dos la pasada que la rodea.
+               AND NOT is_partial_run
         ), pasadas AS (
             SELECT SUM(corte) OVER (ORDER BY started_at) AS pasada,
                    started_at, items_ok

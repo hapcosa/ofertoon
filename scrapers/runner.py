@@ -260,6 +260,7 @@ async def scrape_target(
     *,
     store_id: int,
     dry_run: bool,
+    is_partial_run: bool = False,
 ) -> RunOutcome:
     """Una categoría de una tienda: discover → persistir → cerrar el run."""
     category: CategoryRef = target["category"]
@@ -284,6 +285,7 @@ async def scrape_target(
                 store_id=store_id,
                 category_id=category_id,
                 store_key=category.store_key,
+                is_partial_run=is_partial_run,
             )
 
     seen = 0
@@ -368,6 +370,11 @@ async def run_once(
     only_category: str | None = None,
     dry_run: bool = False,
 ) -> list[RunOutcome]:
+    # Una corrida filtrada recorre un subconjunto de los objetivos a propósito,
+    # así que NO es una pasada y no puede entrar en la guarda de volumen: separada
+    # de la pasada anterior por más de `PASS_WINDOW`, se leería como una pasada
+    # entera que escribió muy poco. Pasó el 2026-10-01 — ver la migración 29.
+    parcial = bool(only_store or only_category)
     outcomes: list[RunOutcome] = []
     async with pool.acquire() as conn:
         if not dry_run:
@@ -415,7 +422,12 @@ async def run_once(
             for target in targets:
                 outcomes.append(
                     await scrape_target(
-                        pool, adapter, target, store_id=store["store_id"], dry_run=dry_run
+                        pool,
+                        adapter,
+                        target,
+                        store_id=store["store_id"],
+                        dry_run=dry_run,
+                        is_partial_run=parcial,
                     )
                 )
 
