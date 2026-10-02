@@ -36,16 +36,39 @@ historia. Lo que falta para publicar ya no es baseline: es calibrar θ, y eso
 **no se puede antes del 2026-10-02** (ver "Cuándo empiezan a salir ofertas": la
 cuenta de 45 días que decía este handoff estaba mal).
 
-- **25.429 listings** en **13 tiendas activas**, **10 categorías** y 1.099.271
-  observaciones (2026-09-26 17:20). Por tienda: falabella 9.257, paris 4.824,
-  andesgear 2.764, easy 2.248, sodimac 2.000, ferretek 1.554, kruuse 628,
-  spdigital 643, pcfactory 600, prat 430, urban 238, construmart 219, kupfer 24.
-  De 21.554 baselines escritas, **9.303 tienen historia suficiente**
-  (`n_points>=30 AND n_days>=30`) — ninguna de las 4 tiendas nuevas todavía.
-- **Migraciones 01..21 aplicadas**, 0 pendientes.
-- **θ vigentes** (los 3 últimos nuevos, todos sin calibrar): tecno-* 0.15/0.18,
-  hogar-electro 0.20, ferre-* 0.25, **deporte-equipamiento 0.25, deporte-calzado
-  0.30, deporte-vestuario 0.35**.
+- **35.211 listings** en **15 tiendas activas**, **14 categorías**, **153
+  objetivos** y 1.261.438 observaciones (2026-10-01 21:00). Por tienda:
+  falabella 9.520, **tottus 5.419**, paris 4.949, andesgear 2.794, easy 2.598,
+  **nike 2.554**, sodimac 2.048, ferretek 1.583, prat 1.347, spdigital 643,
+  pcfactory 629, kruuse 628, urban 249, construmart 226, kupfer 24.
+  De 34.329 baselines escritas, **9.742 tienen historia suficiente**
+  (`n_points>=30 AND n_days>=30`) — ninguna de las tiendas nuevas todavía.
+  `products` saltó de 3.653 a **5.935** porque Nike trae EAN en el 100%.
+- **Migraciones 01..28 aplicadas**, 0 pendientes. Las 26, 27 y 28 se aplicaron el
+  2026-10-01 en la segunda sesión del día.
+- **θ vigentes, los 14 sin calibrar**: tecno-celulares/componentes/notebooks 0.15,
+  tecno-tv 0.18, tecno-audio 0.20, hogar-electro 0.20, ferre-* 0.25,
+  deporte-equipamiento 0.25, deporte-calzado 0.30, deporte-vestuario 0.35,
+  ropa-calzado 0.35, ropa-accesorios 0.35, **supermercado 0.25**.
+
+⚠️ **Dos cosas que este handoff daba por hechas y NO estaban efectivas en
+producción, por la misma causa: faltó el rebuild del scraper.** Descubierto el
+2026-10-01 a las 20:45 mirando `scrape_runs`:
+
+  * **Las 4 llaves de Nike de la migración 25 nunca corrieron, ni una vez.** No
+    había corrida fallida — simplemente no se ejecutaban: el contenedor tenía una
+    imagen sin `scrapers/stores/vtex_family.py`, así que su adaptador no se podía
+    importar y la tienda quedaba fuera de los targets **sin dejar fila**.
+  * **Prat seguía fallando** (`FetchError` en sus dos categorías en la pasada de
+    las 15:16), aunque el fix del User-Agent estaba escrito desde la mañana.
+
+Las dos quedaron verificadas en vivo tras reconstruir: Nike 2.554 observaciones en
+sus 5 llaves, Prat 1.086 + 49, todas `ok`. **Es la trampa que CLAUDE.md ya
+documenta** ("el Dockerfile copia las fuentes, no las monta") y el modo de falla
+es el peor: una tienda que no se puede importar no deja rastro en `scrape_runs`,
+así que no la ve ninguna de las tres guardas. Después de una migración que conecta
+una tienda nueva, **verificar que haya filas en `scrape_runs` para ella**, no
+alcanza con que la migración diga "aplicada".
 - **Una pasada completa pasó de ~13 a ~20 min**: Andesgear sola cuesta ~7 min por
   su `Crawl-delay: 3`.
 - **538 tests con DB** (3:54 contra una base recién creada), **460 sin DB**
@@ -1218,6 +1241,99 @@ Desplegado con rebuild; el log confirma `la próxima en 9.7 h`, sin pasada extra
 
 **Tests**: `tests/test_vtex_family.py`, 23 nuevos contra el fixture real
 (`tests/fixtures/nike_catalog_calzado.json`). Suite: **561 passed**.
+
+## Segunda sesión del 2026-10-01: el grupo con temas y Tottus
+
+### θ: medido que HOY no se puede, y por qué
+
+El backtest corrió completo (`--from 2026-09-01 --to 2026-10-01` con los 3 días
+degradados excluidos, 27.235 listings, 28 días de mercado) y **todas las señales
+salieron `unknown`**: precisión `—` en las 7 categorías con historia. La razón es
+exacta y no es una estimación: las primeras baselines maduran el **2026-09-01**
+(5.310 de golpe) y `label_outcome` exige `series_end ≥ día + 30d 23:59:59`. Para
+la señal del 1-sep eso es el 1-oct a las 23:59, y la última observación era de las
+15:40.
+
+**Desde el 2026-10-02 se puede, pero con un solo día de señales etiquetadas (~12
+en el canal, ~2 por categoría).** Para mover θ por categoría con evidencia hacen
+falta 14-30 días etiquetados, o sea **mediados y fin de octubre** — justo cuando
+caen las evaluaciones de tienda.
+
+Lo que **sí** quedó medido es la otra mitad del gate, el volumen, y conviene
+fijarlo porque cambia la lectura: **ninguna categoría llega sola a 3 ofertas/día a
+su θ de partida**, pero el gate es por canal y `vip` suma **~12/día**:
+
+    tecno-componentes  0.150 → 2,8/día     hogar-electro       0.200 → 1,7/día
+    tecno-notebooks    0.150 → 2,1/día     ferre-herramientas  0.250 → 1,2/día
+    tecno-celulares    0.150 → 2,0/día     ferre-jardin        0.250 → 0,3/día
+    tecno-tv           0.180 → ~1,9/día
+
+El tier `ferre` solo sumaría 1,5/día y no pasaría, pero está `is_active=false`,
+`gate_enabled=false` y sin `telegram_channel_id`, así que hoy no es un problema.
+
+### El grupo con temas (migración 26)
+
+El destino dejó de ser "un canal por tier" y pasó a ser **(chat, tema)**. Siete
+temas en el tier `vip`: Tecnología (5 categorías, cuota 3), Hogar (1, cuota 1),
+Vestuario (ropa-calzado + ropa-accesorios, cuota 2), Deporte (3, cuota 2),
+S.Mercado (supermercado, cuota 2), Ferretería (2, cuota 1) y Viajes (0, cuota 1).
+
+- **La cuota es del tema**, no del canal: 11/día en total contra las 6 de antes.
+  Con techo global el tema con volumen se come los lugares de los demás.
+- **Un mensaje por vuelta en todo el chat**, con el turno rotando por tema
+  (`load_active_topics` ordena por último post, NULLS FIRST). Sin el corte, siete
+  temas publicando uno cada uno son siete notificaciones juntas; sin la rotación,
+  Tecnología deja a Ferretería muda para siempre.
+- **Falta lo único que no se puede sacar desde acá: los `message_thread_id`.**
+  Hay que agregar `@Ofertoon_bot` como administrador del grupo (con permiso de
+  publicar y administrar temas) y leer el `chat_id` y el thread de cada tema del
+  link de un mensaje suyo (`https://t.me/c/<chat>/<thread>/<msg>`). **No se puede
+  con `getUpdates`**: `ofertascl-bot` corre con long polling y una llamada externa
+  le robaría los updates de onboarding.
+- Mientras no estén cableados **el publisher sigue publicando al canal viejo, sin
+  thread**, y eso está verificado: los 6 posts de hoy tienen `topic_id` NULL.
+
+### Tottus conectada (migración 27) — estaba descartada por un diagnóstico mío
+
+El plan la tenía como "el borde pasa, el ORIGEN falla". Era falso y el error era
+de método: **Tottus no es VTEX**, corre la plataforma de Falabella, así que el 503
+de su "API VTEX" era la respuesta a una ruta inexistente y el 526 un `store_key`
+inventado (`/category/` en vez de `/lista/`). `parse_listing` de
+`falabella_family` la parsea **sin una línea nueva**.
+
+- 5 paraguas no perecederos, **5.419 listings y 5.515 observaciones** en la
+  primera pasada, cobertura 0,966-0,991 por llave, cero duplicados.
+- **`sortBy=derived.currentPrice,asc` es lo que hace confiable su serie**: su
+  default `_score,desc` cambia entre requests y da 0,911 de cobertura (dos
+  recorridos del mismo día dieron 326 y 389 únicos de 427); con precio ascendente,
+  0,988. Un SKU intermitente nunca llega a `MIN_DAYS` y por lo tanto nunca da
+  baseline.
+- **Frutas-y-Verduras y Carnes quedaron afuera** por precio estacional, no por
+  tamaño. **Cervezas y Vinos** afuera porque publicar alcohol es una decisión que
+  nadie tomó — quedan 2.217 SKUs ahí si se decide que sí.
+- ⚠️ **El ticket es de otro orden**: p50 $1.570-$9.390 contra los $279.990 de las
+  66 ofertas publicadas. Un 25% sobre $1.570 son $390. El backtest no responde si
+  eso vale un mensaje — un descuento del 25% es igual de real a cualquier precio.
+- **Esto reemplaza a Lider**, que seguía pendiente de "elegir la tajada": mismo
+  rubro, API limpia, sin los 73,8 GB/pasada. Si igual se quiere Lider, la vía
+  verificada son las fichas `/ip/<cat>/<slug>/<ean>`.
+
+### `ropa-accesorios` (migración 28)
+
+Los 272 SKUs de `nike/accesorios` que la migración 25 dejó sin casa. Disjunta de
+`2/3` y `2/4` sobre los catálogos completos. Dos correcciones al handoff anterior:
+el **ticket es $26.990, no $14.990**, y **θ 0.350 es copiado sin evidencia
+propia** porque Nike no declara `price_normal` en ninguna llave (`con_dto = 0%` en
+las cuatro) — el método de la migración 24 no se puede aplicar ahí.
+
+### Tests
+
+**680 passed con DB** (4:48), 0 failed, 0 skipped. Antes de esta sesión eran 654.
+Los 26 nuevos: 13 del grupo con temas (4 puros de cuota + 9 con DB de ruteo,
+rotación, fallback y el UNIQUE de thread repetido) y 13 de Tottus.
+
+Una vez la suite murió con **exit 137** (SIGKILL del OOM killer, 818 MB libres),
+no por un test. Reintentar antes de diagnosticar.
 
 ## Lo que sigue, en orden
 

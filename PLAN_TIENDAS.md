@@ -669,7 +669,7 @@ navegador solo contra el juego completo (`http.BROWSER_HEADERS`):
 | Tienda | Borde | UA solo | Headers completos | Estado |
 |---|---|---|---|---|
 | **Nike** | Cloudflare | 403 | **200** + **API VTEX pública abierta** | ✅ **CONECTADA 2026-10-01 (migración 25)** |
-| **Tottus** | Cloudflare | 403 | home **200**, pero catálogo **503/526** | 🟡 el borde pasa; el ORIGEN falla |
+| **Tottus** | Cloudflare | 403 | **200** con headers completos y `store_key` real | ✅ **CONECTADA 2026-10-01 (migración 27)** |
 | **Unimarc** | — | 403 | home sigue **403**; API VTEX **500 en todo** | ❌ corregido: es callejón sin salida |
 | **PC Express** | LiteSpeed | 403 | **pasa**: 404 en robots y sitemap | 🟡 falta descubrir rutas |
 | **Adidas** | Akamai | 403 | **robots.txt 200**, home sigue 403 | 🟡 parcial |
@@ -686,11 +686,29 @@ navegador solo contra el juego completo (`http.BROWSER_HEADERS`):
   alimenta `catalog/identity.py`. Árbol: `nike` (calzado, ropa, accesorios) y
   `snkrs`. **Es zapatilla urbana con GTIN**, justo lo que la Fase 3b quería de
   Sparta y Decathlon, con una fracción del costo.
-- **Tottus NO está usable, me equivoqué al cantarla.** Ese 200 era la **home**.
-  Las rutas de catálogo dan **503** (API VTEX) y **526** (categoría y búsqueda).
-  526 es error de certificado del origen detrás de Cloudflare: el borde nos deja
-  pasar y el origen está roto para esas rutas. Puede ser transitorio — reintentar
-  antes de invertir en su adaptador.
+- **Tottus SÍ está usable, y el que se había equivocado era mi diagnóstico — dos
+  veces.** Primero la canté sin mirar (ese 200 era la home). Después la descarté
+  como "origen roto" por el 503 de su API VTEX y el 526 de sus rutas, y eso también
+  estaba mal:
+
+  - **Tottus no es VTEX.** Corre la plataforma de Falabella: `__NEXT_DATA__`, 641
+    menciones de `falabella` en su home, **cero de `vtex`**. Nunca tuvo una API
+    VTEX, así que el 503 (`no healthy upstream`) era la respuesta a una ruta que no
+    existe en su upstream — no un origen caído.
+  - **El 526 era un `store_key` inventado por mí.** Probé `/category/CATG.../` y su
+    path de listado es `/lista/`, como Sodimac. Con la llave real que publica su
+    propio sitemap (`/static/site/sitemaps/categories/...`): **HTTP 200**.
+  - **El 200 de la home tampoco probaba nada**: venía con `cf-cache-status: HIT` y
+    `age: 2381`, o sea servido de la cache de Cloudflare y no del origen.
+
+  Lección transferible: **antes de declarar roto un origen, verificar qué plataforma
+  usa la tienda de verdad.** Dos de las tres observaciones que la descartaban eran
+  consecuencias de pedirle rutas de una plataforma que no corre.
+
+  `parse_listing` de `falabella_family` la parsea sin una línea nueva. Exige el
+  juego completo de `BROWSER_HEADERS` (el UA de navegador solo da 403 ×3) y
+  `sortBy=derived.currentPrice,asc`, porque su orden default es inestable entre
+  requests y deja SKUs sin ver nunca. Ver la migración 27.
 - **Unimarc es callejón sin salida.** Su home sigue en **403** con headers
   completos, y su API VTEX devuelve **500 uniforme en los 7 endpoints probados**
   (`products/search` con y sin `sc`/`ft`, `category/tree`, `brand/list`). Un 500

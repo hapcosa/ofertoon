@@ -28,6 +28,19 @@ partida, **sin calibrar**. Es una prueba en vivo del canal, no el producto — l
 ofertas que salen no pasaron el gate de precisión ≥80% porque ese gate todavía no
 se puede correr.
 
+**El destino pasa a ser (chat, tema).** Desde la migración 26 el canal es un
+grupo-foro con siete temas —Tecnología, Hogar, Vestuario, Deporte, S.Mercado,
+Ferretería, Viajes— y el tema lo elige la categoría del candidato
+(`telegram_tier_categories.topic_id`). La cuota es **de cada tema**
+(`telegram_topics.daily_quota`, 11/día en total) y no del canal, porque con un
+techo global el tema con volumen se come los lugares de los demás: medido,
+Tecnología produce ~8,8 señales/día contra ~1,5 de Ferretería. Un tema sin
+`message_thread_id` no es un destino, y mientras ningún tema esté cableado el
+poster publica al chat plano como antes — por eso la migración se pudo aplicar con
+el publisher encendido. **Al 2026-10-01 los `message_thread_id` NO están
+cableados**: salen del grupo ya creado y hay que leerlos del link de un mensaje de
+cada tema.
+
 Runbooks vivos: [`HANDOFF.md`](HANDOFF.md) (estado y traspaso de sesión),
 [`DEPLOY.md`](DEPLOY.md) (puesta en producción),
 [`HANDOFF_MERCADOPAGO.md`](HANDOFF_MERCADOPAGO.md).
@@ -394,9 +407,59 @@ la página 1 en el fixture y la verificación de centinelas— está en
   Las filas "Sin Stock" de la sucursal vienen sin precio ni SKU: se enumeran
   (cuentan para el total declarado, que el canario compara) y no se emiten. De 302
   filas conectadas, ~217 traían precio.
-- **`in_stock` es ciego en Paris y Falabella**: hoy lo asumen `True`, así que la
-  guarda de stock del detector no protege nada ahí. Se arregla en F3
+- **`in_stock` es ciego en Paris, Falabella y Tottus**: hoy lo asumen `True`, así
+  que la guarda de stock del detector no protege nada ahí. En Tottus el campo
+  `availability` existe y **es una trampa**: habla de modos de envío
+  (`expressShipping`, `pickUpFromStoreShipping`), no de stock. Se arregla en F3
   verificando la ficha solo del candidato (10–30 fetches/día, no 2.898).
+- **Un 503 de una API que la tienda NO USA no dice nada del origen.** Tottus
+  estuvo descartada semanas como "el borde pasa, el origen falla" porque su API
+  VTEX contesta 503 y sus rutas 526. Las dos cosas son ciertas y ninguna
+  significaba eso: Tottus **no es VTEX**, corre la plataforma de Falabella
+  (`__NEXT_DATA__`, 641 menciones de `falabella` en su home, cero de `vtex`), así
+  que el 503 `no healthy upstream` era la respuesta a una ruta inexistente y el
+  526 un `store_key` inventado (`/category/` en vez de `/lista/`). Antes de
+  declarar roto un origen, **verificar qué plataforma usa la tienda de verdad**.
+  Y el 200 de su home no probaba nada: venía con `cf-cache-status: HIT` y `age:
+  2381`, o sea de la cache de Cloudflare y no del origen.
+- **El orden por defecto de un listado puede ser inestable, y eso mata la serie
+  en silencio.** Tottus ordena por `_score,desc` ("Recomendados"), un ranking de
+  relevancia con boost de publicidad que cambia entre requests: paginarlo devuelve
+  repetidos en el medio del catálogo y deja otros SKUs sin ver nunca. Medido sobre
+  `Mascotas` (427 declarados): sin `sortBy` 435 filas → 389 únicos (0,911) y dos
+  recorridos del mismo día dieron 326 y 389; con
+  `sortBy=derived.currentPrice,asc`, 427 filas → 422 únicos (**0,988**). Lo que
+  importa no es la cobertura por la cobertura: **un SKU que aparece de forma
+  intermitente no acumula observaciones, nunca llega a `MIN_DAYS` y por lo tanto
+  nunca produce una baseline**. Ante una cobertura que no cierra, mirar si la
+  tienda ofrece un orden determinista antes de dar el faltante por perdido.
+- **No se conectan categorías de precio estacional.** `Frutas-y-Verduras` y
+  `Carnes` de Tottus quedaron afuera a propósito, y no por tamaño: el p50 de 60
+  días de un tomate no es una baseline, es el promedio de dos temporadas
+  distintas, y el detector marcaría "oferta real" cada vez que baja la
+  estacionalidad. Es el mismo criterio que excluye los días degradados del
+  backtest — mejor no medir que medir algo que no significa lo que dice.
+- **Medir sobre la página 1 miente, y no solo para los GTIN de Paris.** La
+  página 1 de un listado suele venir ordenada por promoción: en Tottus,
+  `Aseo-y-Limpieza` declaraba descuento en el **79%** del catálogo mirando 48
+  productos y en el **43%** mirando 192. Esa diferencia alcanzaba para concluir
+  que había dos comportamientos de precio y crear dos categorías con θ distinto,
+  cuando con 4 páginas por llave la distribución es una sola (p50 del descuento
+  declarado 18-22% en las cinco). **Cualquier fracción medida sobre una sola
+  página no sirve para decidir una categoría.**
+- **Nike no declara `price_normal`, así que ahí θ no se puede fijar midiendo.**
+  `con_dto = 0%` en las cuatro llaves medidas: su API nunca manda un "antes"
+  tachado. El método de la migración 24 —"si un 30% es precio de lista de
+  cualquier martes, θ va más arriba"— no se puede aplicar, y el θ de
+  `ropa-accesorios` es herencia de sus vecinos, no una medición. Lateral bueno
+  para el producto: en Nike no hay número de la tienda que inflar, el descuento
+  sale entero de nuestra baseline.
+- **`falabella_family` NO implementa `completeness()`**, a diferencia de
+  `vtex_family`, `magento_html`, `ferretek` y `spdigital`. O sea Falabella,
+  Sodimac y Tottus caen al canario **estadístico** y no al exacto: una caída de
+  cobertura contra el total declarado no produce `partial` ahí. Si hace falta esa
+  guarda en esta familia, hay que escribirla — el `count` está disponible en
+  `pagination`.
 - **Los θ de `categories.discount_threshold` NO están calibrados.** Son valores
   de partida del plan. El gate de F1 es el output de `pricing/backtest.py`:
   precisión ≥80% con ≥3 ofertas/día/canal.
