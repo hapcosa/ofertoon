@@ -327,6 +327,18 @@ la página 1 en el fixture y la verificación de centinelas— está en
   29-sep). Al escribirla se subió `GAP_LOOKBACK_DAYS` de 3 a 7 por la misma
   razón: con 3 días, una caída de viernes a la que se llega el lunes caía afuera
   de la ventana y no se reportaba nunca.
+- **Una corrida manual no es una pasada, y ensuciaba la guarda de volumen.** Un
+  `--once --store X` escribe filas separadas de la pasada anterior por más de
+  `PASS_WINDOW`, así que `pasadas_flacas` las leía como una pasada entera que
+  escribió muy poco: el 2026-10-01, 13 corridas de diagnóstico (9.476 obs, ratio
+  0,57) se reportaron al lado del incidente real del 29-sep. Lo arregla
+  `scrape_runs.is_partial_run` (migración 29), que el runner deriva de
+  `bool(only_store or only_category)` y `volumen_por_pasada` excluye **en el
+  `WHERE`, antes de agrupar** —filtrarlas después del `LAG` partiría en dos una
+  pasada sana—. Es una columna y no un umbral a propósito: "13 de 152 no es una
+  pasada" apunta al mismo lugar que la guarda vigila (el incidente que la justificó
+  corrió 67 de 129 objetivos), así que cualquier vara así está a un cambio de
+  catálogo de tapar el caso real.
 - **La guarda de volumen suma `items_ok`, no `items_seen`.** Lo que vigila es
   cuánta serie ENTRÓ: un target que enumera 900 productos y no persiste ninguno
   es exactamente el agujero que hay que ver, y en `items_seen` no se nota. Dos

@@ -1335,6 +1335,62 @@ rotación, fallback y el UNIQUE de thread repetido) y 13 de Tottus.
 Una vez la suite murió con **exit 137** (SIGKILL del OOM killer, 818 MB libres),
 no por un test. Reintentar antes de diagnosticar.
 
+## 2026-10-02: el primer backtest CON etiquetas, y por qué todavía no fija θ
+
+Hoy el backtest produjo precisión por primera vez (ayer era `—` en todo). Rango
+`2026-09-01 → 2026-10-02`, 42.821 listings, 29 días de mercado, los 3 degradados
+excluidos.
+
+**La mecánica funciona end-to-end y el patrón es el correcto**: la precisión SUBE
+con θ en casi todas las categorías, que es exactamente lo que tiene que pasar si
+el detector discrimina.
+
+    ferre-herramientas   0.10 → 58%    0.15 → 89%    0.20 → 100%
+    tecno-componentes    0.10 → 75%    0.15 → 80%    0.20 → 100%
+    hogar-electro        0.10 → 25%    0.15 → 40%    0.20 → 67%    0.25 → 100%
+    tecno-notebooks      0.10 → 78%    0.15 → 90%    0.20 → 100%
+    tecno-tv             0.10 → 76%    0.15 → 70%    0.20 → 75%    0.30 → 100%
+
+Dos filas pasan el gate (≥80% con ≥3/día): `ferre-herramientas` θ 0.15 (88,9%,
+3,8/día) y `tecno-componentes` θ 0.15 (80,0%, 3,0/día).
+
+⚠️ **Y no alcanza para fijar θ, por un margen grande.** Ese 88,9% son **8 aciertos
+sobre 9 etiquetadas** y el 80,0% son **4 sobre 5**. De las 110 señales de
+ferre-herramientas, **101 siguen `s/madurar`**: solo las del 1 y 2 de septiembre
+tienen sus 30 días de futuro. El IC95% de 8/9 va de ~52% a 100%, o sea no
+distingue un canal que cumple el gate de uno que no. **La fecha con evidencia
+sigue siendo fin de octubre**, cuando haya 14-30 días etiquetados.
+
+Dos lecturas que sí se sostienen hoy:
+
+- `ferre-jardin` es la única que va **al revés** (50% → 50% → 37% → 20% → 0%), con
+  14 etiquetadas. Si el patrón aguanta con más datos, es la primera candidata a
+  revisar en serio.
+- `liquid.` es 0 en todo salvo `tecno-celulares` (3 y 1). Lógico: septiembre no es
+  temporada de liquidación y las categorías de vestuario todavía no tienen datos.
+  Quiere decir que `LABEL_LIQUIDATION` **no está probado contra datos reales
+  todavía**, solo contra sus tests.
+
+### La guarda de volumen tenía un falso positivo, y era mío
+
+Las corridas manuales de ayer (`--once --store tottus`, etc.) quedaron en
+`scrape_runs` separadas de la pasada anterior por más de `PASS_WINDOW`, así que la
+guarda las leyó como **una pasada entera que escribió muy poco**: 13 corridas,
+9.476 observaciones, ratio 0,57, reportadas al lado del incidente real del 29-sep.
+Arreglado con `scrape_runs.is_partial_run` (migración 29), que el runner deriva de
+`bool(only_store or only_category)`. Verificado: la guarda volvió a reportar 1 sola
+flaca. **El ruido aparecía exactamente cuando la guarda tiene que estar limpia**,
+porque uno corre pasadas parciales justo mientras diagnostica.
+
+### La pasada ya es el doble de grande
+
+Las dos pasadas del 2-oct: **152 corridas y ~31.300 observaciones** contra las 129
+y ~16.700 de antes, por Tottus (5.496), Nike (2.554) y Prat recuperado (1.135).
+Un solo `partial` (Andesgear `mujer/top`, 249 de 251 — la deriva de catálogo ya
+documentada). Ojo con la guarda de volumen en los próximos días: su mediana móvil
+tiene pasadas de 16.700 y de 31.000 mezcladas, y tarda ~4 pasadas en asentarse en
+el nivel nuevo.
+
 ## Lo que sigue, en orden
 
 0. **La guarda por volumen quedó cerrada** (ver la sección de arriba). Lo único
