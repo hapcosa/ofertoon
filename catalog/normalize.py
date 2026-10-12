@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from decimal import Decimal, InvalidOperation
 
 #: CLP no usa decimales y el punto es separador de miles: "1.299.990" → 1299990.
@@ -100,3 +101,48 @@ def normalize_gtin(raw: str | int | None, sku: str | None = None) -> str | None:
     if not value.strip("0"):
         return None
     return value
+
+
+#: Marcas de producto que NO es nuevo, tal como las escriben las tiendas chilenas.
+#: Verificado contra los nombres reales el 2026-10-12 — las variantes son pocas y
+#: consistentes: "(Reacondicionado)", "- Reacondicionado", "Reacondicionado
+#: Iphone 13 Pro...", "Open Box".
+#:
+#: Se buscan sobre el nombre con tildes normalizadas, que es la lección de la
+#: migración 24: medir "Botín" con el patrón `botin` daba 32% y era un bug del
+#: clasificador, no del dato.
+_SEGUNDA_MANO = (
+    "reacondicionado",
+    "reacondicionada",
+    "refurbished",
+    "open box",
+    "openbox",
+    "usado",
+    "segunda mano",
+)
+
+
+def es_segunda_mano(nombre: str | None) -> bool:
+    """¿El nombre dice que el producto no es nuevo?
+
+    Importa porque un reacondicionado **no tiene la curva de precio de una
+    oferta**: baja y se queda abajo, porque el precio sigue la depreciación y el
+    grado del equipo, no una promoción. Medido el 2026-10-12 sobre
+    `tecno-celulares`, excluirlos sube la precisión del detector entre 10 y 30
+    puntos según θ (67,4% → 78,1% a θ 0.10; 41,7% → 71,4% a θ 0.20) y **hace
+    desaparecer el patrón invertido** que tenía esa categoría, donde un descuento
+    más grande predecía peor: entre los aceptados con ≥30% de descuento el 44% eran
+    reacondicionados, contra el 8% entre los de menos de 30%.
+
+    Y es un problema de producto antes que de métrica: el canal promete ofertas de
+    retail, y para cuando se midió esto **8 de las 132 ofertas publicadas eran
+    reacondicionados**.
+
+    Se mira el nombre y no un campo estructurado porque ninguna de las tiendas
+    conectadas expone la condición del producto por separado.
+    """
+    if not nombre:
+        return False
+    plano = unicodedata.normalize("NFKD", nombre.lower())
+    plano = "".join(ch for ch in plano if not unicodedata.combining(ch))
+    return any(marca in plano for marca in _SEGUNDA_MANO)

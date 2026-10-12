@@ -17,6 +17,7 @@ from pricing.detector import (
     REJECT_COOLDOWN,
     REJECT_HISTORY,
     REJECT_RAMP,
+    REJECT_REFURBISHED,
     REJECT_STOCK,
     REJECT_THRESHOLD,
     UNPERSISTED_REJECTS,
@@ -41,7 +42,7 @@ def baseline(
     )
 
 
-def check(price, *, base=None, in_stock=True, threshold=THETA, prior=None):
+def check(price, *, base=None, in_stock=True, threshold=THETA, prior=None, name=None):
     return evaluate(
         price=Decimal(price),
         in_stock=in_stock,
@@ -49,6 +50,7 @@ def check(price, *, base=None, in_stock=True, threshold=THETA, prior=None):
         threshold=threshold,
         prior_post=prior,
         now=NOW,
+        name=name,
     )
 
 
@@ -145,3 +147,62 @@ def test_p50_en_cero_no_divide_por_cero(p50):
     decision = check(1000, base=baseline(p50=p50, p10=0))
     assert decision.discount_real == Decimal(0)
     assert not decision.accepted
+
+
+# -----------------------------------------------------------------------------
+# Producto que no es nuevo (2026-10-12)
+# -----------------------------------------------------------------------------
+
+
+def test_un_reacondicionado_se_rechaza():
+    """Su precio baja y se QUEDA abajo: la curva no es la de una oferta.
+
+    Medido sobre `tecno-celulares` el 2026-10-12: excluirlos sube la precisión de
+    67,4% a 78,1% (θ 0.10) y de 41,7% a 71,4% (θ 0.20), y hace desaparecer el
+    patrón invertido de esa categoría —un descuento más grande predecía peor—
+    porque entre los aceptados con ≥30% el 44% eran reacondicionados contra el 8%
+    entre los de menos de 30%.
+    """
+    decision = check(70000, name="iPhone 13 256GB - Rojo - Reacondicionado")
+    assert not decision.accepted
+    assert decision.reject_reason == REJECT_REFURBISHED
+
+
+def test_el_mismo_producto_nuevo_se_acepta():
+    """El control: lo único que cambia es la palabra en el nombre."""
+    assert check(70000, name="iPhone 13 256GB - Rojo").accepted
+
+
+def test_sin_nombre_no_se_rechaza():
+    """`None` no puede significar "sospechoso": sin dato no se bloquea."""
+    assert check(70000, name=None).accepted
+
+
+def test_la_guarda_de_stock_manda_sobre_la_de_segunda_mano():
+    """El orden del dataset: se registra la primera guarda que falla.
+
+    Stock va antes porque publicar lo que no se puede comprar es peor, y así el
+    motivo registrado no cambia para las filas que ya existían.
+    """
+    decision = check(70000, in_stock=False, name="iPhone 13 Reacondicionado")
+    assert decision.reject_reason == REJECT_STOCK
+
+
+def test_el_reacondicionado_se_rechaza_aunque_no_tenga_historia():
+    """Va antes que `history` a propósito: es propiedad del producto, no del dato.
+
+    Si fuera después, un reacondicionado sin serie se registraría como `history`,
+    que es el motivo que NO se persiste (`UNPERSISTED_REJECTS`), y el dataset no
+    permitiría contar cuántos hay.
+    """
+    decision = check(
+        70000,
+        base=baseline(n_points=3, n_days=2),
+        name="Notebook DELL Reacondicionado",
+    )
+    assert decision.reject_reason == REJECT_REFURBISHED
+
+
+def test_el_motivo_nuevo_se_persiste():
+    """A diferencia de `history`: son pocos y sirven para medir el sesgo."""
+    assert REJECT_REFURBISHED not in UNPERSISTED_REJECTS

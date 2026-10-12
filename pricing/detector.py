@@ -28,6 +28,7 @@ from typing import Any
 
 import asyncpg
 
+from catalog.normalize import es_segunda_mano
 from pricing.baselines import Baseline
 
 logger = logging.getLogger("pricing.detector")
@@ -45,6 +46,10 @@ REJECT_RAMP = "ramp"
 REJECT_THRESHOLD = "threshold"
 REJECT_ABOVE_FLOOR = "above_floor"
 REJECT_COOLDOWN = "cooldown"
+#: Producto que no es nuevo (reacondicionado, open box, usado). Valor NUEVO del
+#: 2026-10-12: agregarlo no toca los seis anteriores, así que el histórico sigue
+#: siendo comparable — las filas viejas simplemente no lo tienen.
+REJECT_REFURBISHED = "refurbished"
 
 
 @dataclass(frozen=True)
@@ -94,6 +99,7 @@ def evaluate(
     threshold: Decimal,
     prior_post: PriorPost | None = None,
     now: datetime | None = None,
+    name: str | None = None,
 ) -> Decision:
     """Aplica las guardas en orden y devuelve el veredicto.
 
@@ -114,24 +120,34 @@ def evaluate(
     if not in_stock:
         return reject(REJECT_STOCK)
 
-    # 2. Historia mínima: sin serie no hay "precio de verdad" contra qué medir.
+    # 2. No es producto nuevo. Un reacondicionado baja de precio y se QUEDA abajo
+    #    —sigue la depreciación y el grado del equipo, no una promoción—, así que
+    #    su curva no es la de una oferta. Medido el 2026-10-12 en
+    #    `tecno-celulares`: excluirlos sube la precisión de 67,4% a 78,1% (θ 0.10)
+    #    y de 41,7% a 71,4% (θ 0.20), y hace desaparecer el patrón invertido que
+    #    tenía la categoría. Va acá arriba, antes de la historia, porque es una
+    #    propiedad del producto y no del dato: no depende de cuánta serie haya.
+    if es_segunda_mano(name):
+        return reject(REJECT_REFURBISHED)
+
+    # 3. Historia mínima: sin serie no hay "precio de verdad" contra qué medir.
     if not baseline.has_min_history:
         return reject(REJECT_HISTORY)
 
-    # 3. Anti-inflado: el precio subió y se sostuvo antes de este "descuento".
+    # 4. Anti-inflado: el precio subió y se sostuvo antes de este "descuento".
     if baseline.ramp_flag:
         return reject(REJECT_RAMP)
 
-    # 4. Umbral por categoría: debajo de esto es fluctuación normal, no oferta.
+    # 5. Umbral por categoría: debajo de esto es fluctuación normal, no oferta.
     if discount_real < threshold:
         return reject(REJECT_THRESHOLD)
 
-    # 5. Cercanía al piso: si está por encima del p10, este precio ya se vio
+    # 6. Cercanía al piso: si está por encima del p10, este precio ya se vio
     #    varias veces en dos meses. No es noticia.
     if price > baseline.p10:
         return reject(REJECT_ABOVE_FLOOR)
 
-    # 6. Cooldown: no repetir el mismo producto salvo que haya bajado de verdad.
+    # 7. Cooldown: no repetir el mismo producto salvo que haya bajado de verdad.
     if prior_post is not None and now - prior_post.posted_at < timedelta(days=COOLDOWN_DAYS):
         if price > prior_post.price * COOLDOWN_OVERRIDE_RATIO:
             return reject(REJECT_COOLDOWN)
@@ -172,6 +188,7 @@ async def _load_candidates(conn: asyncpg.Connection) -> list[dict[str, Any]]:
     rows = await conn.fetch(
         """
         SELECT l.id AS listing_id,
+               l.name_raw,
                COALESCE(c.discount_threshold, $1) AS threshold,
                b.p50_60d, b.p10_60d, b.min_60d, b.n_points, b.n_days, b.ramp_flag,
                pp.price_effective, pp.in_stock, pp.observed_at
@@ -305,6 +322,7 @@ async def run(pool: asyncpg.Pool, *, persist_rejects: bool = True) -> DetectorSt
                 threshold=Decimal(str(row["threshold"])),
                 prior_post=await _prior_post(conn, row["listing_id"]),
                 now=observed_at,
+                name=row["name_raw"],
             )
             evaluated += 1
             if decision.accepted:
