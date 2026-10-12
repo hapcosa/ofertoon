@@ -215,9 +215,21 @@ la página 1 en el fixture y la verificación de centinelas— está en
   `publisher/formatter.py` solo produce "El más barato en 60 días", que sale de
   la historia propia del listing. O sea que poblar `products` es condición
   necesaria y no suficiente: **ninguna oferta dice todavía "más barato que en
-  Paris"**. Ojo con la expectativa cuando se escriba: medido el 2026-09-28, de
-  3.357 products solo **11 tienen 2+ tiendas** (8 paris+spdigital, 3
-  ferretek+urban), porque las tiendas con GTIN casi no se solapan en catálogo.
+  Paris"**.
+
+  ⚠️ **Y no hay que escribir ese consumidor: está medido que daría cero mensajes.**
+  El 2026-10-12, con `products` ya en 6.871 (de 3.357): solo **12 tienen 2+
+  tiendas** (8 paris+spdigital, 4 ferretek+urban) y —lo que decide— de **10.484
+  candidatos aceptados, CERO** tienen el mismo producto en otra tienda. Nike sumó
+  2.554 products con EAN al 100% y no movió el número, porque nadie más vende Nike
+  con GTIN en este catálogo.
+  O sea el cuello de botella **no es el consumidor, es la cobertura de GTIN**: las
+  tiendas que lo exponen (Paris parcial, SP Digital, Ferretek, Urban, Nike) casi no
+  se solapan entre sí, y las grandes (Falabella, Sodimac, Tottus, Easy, PC Factory)
+  no lo exponen en el listado. Para desbloquearlo hay que abrir fichas de esas
+  grandes (~22.000 por pasada) o aflojar la identidad a (marca, modelo), que es
+  justo lo que la regla 6 mantiene afuera. Hasta entonces, escribir el copy es
+  trabajo con resultado medido en cero.
 - **Una tienda repite el mismo GTIN en dos listings propios.** Paris publica el
   mismo SKU con `store_sku` numérico y alfanumérico (13 GTIN así; 13 en Ferretek,
   1 en SP Digital). Comparten `product_id`, que es correcto, pero por eso
