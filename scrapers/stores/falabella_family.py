@@ -199,36 +199,50 @@ class _FalabellaFamilyAdapter:
     def __init__(self, http: HttpClient, categories: Sequence[CategoryRef]) -> None:
         self._http = http
         self._categories = tuple(categories)
-        self._completeness: dict[str, tuple[int, int]] = {}
 
     def categories(self) -> Sequence[CategoryRef]:
         return self._categories
 
     def completeness(self, category: CategoryRef) -> tuple[int, int] | None:
-        """`(enumerados, declarados)` de la última corrida, para el canario exacto.
+        """Siempre `None`: esta familia NO puede sostener un canario exacto.
 
-        Esta familia era la única grande sin esta guarda, y su ausencia tapó un
-        problema durante diez días: `max_pages` recorta el catálogo **en silencio**
-        y nadie se enteraba. Medido el 2026-10-12, lo que cada llave declara contra
-        los 960 que la ventana puede traer (20 páginas × 48):
+        Lo intenté el 2026-10-12 y hay que dejar escrito por qué no va, porque la
+        idea es tentadora: `pagination.count` trae el total declarado en cada
+        página, así que parece gratis.
 
-            cat2083/Zapatillas      18.410 declarados → enumeramos  5%
-            cat1640002/Audifonos     8.485 declarados → enumeramos 11%
-            cat690245/Botines-Mujer  2.545 declarados → enumeramos 38%
-            cat70057/Notebooks       1.245 declarados → enumeramos 77%
+        **El problema es que Falabella repite productos cuanto más profundo se
+        pagina**, así que lo enumerado nunca alcanza lo declarado y el gap es
+        función de la profundidad, no de un incidente. Medido llave por llave
+        contra producción:
 
-        El canario estadístico no lo veía porque el volumen enumerado es **estable**
-        (889-980 por corrida): comparado consigo mismo, 960 de 18.410 se ve igual de
-        sano que 960 de 1.000. Hace falta el total declarado para notar la
-        diferencia, y `pagination.count` lo trae en cada página.
+            Lavadoras              5 págs    204 de  204   100%   ok
+            Microondas             4 págs    174 de  175  99,4%
+            Refrigeradores         8 págs    351 de  352  99,7%
+            Tarjetas-de-Memoria   15 págs    614 de  697    88%
+            Notebooks             26 págs  1.047 de 1244    84%
+            Almacenamiento        37 págs  1.351 de 1750    77%
+            Smartphones           43 págs  1.675 de 2019    83%
+
+        Con el canario exacto encendido, **diecinueve llaves quedarían en `partial`
+        permanente** — incluida Refrigeradores, que saltaría por UN producto de 352.
+        Una alarma que suena siempre es una alarma apagada: es el mismo error que
+        las corridas manuales ensuciando la guarda de volumen, y ponerle una
+        tolerancia sería inventar un umbral, que es justo lo que CLAUDE.md prohíbe
+        para el chequeo exacto de Andesgear.
+
+        Lo que sí quedó de ese intento es lo que de verdad hacía falta: el aviso
+        `catalogo_mas_grande_que_la_ventana` cuando `max_pages` recorta —el problema
+        real, que estuvo tapado diez días— y el canario **estadístico**, que compara
+        cada llave contra su propia historia y por lo tanto no le molesta un gap
+        constante. Para el recorte no hace falta un canario: hace falta saber el
+        total, y eso ahora se loguea.
         """
-        return self._completeness.get(category.store_key)
+        return None
 
     def _page_url(self, category: CategoryRef, page: int) -> str:
         return f"{self.base_url}{self.listing_path}/{category.store_key}?page={page}"
 
     async def discover(self, category: CategoryRef) -> AsyncIterator[RawProduct]:
-        self._completeness.pop(category.store_key, None)
         seen: set[str] = set()
         declarado: int | None = None
         page = 1
@@ -322,8 +336,6 @@ class _FalabellaFamilyAdapter:
                     declarado,
                     alcanzable,
                 )
-            else:
-                self._completeness[category.store_key] = (len(seen), declarado)
 
 
 class FalabellaAdapter(_FalabellaFamilyAdapter):

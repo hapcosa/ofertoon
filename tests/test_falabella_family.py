@@ -296,7 +296,14 @@ def _pagina(skus, *, declarado, current=None):
 
 
 @pytest.mark.asyncio
-async def test_completeness_reporta_enumerados_contra_declarados():
+async def test_no_reporta_completitud_porque_la_familia_no_la_sostiene():
+    """La decisión del 2026-10-12, con su medición en el docstring de `completeness`.
+
+    Falabella repite productos cuanto más profundo se pagina, así que lo enumerado
+    nunca alcanza lo declarado: Refrigeradores da 351 de 352 y Almacenamiento 1.351
+    de 1.750. Con el canario exacto encendido, diecinueve llaves quedarían en
+    `partial` permanente y una de ellas por UN producto.
+    """
     cat = CategoryRef(slug="tecno-notebooks", store_key="cat1/X")
     http = _FakeHttp({1: _pagina(range(10), declarado=10, current=1)})
     adapter = FalabellaAdapter(http, [cat])
@@ -304,67 +311,42 @@ async def test_completeness_reporta_enumerados_contra_declarados():
     productos = [p async for p in adapter.discover(cat)]
 
     assert len(productos) == 10
-    assert adapter.completeness(cat) == (10, 10)
+    assert adapter.completeness(cat) is None, (
+        "ni siquiera cuando el catálogo entra completo: un canario que a veces "
+        "mide y a veces no es peor que uno que no mide"
+    )
 
 
 @pytest.mark.asyncio
-async def test_un_catalogo_mas_grande_que_la_ventana_no_reporta_completitud(caplog):
-    """Y no es una omisión: es para no dejar una alarma sonando para siempre.
+async def test_avisa_cuando_max_pages_recorta_el_catalogo(caplog):
+    """Esto es lo que de verdad hacía falta, y estuvo tapado diez días.
 
-    Las tres llaves gigantes de Falabella (Zapatillas 18.412, Refrigeradores
-    13.754, Audífonos 8.485) no entran en la ventana de 2.640 ni van a entrar.
-    Reportar `(2.640, 18.412)` las dejaría en `partial` permanente, y una alarma
-    que suena siempre es una alarma apagada — el mismo error que las corridas
-    manuales ensuciando la guarda de volumen. Se cae al canario estadístico, que
-    sigue vigilando el volumen contra su propia historia, y el hecho queda en el
-    log.
+    `max_pages` recortaba en silencio: 960 productos por llave contra los 18.412
+    que declara `cat2083/Zapatillas`. El canario estadístico no podía verlo porque
+    el volumen enumerado es estable corrida a corrida — 960 de 18.412 se ve igual
+    de sano que 960 de 1.000 cuando se compara contra la propia historia.
     """
     cat = CategoryRef(slug="ropa-calzado", store_key="cat2083/Zapatillas")
     paginas = {
         p: _pagina(range(p * 100, p * 100 + 48), declarado=5000, current=p)
         for p in range(1, 4)
     }
-    http = _FakeHttp(paginas)
 
     class Recortado(FalabellaAdapter):
         max_pages = 3
 
-    adapter = Recortado(http, [cat])
+    adapter = Recortado(_FakeHttp(paginas), [cat])
     with caplog.at_level(logging.WARNING):
         productos = [p async for p in adapter.discover(cat)]
 
     assert len(productos) == 144
-    assert adapter.completeness(cat) is None, (
-        "una llave que excede la ventana a propósito no puede quedar en partial "
-        "permanente"
-    )
     assert "catalogo_mas_grande_que_la_ventana" in caplog.text
+    assert "declarados=5000" in caplog.text
 
 
 @pytest.mark.asyncio
-async def test_el_canario_exacto_aplica_cuando_el_catalogo_entra(caplog):
-    """La contracara: si el catálogo entra en la ventana, la guarda sí mide.
-
-    Es el caso de Notebooks (1.243), Smartphones (2.022), Botines (2.545) y
-    Smart-TV (324) con `max_pages = 55`, o sea las llaves que producen la baseline
-    del sistema hoy. Acá una página que la tienda sirve a medias SÍ tiene que
-    marcar `partial`.
-    """
-    cat = CategoryRef(slug="tecno-notebooks", store_key="cat70057/Notebooks")
-    # Declara 100 y sirve 48: entra en la ventana, así que se mide y falta.
-    http = _FakeHttp({1: _pagina(range(48), declarado=100, current=1)})
-    adapter = FalabellaAdapter(http, [cat])
-
-    with caplog.at_level(logging.WARNING):
-        [p async for p in adapter.discover(cat)]
-
-    assert adapter.completeness(cat) == (48, 100)
-    assert "catalogo_mas_grande_que_la_ventana" not in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_sin_recorte_no_avisa(caplog):
-    """Un catálogo que entra completo no tiene que ensuciar el log."""
+async def test_un_catalogo_que_entra_no_ensucia_el_log(caplog):
+    """El aviso tiene que salir solo cuando el recorte es real."""
     cat = CategoryRef(slug="tecno-notebooks", store_key="cat1/X")
     http = _FakeHttp({1: _pagina(range(5), declarado=5, current=1)})
     adapter = FalabellaAdapter(http, [cat])
@@ -372,4 +354,4 @@ async def test_sin_recorte_no_avisa(caplog):
     with caplog.at_level(logging.WARNING):
         [p async for p in adapter.discover(cat)]
 
-    assert "catalogo_recortado_por_max_pages" not in caplog.text
+    assert "catalogo_mas_grande_que_la_ventana" not in caplog.text
