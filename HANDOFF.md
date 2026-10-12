@@ -1537,6 +1537,56 @@ siguiente era a las 03:16.
 el apagado no fue deliberado, vale revisar qué paró los contenedores cinco minutos
 después del boot.
 
+## 2026-10-12 (cierre): salud del sistema, medida por primera vez completa
+
+### El criterio de aceptación nunca se había corrido sobre las tiendas viejas
+
+`scripts.aceptacion_tienda` estaba agendado solo para las nuevas. Corrido sobre
+todas las evaluables, **todas pasan** y ninguna se acerca al umbral del 40%:
+
+    easy        1.906 cohorte  1.524 maduros   80%
+    sodimac     1.906           1.333          70%
+    pcfactory     560             369          66%
+    paris       4.485           2.915          65%
+    spdigital     620             308          50%
+    falabella   8.542           4.191          49%   ← la peor, igual sobre el umbral
+
+Las siete nuevas (ferretek, urban, kupfer, construmart, kruuse, andesgear, prat)
+siguen EN ESPERA: les faltan 11-14 días.
+
+⚠️ **Y esto corrige una alarma mía**: me preocupó que "de 62.286 listings solo
+10.640 maduran (17%)". Ese es exactamente el error transversal que el script existe
+para evitar — Falabella tiene 23.195 listings de menos de 30 días (el 80% de su
+catálogo) porque creció de 35k a 62k en diez días con las llaves nuevas y la
+ventana de 2.640. Por cohorte la salud es 49-80%, no 17%.
+
+### Nike: por qué falla, y por qué no hay nada que arreglar en el adaptador
+
+Sus `FetchError` (10 de 70 corridas en 7 días) **no son de tamaño**: sus páginas
+pesan 1,2-5,8 MB (174 MB por pasada, 0,35 GB/día) y tardan 0,6-2,0 s contra un
+timeout de 30 s. Los offsets que fallaron responden `206` perfecto al reintentarlos
+a mano. Es la red del host — el WiFi USB con fallos de DNS a ráfagas que CLAUDE.md
+ya documenta como no arreglable desde el repo.
+
+Lo que sí se arregló es la **clasificación**: siete de esas diez corridas habían
+persistido contenido (350, 800, 749, 398, 300, 200 y 50 observaciones de las ~1.038
+de una corrida sana) y quedaban marcadas `failed`, que es el único status que el
+canario descarta de su historia de volumen. Ahora `partial` si vio algo, `failed`
+solo si no vio nada.
+
+### El verificador de stock funciona, y sus números cierran exactos
+
+33 verificaciones acumuladas, 3-4 por día todos los días desde el 3-oct, **cero
+agotados**. Y el total cuadra: son exactamente los 18 posts de Sodimac + 15 de
+Falabella. Paris (15 posts) y Easy (12) dan cero porque no tienen lector, que es lo
+correcto. Con el 2,5% medido, lo esperado en 33 era 0,8 agotados.
+
+### Revisión de llaves: nada nuevo roto
+
+Barrido de las 150 llaves activas: fuera de SP Digital (apagada hoy), Nike (red) y
+los `partial` de Andesgear (deriva de catálogo, documentada y sin tolerancia a
+propósito), **ninguna tienda llevaba más de 48 h sin observar**.
+
 ## Lo que sigue, en orden
 
 0. **La guarda por volumen quedó cerrada** (ver la sección de arriba). Lo único
