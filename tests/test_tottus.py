@@ -143,14 +143,16 @@ def test_las_hermanas_no_heredan_los_headers():
 def test_max_pages_alcanza_para_el_paraguas_mas_grande():
     """Pasarse de `max_pages` recorta el catálogo sin un solo error.
 
-    Despensa declara 2.060 productos a 48 por página: 43. Con el default de 20 de
-    la familia se perdería más de la mitad y nada fallaría.
+    Despensa declara 2.060 productos a 48 por página: 43. Tottus tenía un override
+    de 45 por esto; desde el 2026-10-12 la familia entera trae 55 por defecto —ver
+    `_FalabellaFamilyAdapter.max_pages`— así que el override quedó redundante y se
+    quitó. Lo que este test fija es la propiedad, no el número: su paraguas más
+    grande tiene que entrar.
     """
     adapter = TottusAdapter(None, [])
     paginas_de_despensa = -(-2060 // 48)
     assert paginas_de_despensa == 43
     assert adapter.max_pages >= paginas_de_despensa
-    assert FalabellaAdapter(None, []).max_pages == 20, "solo Tottus lo sube"
 
 
 def test_pide_orden_por_precio_para_estabilizar_la_paginacion():

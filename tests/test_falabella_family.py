@@ -308,16 +308,18 @@ async def test_completeness_reporta_enumerados_contra_declarados():
 
 
 @pytest.mark.asyncio
-async def test_completeness_delata_el_recorte_por_max_pages(caplog):
-    """El modo de falla que estuvo tapado diez días.
+async def test_un_catalogo_mas_grande_que_la_ventana_no_reporta_completitud(caplog):
+    """Y no es una omisión: es para no dejar una alarma sonando para siempre.
 
-    `max_pages` recorta el catálogo en silencio y el canario estadístico no lo ve:
-    el volumen enumerado es estable corrida a corrida, así que 960 de 18.410 se ve
-    igual de sano que 960 de 1.000. Medido el 2026-10-12 en producción,
-    `cat2083/Zapatillas` declaraba 18.410 y enumerábamos el 5%.
+    Las tres llaves gigantes de Falabella (Zapatillas 18.412, Refrigeradores
+    13.754, Audífonos 8.485) no entran en la ventana de 2.640 ni van a entrar.
+    Reportar `(2.640, 18.412)` las dejaría en `partial` permanente, y una alarma
+    que suena siempre es una alarma apagada — el mismo error que las corridas
+    manuales ensuciando la guarda de volumen. Se cae al canario estadístico, que
+    sigue vigilando el volumen contra su propia historia, y el hecho queda en el
+    log.
     """
     cat = CategoryRef(slug="ropa-calzado", store_key="cat2083/Zapatillas")
-    # Tres páginas servidas, pero la tienda declara mucho más.
     paginas = {
         p: _pagina(range(p * 100, p * 100 + 48), declarado=5000, current=p)
         for p in range(1, 4)
@@ -331,11 +333,33 @@ async def test_completeness_delata_el_recorte_por_max_pages(caplog):
     with caplog.at_level(logging.WARNING):
         productos = [p async for p in adapter.discover(cat)]
 
-    enumerados, declarados = adapter.completeness(cat)
-    assert enumerados == len(productos) == 144
-    assert declarados == 5000
-    assert "catalogo_recortado_por_max_pages" in caplog.text
-    assert adapter.max_pages == 3
+    assert len(productos) == 144
+    assert adapter.completeness(cat) is None, (
+        "una llave que excede la ventana a propósito no puede quedar en partial "
+        "permanente"
+    )
+    assert "catalogo_mas_grande_que_la_ventana" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_el_canario_exacto_aplica_cuando_el_catalogo_entra(caplog):
+    """La contracara: si el catálogo entra en la ventana, la guarda sí mide.
+
+    Es el caso de Notebooks (1.243), Smartphones (2.022), Botines (2.545) y
+    Smart-TV (324) con `max_pages = 55`, o sea las llaves que producen la baseline
+    del sistema hoy. Acá una página que la tienda sirve a medias SÍ tiene que
+    marcar `partial`.
+    """
+    cat = CategoryRef(slug="tecno-notebooks", store_key="cat70057/Notebooks")
+    # Declara 100 y sirve 48: entra en la ventana, así que se mide y falta.
+    http = _FakeHttp({1: _pagina(range(48), declarado=100, current=1)})
+    adapter = FalabellaAdapter(http, [cat])
+
+    with caplog.at_level(logging.WARNING):
+        [p async for p in adapter.discover(cat)]
+
+    assert adapter.completeness(cat) == (48, 100)
+    assert "catalogo_mas_grande_que_la_ventana" not in caplog.text
 
 
 @pytest.mark.asyncio

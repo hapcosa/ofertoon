@@ -30,6 +30,10 @@ _NEXT_DATA = re.compile(
     r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', re.S
 )
 
+#: Productos por página que sirve esta familia. Solo es el respaldo para calcular
+#: la ventana: el valor real viene en `pagination.perPage` de cada respuesta.
+PAGE_SIZE = 48
+
 #: Precio con tarjeta propia de la casa. Requiere plástico → NO es el precio que
 #: paga cualquiera, así que queda fuera del detector (se guarda para mostrarlo).
 _CARD_PRICE_TYPES = frozenset({"cmrPrice"})
@@ -171,7 +175,22 @@ class _FalabellaFamilyAdapter:
     #: Prefijo del listado por categoría. `store_key` es el resto del path
     #: (`cat70057/Notebooks`), así que NO se url-encodea: lleva `/` significativo.
     listing_path: str = ""
-    max_pages: int = 20
+    #: Páginas máximas por llave. 55 × 48 = 2.640 productos.
+    #:
+    #: Eran 20 (960) y eso recortaba el catálogo **en silencio** — ver
+    #: `completeness`. Con 55 entran completas las llaves medianas, que son las que
+    #: producen la baseline del sistema hoy:
+    #:
+    #:     cat70057/Notebooks     1.243 → 26 páginas ✓
+    #:     cat720161/Smartphones  2.022 → 43 páginas ✓
+    #:     cat690245/Botines      2.545 → 54 páginas ✓
+    #:     cat7190148/Smart-TV      324 →  7 páginas ✓
+    #:
+    #: Las tres gigantes siguen sin entrar (Zapatillas 18.412 pediría 384 páginas,
+    #: Refrigeradores 13.754 → 287, Audífonos 8.485 → 177) pero pasan de ver 960 a
+    #: ver 2.640. Cubrirlas enteras costaría ~850 requests por pasada para tres
+    #: llaves, contra las ~440 que hoy cuesta Falabella completa.
+    max_pages: int = 55
     #: Headers por request. `None` = los del `HttpClient`, que se identifican como
     #: bot. Una tienda cuyo borde exige parecer un navegador lo sobreescribe (ver
     #: `TottusAdapter`).
@@ -281,20 +300,30 @@ class _FalabellaFamilyAdapter:
             page += 1
 
         if declarado is not None:
-            self._completeness[category.store_key] = (len(seen), declarado)
-            if page > self.max_pages and len(seen) < declarado:
-                # El corte es NUESTRO, no de la tienda: la página siguiente existe.
-                # Sin este aviso el recorte es invisible — ver `completeness`.
+            alcanzable = self.max_pages * (pagination.get("perPage") or PAGE_SIZE)
+            if declarado > alcanzable:
+                # El catálogo excede lo que decidimos enumerar, así que NO se
+                # reporta completitud: el runner cae al canario estadístico.
+                #
+                # Reportar `(2.640, 18.412)` dejaría estas tres llaves en `partial`
+                # permanente, y una alarma que siempre suena es una alarma apagada
+                # —el mismo error que las corridas manuales ensuciando la guarda de
+                # volumen—. Degradar a la guarda más débil es correcto; inventar un
+                # total alcanzable y llamarlo "completo" sería mentir. El hecho
+                # queda en el log, que es donde se mira a propósito.
                 logger.warning(
-                    "catalogo_recortado_por_max_pages store=%s categoria=%s "
-                    "llave=%s enumerados=%d declarados=%d max_pages=%d",
+                    "catalogo_mas_grande_que_la_ventana store=%s categoria=%s "
+                    "llave=%s enumerados=%d declarados=%d ventana=%d — sin canario "
+                    "exacto para esta llave",
                     self.slug,
                     category.slug,
                     category.store_key,
                     len(seen),
                     declarado,
-                    self.max_pages,
+                    alcanzable,
                 )
+            else:
+                self._completeness[category.store_key] = (len(seen), declarado)
 
 
 class FalabellaAdapter(_FalabellaFamilyAdapter):
@@ -362,10 +391,9 @@ class TottusAdapter(_FalabellaFamilyAdapter):
     la ausencia de `Accept-Language`, `Accept-Encoding` y `Sec-Fetch-*`— y la
     diferencia con Prat, donde el UA de navegador bastaba.
 
-    `max_pages` sube a 45 porque sus paraguas son grandes: Despensa declara 2.060
-    productos y a 48 por página son 43. Con el default de 20 se perdería más de la
-    mitad del catálogo **sin un solo error**, porque el corte por `max_pages` es
-    silencioso; lo único que lo delataría es el canario exacto contra `count`.
+    Su paraguas más grande, Despensa, declara 2.060 productos = 43 páginas, así que
+    entra en el `max_pages = 55` que la familia trae por defecto desde el
+    2026-10-12. Antes tenía un override de 45 por la misma razón, hoy redundante.
 
     ⚠️ **`in_stock` es ciego acá, igual que en Falabella y Paris.** Su
     `availability` no habla de stock sino de modos de envío (`expressShipping`,
@@ -377,8 +405,6 @@ class TottusAdapter(_FalabellaFamilyAdapter):
     listing_path = "/tottus-cl/lista"
     #: Sin esto, HTTP 403 en todas las páginas. Ver el docstring.
     _headers = BROWSER_HEADERS
-    #: Despensa son 43 páginas. Ver el docstring.
-    max_pages = 45
 
     #: Orden explícito por precio ascendente, y es lo que hace confiable su serie.
     #:
