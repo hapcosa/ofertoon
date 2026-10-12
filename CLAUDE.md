@@ -440,8 +440,19 @@ la página 1 en el fixture y la verificación de centinelas— está en
   Cuánto arreglaba, medido antes de construirlo: de los 40 candidatos aceptados más
   recientes de Falabella y Sodimac, **39 disponibles y 1 agotado (2,5%)**. Es un
   pulido de ~1 oferta cada cinco días, no un salto de precisión — no esperes ver el
-  efecto en el backtest. Paris queda afuera del verificador: su ficha trae JSON-LD
-  de Product pero **sin** `offers.availability`.
+  efecto en el backtest.
+  **Paris queda afuera del verificador y no por falta de intentos** — buscado a
+  fondo el 2026-10-12, para que nadie repita el camino: su ficha trae JSON-LD de
+  Product **sin** `offers.availability`, no tiene `__NEXT_DATA__` ni
+  `__APOLLO_STATE__`, y en 2 MB de HTML no aparece ni una vez `stock`, `agotado` ni
+  `no disponible`. Su API de catálogo es **commercetools** y tampoco lo trae: las
+  claves de producto, `masterVariant` y las 19 variantes son `assets, attributes,
+  collections, ean, id, images, isMatchingVariant, key, prices, sellersSKU, sku` —
+  cero inventario (`published` es flag de publicación, no de stock, como ya dice el
+  adaptador). Filtrar esa API por `partNumber` o `sku` devuelve HTTP 500. Y el HTML
+  de la ficha no menciona ningún host de API ni ruta de inventario: el front pide
+  el stock desde sus bundles JS minificados. Perseguir eso es frágil y
+  desproporcionado para una guarda que corrige el 2,5%.
 - **`isOutOfStock` cambia de lugar entre fichas de la familia Falabella, y el
   agujero cae justo donde importa.** Está en `pageProps.isOutOfStock` en algunas
   fichas y en `pageProps.productData.isOutOfStock` en otras. Mirando solo la
