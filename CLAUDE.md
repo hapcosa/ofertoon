@@ -538,6 +538,39 @@ la página 1 en el fixture y la verificación de centinelas— está en
   acierto en `precision` y lleva columna propia en el reporte, con aviso cuando
   pasa la mitad de los aciertos — un canal cuya precisión es toda liquidación es
   un outlet, no un canal de ofertas.
+- **El 89% de lo que el backtest llama `fake` NO es un precio inflado, y eso hace
+  que la precisión medida subestime al detector.** `label_outcome` usa "¿el precio
+  volvió a subir?" como proxy de "¿era una oferta real?", y ese proxy falla en toda
+  categoría con tendencia descendente de precio — o sea en toda la tecnología.
+  Clasificados los 19 `fake` de las 7 categorías con datos, a sus θ vigentes
+  (2026-10-12), según la forma del futuro de la señal:
+
+        SIGUE_BAJO    13 (68%)   el precio bajó TODAVÍA MÁS después de la señal
+        PLANO          4 (21%)   se quedó exactamente en el precio publicado
+        REBOTA_POCO    2 (10%)   subió algo, sin llegar al umbral de recuperación
+
+  Los dos primeros no son fallas: si se publica a $99.990 un producto cuyo p50 era
+  $134.990 y después baja a $79.990, **la oferta fue real** —el descuento existía y
+  quien compró obtuvo un precio genuino—; que siga bajando no la vuelve falsa, la
+  vuelve "no era el fondo". `PLANO` es un cambio de precio de lista, tampoco un
+  inflado. En `tecno-celulares` el 75% de los `fake` son `SIGUE_BAJO`, que es la
+  misma raíz del caso reacondicionado pero más general: los productos de tecnología
+  bajan de precio por ciclo de producto, no por promoción.
+  Es exactamente el mecanismo que motivó `LABEL_LIQUIDATION` (§1.3), un nivel más
+  abajo: el discriminante del piso solo rescata los que bajan a un precio **nunca
+  visto**, así que uno que baja a un nivel donde ya había estado queda `fake`
+  aunque después siga bajando.
+  ⚠️ **No se tocó el etiquetado**, y a propósito: son 19 muestras. El Cyber Monday
+  del 5-7 de octubre aportó ~1.000 señales/día y se puede etiquetar desde el 5 de
+  noviembre — recién ahí hay evidencia para decidir si `SIGUE_BAJO` cuenta como
+  acierto, y mover el gate con 19 casos sería calibrar a ojo.
+- **El "patrón invertido" de `ferre-jardin` NO existe: es ruido de muestra chica.**
+  La precisión que cae de 76,5% a 50% y 0% al subir θ está construida sobre **6 a
+  14 señales etiquetadas** (a θ 0.25 son 3 `real` y 3 `fake`). No confundirlo con
+  `tecno-celulares`, donde el mecanismo sí quedó demostrado por los
+  reacondicionados. Mirar los tres `fake` de jardín igual sirvió: son motosierras
+  y cortadoras que bajaron de nivel y se quedaron, lo que llevó al hallazgo de
+  arriba.
 - **El piso de la liquidación se calcula hasta AYER, no con `min_60d`.**
   `backtest.piso_previo` corta en el comienzo del día a propósito: la pasada de la
   mañana ya trae el precio nuevo, así que el `min_60d` de la baseline con la que

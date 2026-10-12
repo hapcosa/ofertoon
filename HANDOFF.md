@@ -1487,6 +1487,56 @@ al lugar correcto y la precisión sube con θ como debe. Pero no alcanza para fi
 ninguno, y **no se cambió ningún θ**. El dato que lo va a resolver es el Cyber
 Monday a partir del 5-nov.
 
+## 2026-10-12 (cont.): la precisión medida subestima al detector
+
+Investigando el patrón invertido de `ferre-jardin` apareció algo más grande, y
+cambia cómo hay que leer el gate de F1.
+
+**El 89% de lo que el backtest llama `fake` no es un precio inflado.** Clasifiqué
+los 19 `fake` de las 7 categorías con datos, a sus θ vigentes, según la forma del
+futuro de cada señal:
+
+    SIGUE_BAJO    13 (68%)   el precio bajó TODAVÍA MÁS después de la señal
+    PLANO          4 (21%)   se quedó exactamente en el precio publicado
+    REBOTA_POCO    2 (10%)   subió algo, sin llegar al umbral de recuperación
+
+`label_outcome` usa "¿el precio volvió a subir?" como proxy de "¿era una oferta
+real?". Ese proxy falla en toda categoría con tendencia descendente de precio, o
+sea en toda la tecnología: en `tecno-celulares` el 75% de los `fake` son
+`SIGUE_BAJO`. Y los dos primeros casos **no son fallas del detector**: si se
+publica a $99.990 algo cuyo p50 era $134.990 y después baja a $79.990, la oferta
+fue real — que siga bajando la vuelve "no era el fondo", no falsa.
+
+Es el mismo mecanismo que motivó `LABEL_LIQUIDATION` (§1.3) un nivel más abajo: el
+discriminante del piso solo rescata los que bajan a un precio **nunca visto**, así
+que uno que baja a un nivel donde ya había estado queda `fake` aunque después siga
+bajando. Y tiene la misma consecuencia: **θ calibrado contra esta métrica queda más
+alto de lo necesario**, dejando afuera ofertas buenas.
+
+⚠️ **No toqué el etiquetado.** Son 19 muestras y cambiar `label_outcome` es cambiar
+el gate. La decisión tiene que esperar al 5 de noviembre, cuando el Cyber Monday
+(~1.000 señales/día el 5, 6 y 7 de octubre) se pueda etiquetar: ahí habrá miles de
+casos para decidir con evidencia si `SIGUE_BAJO` cuenta como acierto.
+
+**Y una corrección sobre `ferre-jardin`**: el "patrón invertido" que reporté no
+existe, es ruido. Está construido sobre 6 a 14 señales etiquetadas (a θ 0.25 son 3
+`real` y 3 `fake`). No es comparable con celulares, donde el mecanismo quedó
+demostrado.
+
+### El incidente del reinicio
+
+El host se reinició a las 19:36 UTC y **Ofertoon quedó caído**: Postgres volvió
+solo por su `restart: unless-stopped`, pero a las 19:42 algo detuvo los
+contenedores explícitamente (`shutdown_signal received` en publisher y gate), y esa
+política no revive lo que se paró a mano. signalsTrading volvió entero y siguió
+arriba todo el tiempo. Levantado a las 21:56 con `docker compose up -d`, todo
+healthy y sin pérdida: la pasada de las 15:16 había corrido antes del reinicio y la
+siguiente era a las 03:16.
+
+**Lo que conviene saber para la próxima**: `unless-stopped` no protege de esto. Si
+el apagado no fue deliberado, vale revisar qué paró los contenedores cinco minutos
+después del boot.
+
 ## Lo que sigue, en orden
 
 0. **La guarda por volumen quedó cerrada** (ver la sección de arriba). Lo único
