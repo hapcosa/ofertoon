@@ -488,12 +488,6 @@ la página 1 en el fixture y la verificación de centinelas— está en
   `ropa-accesorios` es herencia de sus vecinos, no una medición. Lateral bueno
   para el producto: en Nike no hay número de la tienda que inflar, el descuento
   sale entero de nuestra baseline.
-- **`falabella_family` NO implementa `completeness()`**, a diferencia de
-  `vtex_family`, `magento_html`, `ferretek` y `spdigital`. O sea Falabella,
-  Sodimac y Tottus caen al canario **estadístico** y no al exacto: una caída de
-  cobertura contra el total declarado no produce `partial` ahí. Si hace falta esa
-  guarda en esta familia, hay que escribirla — el `count` está disponible en
-  `pagination`.
 - **El producto reacondicionado no es una oferta, y envenenaba la calibración.**
   Un reacondicionado baja de precio y **se queda abajo**: su precio sigue la
   depreciación y el grado del equipo, no una promoción, así que `label_outcome` lo
@@ -519,7 +513,8 @@ la página 1 en el fixture y la verificación de centinelas— está en
   `catalogo_mas_grande_que_la_ventana`. Al subirlo, 19 de las 21 llaves activas de
   la familia entran completas; solo Zapatillas (384 págs) y Audífonos (177) exceden.
 - **La familia Falabella NO puede sostener un canario exacto, y conviene no volver
-  a intentarlo.** Lo probé el 2026-10-12: la tienda **repite productos cuanto más
+  a intentarlo** — a diferencia de `vtex_family`, `magento_html`, `ferretek` y
+  `spdigital`, que sí lo implementan. Lo probé el 2026-10-12: la tienda **repite productos cuanto más
   profundo se pagina**, así que lo enumerado nunca alcanza lo declarado y el gap es
   función de la profundidad (Lavadoras 5 págs → 100%; Refrigeradores 8 → 99,7%;
   Notebooks 26 → 84%; Almacenamiento 37 → 77%; Smartphones 43 → 83%). Con el
