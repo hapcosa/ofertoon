@@ -1433,6 +1433,60 @@ codecs presentes, así que no puede volver a desincronizarse.
 Lo encontré de casualidad, investigando la ficha de Falabella para el verificador
 de stock: su cuerpo llegaba binario.
 
+## 2026-10-12: diez días sin supervisión, y lo que apareció
+
+El sistema siguió sano solo: 152 corridas por pasada, ~29.000 observaciones,
+**6 posts/día sin interrumpirse en diez días**, 0 migraciones pendientes. Y cuatro
+cosas que nadie había visto.
+
+### Tres hallazgos con arreglo aplicado
+
+1. **`max_pages` recortaba la familia Falabella en silencio.** 960 productos por
+   llave contra los 18.412 que declara `cat2083/Zapatillas`. El canario estadístico
+   no podía verlo —960 de 18.412 se ve igual de sano que 960 de 1.000 cuando se
+   compara contra la propia historia— y el daño era sobre la baseline: de los 3.363
+   SKUs que `ropa-calzado` vio el 2-oct, solo **107 (3%)** seguían en la ventana
+   diez días después. Ahora son 2.640 por llave y 19 de las 21 llaves activas entran
+   completas; `ropa-calzado` pasó de ~1.920 observaciones por pasada a ~4.775.
+   Costo medido: +150 requests, de 10 a 15 min para las tres tiendas.
+2. **El producto reacondicionado no es una oferta** (`REJECT_REFURBISHED`). Era la
+   causa del patrón invertido de `tecno-celulares`: 44% de los aceptados con ≥30% de
+   descuento eran reacondicionados contra 8% de los de menos. Excluirlos sube la
+   precisión 10-30 puntos según θ y aplana el patrón. **8 de las 132 ofertas ya
+   publicadas eran reacondicionados.**
+3. **SP Digital vació dos categorías** (`Category:1293` y `Category:1493`):
+   devuelven cero productos, una desde antes del 5-oct y la otra desde el 9-oct, 20
+   corridas `failed` en total. Apagadas en la migración 31. El sistema **sí avisó**
+   —cada pasada las reportó— y nadie leyó la alerta en diez días; eso no es un
+   agujero de código.
+
+### El Cyber Monday quedó capturado
+
+El 5, 6 y 7 de octubre el detector aceptó ~1.000 candidatos/día contra los ~150
+normales, con 33% de descuento promedio en ferretería y 884 aceptados solo en
+celulares. El publisher publicó sus 6/día por cuota. **Esas señales se etiquetan
+desde el 5 de noviembre** y van a ser la mejor evidencia que tengamos para θ: es el
+único evento de descuentos masivos reales en la serie.
+
+### θ: hay señal direccional, NO calibración — y corrijo un error mío
+
+⚠️ El 12-oct reporté denominadores de 437, 278 y 154 señales etiquetadas. **Estaba
+mal**: sumé la columna `s/madurar`, que es justamente lo que todavía no tiene
+etiqueta. Los denominadores reales son mucho más chicos:
+
+    ferre-herramientas  θ 0.15   92,5%   n=40     ← el mejor dato que hay
+    hogar-electro       θ 0.15   81,1%   n=37
+    tecno-celulares     θ 0.10   67,4%   n=43
+    tecno-componentes   θ 0.10   84,8%   n=33
+    tecno-notebooks     θ 0.10   82,1%   n=28
+    hogar-electro       θ 0.20   87,5%   n=24
+    tecno-tv            θ 0.20   81,2%   n=16
+
+Con n entre 16 y 43, lo que hay es **señal direccional**: los θ de partida apuntan
+al lugar correcto y la precisión sube con θ como debe. Pero no alcanza para fijar
+ninguno, y **no se cambió ningún θ**. El dato que lo va a resolver es el Cyber
+Monday a partir del 5-nov.
+
 ## Lo que sigue, en orden
 
 0. **La guarda por volumen quedó cerrada** (ver la sección de arriba). Lo único

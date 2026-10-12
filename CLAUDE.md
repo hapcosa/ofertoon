@@ -494,6 +494,39 @@ la página 1 en el fixture y la verificación de centinelas— está en
   cobertura contra el total declarado no produce `partial` ahí. Si hace falta esa
   guarda en esta familia, hay que escribirla — el `count` está disponible en
   `pagination`.
+- **El producto reacondicionado no es una oferta, y envenenaba la calibración.**
+  Un reacondicionado baja de precio y **se queda abajo**: su precio sigue la
+  depreciación y el grado del equipo, no una promoción, así que `label_outcome` lo
+  marca `fake` con razón. Medido el 2026-10-12 sobre `tecno-celulares` corriendo el
+  backtest real con y sin ellos: la precisión sube de 67,4% a 78,1% (θ 0.10) y de
+  41,7% a 71,4% (θ 0.20), y **desaparece el patrón invertido** que tenía la
+  categoría —un descuento más grande predecía peor—, porque entre los aceptados con
+  ≥30% el **44%** eran reacondicionados contra el **8%** entre los de menos de 30%.
+  Era además un problema de producto ya materializado: **8 de las 132 ofertas
+  publicadas eran reacondicionados**. Lo rechaza `detector.REJECT_REFURBISHED` vía
+  `catalog.normalize.es_segunda_mano`, que mira el nombre (ninguna tienda expone la
+  condición en un campo aparte) con tildes normalizadas. Alcance: 46% del catálogo
+  de celulares y 29% del de notebooks; ~0% en el resto.
+- **`max_pages` recorta el catálogo en silencio, y en la familia Falabella estuvo
+  recortando diez días.** Eran 20 páginas × 48 = 960 productos por llave, contra
+  `cat2083/Zapatillas` que declara **18.412**. El canario estadístico no puede
+  verlo: el volumen enumerado es estable corrida a corrida, así que 960 de 18.412
+  se ve igual de sano que 960 de 1.000 comparado contra su propia historia. El daño
+  es sobre la baseline y es proporcional al exceso — la ventana se reposiciona
+  entre días, así que de los 3.363 SKUs que `ropa-calzado` vio el 2-oct solo **107
+  (3%)** seguían en la ventana diez días después, con 2,1 días observados de 8.
+  Ahora son 55 páginas (2.640) y hay un aviso explícito
+  `catalogo_mas_grande_que_la_ventana`. Al subirlo, 19 de las 21 llaves activas de
+  la familia entran completas; solo Zapatillas (384 págs) y Audífonos (177) exceden.
+- **La familia Falabella NO puede sostener un canario exacto, y conviene no volver
+  a intentarlo.** Lo probé el 2026-10-12: la tienda **repite productos cuanto más
+  profundo se pagina**, así que lo enumerado nunca alcanza lo declarado y el gap es
+  función de la profundidad (Lavadoras 5 págs → 100%; Refrigeradores 8 → 99,7%;
+  Notebooks 26 → 84%; Almacenamiento 37 → 77%; Smartphones 43 → 83%). Con el
+  canario exacto encendido quedaban **19 llaves en `partial` permanente**, una de
+  ellas por UN producto de 352 — y una alarma que suena siempre es una alarma
+  apagada. `completeness()` devuelve `None` a propósito y la medición está en su
+  docstring. Lo que sí hacía falta era conocer el total, y para eso alcanza el log.
 - **Los θ de `categories.discount_threshold` NO están calibrados.** Son valores
   de partida del plan. El gate de F1 es el output de `pricing/backtest.py`:
   precisión ≥80% con ≥3 ofertas/día/canal.
