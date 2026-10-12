@@ -6,6 +6,10 @@ el canario en vivo lo detecte.
 """
 from __future__ import annotations
 
+import json
+import logging
+import re
+
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -241,3 +245,107 @@ async def test_shell_despues_de_la_pagina_1_es_fin_de_catalogo():
     cat = CategoryRef(slug="tecno-notebooks", store_key="cat70057/Notebooks")
     productos = [p async for p in adapter.discover(cat)]
     assert productos, "la página 1 del fixture debe haberse consumido"
+
+
+# -----------------------------------------------------------------------------
+# El canario exacto (2026-10-12): esta familia era la única grande sin él
+# -----------------------------------------------------------------------------
+
+
+class _FakeHttp:
+    """Sirve páginas canned por número de página."""
+
+    def __init__(self, paginas: dict[int, str]) -> None:
+        self.paginas = paginas
+        self.pedidos: list[int] = []
+
+    async def get_text(self, url, *, rps=None, headers=None):
+        page = int(re.search(r"page=(\d+)", url).group(1))
+        self.pedidos.append(page)
+        return self.paginas.get(page, _pagina([], declarado=0))
+
+
+def _pagina(skus, *, declarado, current=None):
+    """Una página con la forma de `__NEXT_DATA__` de la familia."""
+    results = [
+        {
+            "skuId": str(s),
+            "url": f"https://x/{s}",
+            "displayName": f"Producto {s}",
+            "prices": [{"type": "internetPrice", "price": ["10.000"]}],
+        }
+        for s in skus
+    ]
+    payload = {
+        "props": {
+            "pageProps": {
+                "results": results,
+                "pagination": {
+                    "count": declarado,
+                    "perPage": 48,
+                    "currentPage": current if current is not None else 1,
+                },
+            }
+        }
+    }
+    return (
+        '<script id="__NEXT_DATA__" type="application/json">'
+        + json.dumps(payload)
+        + "</script>"
+    )
+
+
+@pytest.mark.asyncio
+async def test_completeness_reporta_enumerados_contra_declarados():
+    cat = CategoryRef(slug="tecno-notebooks", store_key="cat1/X")
+    http = _FakeHttp({1: _pagina(range(10), declarado=10, current=1)})
+    adapter = FalabellaAdapter(http, [cat])
+
+    productos = [p async for p in adapter.discover(cat)]
+
+    assert len(productos) == 10
+    assert adapter.completeness(cat) == (10, 10)
+
+
+@pytest.mark.asyncio
+async def test_completeness_delata_el_recorte_por_max_pages(caplog):
+    """El modo de falla que estuvo tapado diez días.
+
+    `max_pages` recorta el catálogo en silencio y el canario estadístico no lo ve:
+    el volumen enumerado es estable corrida a corrida, así que 960 de 18.410 se ve
+    igual de sano que 960 de 1.000. Medido el 2026-10-12 en producción,
+    `cat2083/Zapatillas` declaraba 18.410 y enumerábamos el 5%.
+    """
+    cat = CategoryRef(slug="ropa-calzado", store_key="cat2083/Zapatillas")
+    # Tres páginas servidas, pero la tienda declara mucho más.
+    paginas = {
+        p: _pagina(range(p * 100, p * 100 + 48), declarado=5000, current=p)
+        for p in range(1, 4)
+    }
+    http = _FakeHttp(paginas)
+
+    class Recortado(FalabellaAdapter):
+        max_pages = 3
+
+    adapter = Recortado(http, [cat])
+    with caplog.at_level(logging.WARNING):
+        productos = [p async for p in adapter.discover(cat)]
+
+    enumerados, declarados = adapter.completeness(cat)
+    assert enumerados == len(productos) == 144
+    assert declarados == 5000
+    assert "catalogo_recortado_por_max_pages" in caplog.text
+    assert adapter.max_pages == 3
+
+
+@pytest.mark.asyncio
+async def test_sin_recorte_no_avisa(caplog):
+    """Un catálogo que entra completo no tiene que ensuciar el log."""
+    cat = CategoryRef(slug="tecno-notebooks", store_key="cat1/X")
+    http = _FakeHttp({1: _pagina(range(5), declarado=5, current=1)})
+    adapter = FalabellaAdapter(http, [cat])
+
+    with caplog.at_level(logging.WARNING):
+        [p async for p in adapter.discover(cat)]
+
+    assert "catalogo_recortado_por_max_pages" not in caplog.text

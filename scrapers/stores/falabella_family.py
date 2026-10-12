@@ -180,15 +180,38 @@ class _FalabellaFamilyAdapter:
     def __init__(self, http: HttpClient, categories: Sequence[CategoryRef]) -> None:
         self._http = http
         self._categories = tuple(categories)
+        self._completeness: dict[str, tuple[int, int]] = {}
 
     def categories(self) -> Sequence[CategoryRef]:
         return self._categories
+
+    def completeness(self, category: CategoryRef) -> tuple[int, int] | None:
+        """`(enumerados, declarados)` de la última corrida, para el canario exacto.
+
+        Esta familia era la única grande sin esta guarda, y su ausencia tapó un
+        problema durante diez días: `max_pages` recorta el catálogo **en silencio**
+        y nadie se enteraba. Medido el 2026-10-12, lo que cada llave declara contra
+        los 960 que la ventana puede traer (20 páginas × 48):
+
+            cat2083/Zapatillas      18.410 declarados → enumeramos  5%
+            cat1640002/Audifonos     8.485 declarados → enumeramos 11%
+            cat690245/Botines-Mujer  2.545 declarados → enumeramos 38%
+            cat70057/Notebooks       1.245 declarados → enumeramos 77%
+
+        El canario estadístico no lo veía porque el volumen enumerado es **estable**
+        (889-980 por corrida): comparado consigo mismo, 960 de 18.410 se ve igual de
+        sano que 960 de 1.000. Hace falta el total declarado para notar la
+        diferencia, y `pagination.count` lo trae en cada página.
+        """
+        return self._completeness.get(category.store_key)
 
     def _page_url(self, category: CategoryRef, page: int) -> str:
         return f"{self.base_url}{self.listing_path}/{category.store_key}?page={page}"
 
     async def discover(self, category: CategoryRef) -> AsyncIterator[RawProduct]:
+        self._completeness.pop(category.store_key, None)
         seen: set[str] = set()
+        declarado: int | None = None
         page = 1
 
         while page <= self.max_pages:
@@ -251,9 +274,27 @@ class _FalabellaFamilyAdapter:
                 break
 
             total = pagination.get("count") or 0
+            if total:
+                declarado = int(total)
             if len(seen) >= total:
                 break
             page += 1
+
+        if declarado is not None:
+            self._completeness[category.store_key] = (len(seen), declarado)
+            if page > self.max_pages and len(seen) < declarado:
+                # El corte es NUESTRO, no de la tienda: la página siguiente existe.
+                # Sin este aviso el recorte es invisible — ver `completeness`.
+                logger.warning(
+                    "catalogo_recortado_por_max_pages store=%s categoria=%s "
+                    "llave=%s enumerados=%d declarados=%d max_pages=%d",
+                    self.slug,
+                    category.slug,
+                    category.store_key,
+                    len(seen),
+                    declarado,
+                    self.max_pages,
+                )
 
 
 class FalabellaAdapter(_FalabellaFamilyAdapter):
