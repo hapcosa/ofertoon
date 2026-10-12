@@ -304,7 +304,18 @@ async def scrape_target(
                 )
                 buffer.clear()
     except Exception as exc:  # el adaptador de una tienda no tumba la pasada
-        status = "failed"
+        # Reventar a mitad de la paginación NO es lo mismo que no ver nada, y la
+        # diferencia importa para el canario: `recent_items_seen` excluye las
+        # corridas `failed` —"una corrida que reventó no vio nada, su cero no es un
+        # volumen"— y eso es cierto solo cuando de verdad no vio nada.
+        #
+        # Medido en Nike el 2026-10-12: de sus 10 corridas fallidas en 7 días,
+        # **siete persistieron contenido** (350, 800, 749, 398, 300, 200 y 50
+        # observaciones de las ~1.038 que trae una corrida sana) porque su API
+        # falla en una página suelta por la red del host. Marcarlas `failed`
+        # descartaba esos volúmenes de la historia del canario, que es justo el
+        # enclavamiento que se arregló al empezar a contar los `partial`.
+        status = "partial" if seen else "failed"
         error = f"{type(exc).__name__}: {exc}"[:500]
         logger.exception("fallo %s/%s", adapter.slug, category.slug)
 

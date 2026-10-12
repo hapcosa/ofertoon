@@ -16,6 +16,7 @@ import pytest
 import db as db_module
 from scrapers import runner
 from scrapers.base import CategoryRef, RawProduct
+from scrapers.http import FetchError
 
 
 class FakePool:
@@ -72,6 +73,31 @@ def calls(monkeypatch):
     monkeypatch.setattr(db_module, "finish_run", fake_finish)
     monkeypatch.setattr(db_module, "persist_batch", fake_persist)
     return registro
+
+
+class _AdapterQueRevientaAMitad:
+    """Emite `emitidos` productos y después lanza, como la API de Nike en una página."""
+
+    slug = "nike"
+    rate_limit_rps = 0.5
+
+    def __init__(self, *, emitidos: int) -> None:
+        self._emitidos = emitidos
+
+    def categories(self):
+        return ()
+
+    async def discover(self, category):
+        for i in range(self._emitidos):
+            yield RawProduct(
+                store_slug=self.slug,
+                store_sku=f"sku-{i}",
+                url=f"https://nike.cl/{i}",
+                name=f"Zapatilla {i}",
+                price_effective=Decimal("89990"),
+                scraped_at=datetime.now(timezone.utc),
+            )
+        raise FetchError("https://www.nike.cl/...: agotados 3 reintentos")
 
 
 TARGET = {
@@ -165,7 +191,11 @@ async def test_lo_scrapeado_antes_del_fallo_se_persiste(calls):
         FakePool(), RompeAlFinal(130), TARGET, store_id=6, dry_run=False
     )
 
-    assert outcome.status == "failed"
+    # `partial` y no `failed` desde el 2026-10-12: reventar con 130 productos ya
+    # enumerados no es "no vi nada", y el canario descarta los `failed` de su
+    # historia de volumen. Lo que este test fija sigue siendo lo mismo: que los
+    # 130 se persistan.
+    assert outcome.status == "partial"
     assert outcome.items_seen == 130
     assert outcome.items_ok == 130  # antes eran 100: los 30 del buffer se perdían
     assert calls["finish_args"]["items_ok"] == 130
@@ -184,3 +214,40 @@ async def test_una_corrida_filtrada_se_marca_como_parcial(calls):
     )
 
     assert calls["start_args"]["is_partial_run"] is True
+
+
+async def test_un_corte_a_mitad_es_partial_y_no_failed(calls):
+    """Reventar con contenido ya enumerado no es lo mismo que no ver nada.
+
+    La diferencia importa para el canario: `recent_items_seen` excluye las
+    corridas `failed` porque "una corrida que reventó no vio nada, su cero no es un
+    volumen", y eso es cierto solo cuando de verdad no vio nada.
+
+    Medido en Nike el 2026-10-12: de sus 10 corridas fallidas en 7 días, siete
+    persistieron contenido (350, 800, 749, 398, 300, 200 y 50 observaciones de las
+    ~1.038 de una corrida sana), porque su API falla en una página suelta por la
+    red del host. Marcarlas `failed` tiraba esos volúmenes de la historia del
+    canario.
+    """
+    calls["history"] = [1000, 1010, 990]
+    outcome = await runner.scrape_target(
+        FakePool(), _AdapterQueRevientaAMitad(emitidos=800), TARGET,
+        store_id=6, dry_run=False,
+    )
+
+    assert outcome.status == "partial"
+    assert outcome.items_seen == 800
+    assert "FetchError" in outcome.error
+    assert calls["finish_args"]["status"] == "partial"
+
+
+async def test_reventar_sin_haber_visto_nada_sigue_siendo_failed(calls):
+    """El caso que `failed` describe de verdad: la tienda no entregó nada."""
+    calls["history"] = [1000, 1010, 990]
+    outcome = await runner.scrape_target(
+        FakePool(), _AdapterQueRevientaAMitad(emitidos=0), TARGET,
+        store_id=6, dry_run=False,
+    )
+
+    assert outcome.status == "failed"
+    assert outcome.items_seen == 0
