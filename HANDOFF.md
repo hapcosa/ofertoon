@@ -1648,6 +1648,41 @@ caben **12** publicaciones. La cuota de 14 se alcanza solo arrancando cerca del
 inicio de la ventana (13 h dan 17 espacios). Salió de arreglar el test de cuota, que
 pasaba por la razón equivocada.
 
+## ⚠️ PENDIENTE CON FECHA: revertir `min_history_days` el 2026-11-06
+
+Lo primero que hay que mirar al abrir este handoff si la fecha ya pasó:
+
+    UPDATE categories SET min_history_days = 30;
+
+Desde el 2026-10-19 las siete categorías conectadas en octubre tienen
+`min_history_days = 10` en vez de 30 (migración 32), por decisión explícita del
+dueño del producto: no publicaban nada porque les faltaban 11-18 días de historia,
+y se aceptó que publiquen con descuentos mal calculados porque el canal no tiene
+usuarios y se corrigen solas al madurar.
+
+Cada una llega a los 30 días por su cuenta en estas fechas, medidas por días
+calendario distintos de historia y ya con el agujero del 14-18 de octubre
+descontado:
+
+    deporte-calzado, deporte-equipamiento   ~30-oct
+    deporte-vestuario                       ~31-oct
+    ropa-accesorios, ropa-calzado, super.   ~5-nov
+    tecno-audio                             ~6-nov
+
+**Dejarlo puesto después del 6 de noviembre es peor que no haberlo puesto**: el
+canal publicaría contra un p50 de dos semanas cuando ya existe uno de ocho.
+
+Lo que el backtest NO ve: `replay_listing` sigue midiendo con 30 a propósito, así
+que la calibración de las siete categorías viejas —y el Cyber Monday del 5-nov—
+quedan intactas. Esa fue la razón de hacerlo por categoría y no bajando
+`baselines.MIN_DAYS`, que es la misma función en producción y en el backtest.
+
+Verificado el día que se puso: 23 candidatos aceptados en categorías que daban
+cero (21 en deporte-equipamiento, 2 en tecno-audio) y el publisher posteó al canal.
+Un ejemplo de lo que esto acepta: "Banano Jester Lumbar, p50 $29.990 → $20.990,
+−30%" es un producto con dos precios en diez días, indistinguible de una oferta
+real con esa historia.
+
 ## Lo que sigue, en orden
 
 0. **La guarda por volumen quedó cerrada** (ver la sección de arriba). Lo único

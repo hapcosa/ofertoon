@@ -72,6 +72,14 @@ producto que este proyecto existe para no ser.
 5. **Cold-start es un rechazo, no un default.** Sin `MIN_POINTS=30` y
    `MIN_DAYS=30` el p50 es una opinión. Un SKU nuevo cuyo precio de lanzamiento
    se "descuenta" a los 10 días no tiene contra qué contrastarse → `history`.
+   ⚠️ **Excepción vigente y temporal**: `categories.min_history_days` (migración
+   32) permite bajarlo por categoría, y desde el 2026-10-19 está en **10** para las
+   siete conectadas en octubre, por decisión explícita del dueño del producto — el
+   canal no tiene usuarios y se asumió publicar descuentos numéricamente falsos
+   hasta que maduren. **Revertir con `UPDATE categories SET min_history_days = 30`
+   el 2026-11-06.** Si estás leyendo esto después de esa fecha y la columna sigue
+   en 10, es un olvido: el canal está publicando contra un p50 de dos semanas
+   teniendo uno de ocho, que es peor que el estado de partida.
 6. **Ante la duda, no se agrupa.** La identidad de producto
    (`catalog/identity.py`) es GTIN → (marca, modelo) → nada. No alimenta al
    detector: un match malo solo degrada el copy ("más barato que en Paris"),
