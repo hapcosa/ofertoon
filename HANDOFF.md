@@ -1587,6 +1587,67 @@ Barrido de las 150 llaves activas: fuera de SP Digital (apagada hoy), Nike (red)
 los `partial` de Andesgear (deriva de catálogo, documentada y sin tolerancia a
 propósito), **ninguna tienda llevaba más de 48 h sin observar**.
 
+## 2026-10-19: cinco días caído, y la cuota abierta a las catorce categorías
+
+### El agujero: 14 al 18 de octubre, cero observaciones
+
+**Segunda vez en una semana y por la misma causa.** Los contenedores de Ofertoon
+quedaron detenidos el 13-oct y el reinicio del host del 14-oct **no los revivió**:
+`restart: unless-stopped` no levanta lo que fue parado a mano. signalsTrading, en el
+mismo host, volvió entero — su política sí lo revive porque nunca fue detenido así.
+
+Descubierto el 19-oct al ir a consultar la base. Cinco días sin una sola
+observación para 62.286 listings. **No se recupera**: la serie no tiene relleno
+hacia atrás. Levantado, y el scraper corrió una pasada al arrancar solo (el
+intervalo estaba vencido desde el 13).
+
+Consecuencias concretas:
+- Los cinco días entran en `backtest.DIAS_DEGRADADOS`, que pasó de 3 a 8 días.
+- **Las fechas de madurez corren ~5 días.** Medido por días calendario distintos de
+  historia, no por fecha de conexión:
+
+        deporte-calzado, deporte-equipamiento   19 días  → madura ~30-oct
+        deporte-vestuario                       18       → ~31-oct
+        ropa-calzado, ropa-accesorios, super.   13       → ~5-nov
+        tecno-audio                             12       → ~6-nov
+
+- El Cyber Monday (5-7 oct) sigue etiquetable desde el 5-nov, pero su ventana de 30
+  días ahora tiene cinco días sin datos en el medio. `label_outcome` busca el máximo
+  del futuro, así que con menos muestras es **menos probable detectar la
+  recuperación**: sesga hacia `fake`. Hay que tenerlo en cuenta al leer esa
+  calibración.
+
+### La cuota: de 6 a 14 ofertas/día
+
+Decidido el 2026-10-19: todo sigue al canal actual (`-1003914468578`), los temas del
+grupo quedan sin cablear, y la precisión sin calibrar no bloquea porque el canal no
+tiene usuarios.
+
+**Las catorce categorías ya estaban ruteadas al canal** — no había nada que
+"activar" ahí. Lo que sí era un freno es la cuota: con `MAX_PER_DAY = 6` y el tope
+de 2 por categoría, **solo tres de las catorce aparecían por día**.
+
+    MAX_PER_DAY            6 → 14   una por categoría en promedio
+    MAX_PER_STORE_PER_DAY  2 → 3    porque 6 tiendas maduras × 2 = 12 < 14
+    MAX_PER_CATEGORY       2        sin cambios: fuerza siete categorías por día
+
+El tope por tienda en proporción es **más** estricto que antes: 3 de 14 es un techo
+del 21% contra el 33% de 2 de 6.
+
+⚠️ **Lo que NO se tocó, y no se debe tocar: `MIN_POINTS`/`MIN_DAYS`.** Las siete
+categorías nuevas no publican porque todavía no tienen baseline, y eso es distinto
+de la precisión sin calibrar: con θ de partida el descuento se mide mal, pero sin
+baseline madura **no hay contra qué medirlo** — el p50 de tres días es ruido y el
+"descuento" sería inventado. Es la regla que hace que el producto sea lo que dice
+ser.
+
+### Un dato nuevo sobre la cuota: la ventana puede cortar antes
+
+Desde las 13:00 hasta que la ventana cierra a las 22:00, con 45 min de espaciado,
+caben **12** publicaciones. La cuota de 14 se alcanza solo arrancando cerca del
+inicio de la ventana (13 h dan 17 espacios). Salió de arreglar el test de cuota, que
+pasaba por la razón equivocada.
+
 ## Lo que sigue, en orden
 
 0. **La guarda por volumen quedó cerrada** (ver la sección de arriba). Lo único

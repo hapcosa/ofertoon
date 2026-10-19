@@ -23,10 +23,13 @@ etiquetado del backtest otros 30 — ver HANDOFF.md).
 F2 (suscripciones, PayPal) y F3 (MercadoPago) con código completo y **sin
 configurar externamente**. El publisher (`curation/ranker.py`, `publisher/*`)
 está desplegado y **encendido desde el 2026-09-21** (`PUBLISHER_ENABLED=true`),
-adelantándose a propósito al backtest: publica 6 ofertas/día contra los θ de
-partida, **sin calibrar**. Es una prueba en vivo del canal, no el producto — las
-ofertas que salen no pasaron el gate de precisión ≥80% porque ese gate todavía no
-se puede correr.
+adelantándose a propósito al backtest: publica contra los θ de partida, **sin
+calibrar**. Es una prueba en vivo del canal, no el producto — las ofertas que salen
+no pasaron el gate de precisión ≥80% porque ese gate todavía no se puede correr.
+Decidido el 2026-10-19: mientras el canal no tenga usuarios, eso no bloquea.
+La cuota pasó de 6 a **14 ofertas/día** ese mismo día, cuando el canal llegó a
+catorce categorías — con 6 y el tope de 2 por categoría solo tres categorías
+aparecían por día.
 
 **El destino pasa a ser (chat, tema).** Desde la migración 26 el canal es un
 grupo-foro con siete temas —Tecnología, Hogar, Vestuario, Deporte, S.Mercado,
@@ -317,6 +320,18 @@ la página 1 en el fixture y la verificación de centinelas— está en
 - **Después de tocar el código hay que reconstruir el contenedor.** El
   Dockerfile copia las fuentes, no las monta: un cambio en el host no llega al
   scraper que ya está corriendo.
+- **`restart: unless-stopped` NO protege de un apagado manual, y eso ya costó
+  dos agujeros.** Si los contenedores se detienen explícitamente (`docker compose
+  stop/down`), Docker recuerda ese estado y **no los levanta** cuando el host
+  reinicia. Pasó dos veces en octubre de 2026: el 12-oct (2 h, sin pérdida de
+  pasadas) y del 13 al 19-oct, que dejó **cinco días sin una sola observación** para
+  62.286 listings — el agujero más largo de la serie. La pista que lo delata es que
+  signalsTrading, en el mismo host, vuelve entero: su política sí lo revive porque
+  nunca fue detenido a mano. Verificar con `docker ps -a | grep oferta`: un
+  `Exited (0)` de hace días con el host arriba es esto, no un crash.
+  El daño no se recupera —la serie no tiene relleno hacia atrás— y corre las fechas
+  de madurez: las siete categorías conectadas en octubre pasaron de madurar el
+  31-oct a hacerlo entre el 30-oct y el 6-nov.
 - **Una caída de red saliente silencia su propia alerta.** El aviso de
   `alerts.py` viaja por `api.telegram.org`: cuando el host pierde la salida,
   fallan todas las tiendas Y el mensaje que avisaría de eso. Pasó el 19-ago y
