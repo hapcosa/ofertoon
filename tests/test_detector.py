@@ -42,7 +42,16 @@ def baseline(
     )
 
 
-def check(price, *, base=None, in_stock=True, threshold=THETA, prior=None, name=None):
+def check(
+    price,
+    *,
+    base=None,
+    in_stock=True,
+    threshold=THETA,
+    prior=None,
+    name=None,
+    min_history_days=None,
+):
     return evaluate(
         price=Decimal(price),
         in_stock=in_stock,
@@ -51,6 +60,7 @@ def check(price, *, base=None, in_stock=True, threshold=THETA, prior=None, name=
         prior_post=prior,
         now=NOW,
         name=name,
+        min_history_days=min_history_days,
     )
 
 
@@ -206,3 +216,63 @@ def test_el_reacondicionado_se_rechaza_aunque_no_tenga_historia():
 def test_el_motivo_nuevo_se_persiste():
     """A diferencia de `history`: son pocos y sirven para medir el sesgo."""
     assert REJECT_REFURBISHED not in UNPERSISTED_REJECTS
+
+
+# -----------------------------------------------------------------------------
+# Historia mínima por categoría (migración 32)
+# -----------------------------------------------------------------------------
+
+
+def test_sin_umbral_de_categoria_rige_el_global():
+    """El default: `MIN_DAYS`/`MIN_POINTS` como siempre."""
+    corta = baseline(n_points=20, n_days=15)
+    assert check(70000, base=corta).reject_reason == REJECT_HISTORY
+    assert check(70000, base=corta, min_history_days=None).reject_reason == REJECT_HISTORY
+
+
+def test_una_categoria_puede_aceptar_con_menos_historia():
+    """Decisión del dueño del producto, 2026-10-19 — ver la migración 32.
+
+    Lo que se acepta a cambio está escrito ahí: con 10 días el p50 sale de ~20
+    puntos de dos semanas, así que `discount_real` se mide contra un número que no
+    significa nada. Es temporal y reversible.
+    """
+    corta = baseline(n_points=20, n_days=15)
+    assert check(70000, base=corta, min_history_days=10).accepted
+
+
+def test_el_umbral_de_categoria_tambien_exige_puntos():
+    """Una sola palanca: se piden tantos puntos como días, igual que el 30/30.
+
+    Un listing con 15 días pero 8 observaciones no tiene serie: la tienda lo
+    mostró de forma intermitente.
+    """
+    intermitente = baseline(n_points=8, n_days=15)
+    assert check(70000, base=intermitente, min_history_days=10).reject_reason == (
+        REJECT_HISTORY
+    )
+
+
+def test_un_umbral_bajo_no_salta_las_otras_guardas():
+    """Lo que se relaja es la historia, no el resto.
+
+    Importa porque es lo que impide que esta palanca se convierta en "publicar
+    cualquier cosa": un reacondicionado, un agotado o un precio sobre el piso
+    siguen rechazados igual.
+    """
+    corta = baseline(n_points=20, n_days=15)
+    assert check(
+        70000, base=corta, min_history_days=10, name="iPhone Reacondicionado"
+    ).reject_reason == REJECT_REFURBISHED
+    assert check(
+        70000, base=corta, min_history_days=10, in_stock=False
+    ).reject_reason == REJECT_STOCK
+    # 80.000 pasa θ (−20%) pero queda sobre el p10 de 75.000: `above_floor` igual.
+    corta_con_piso_bajo = baseline(p10=75000, n_points=20, n_days=15)
+    assert check(
+        80000, base=corta_con_piso_bajo, min_history_days=10
+    ).reject_reason == REJECT_ABOVE_FLOOR
+    # Y el θ sigue aplicándose: un 5% no es oferta por más que la historia sea corta.
+    assert check(
+        95000, base=corta, min_history_days=10
+    ).reject_reason == REJECT_THRESHOLD

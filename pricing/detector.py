@@ -100,6 +100,7 @@ def evaluate(
     prior_post: PriorPost | None = None,
     now: datetime | None = None,
     name: str | None = None,
+    min_history_days: int | None = None,
 ) -> Decision:
     """Aplica las guardas en orden y devuelve el veredicto.
 
@@ -131,7 +132,17 @@ def evaluate(
         return reject(REJECT_REFURBISHED)
 
     # 3. Historia mínima: sin serie no hay "precio de verdad" contra qué medir.
-    if not baseline.has_min_history:
+    #
+    #    `min_history_days` viene de `categories.min_history_days` y por default es
+    #    `MIN_DAYS`. Bajarlo para una categoría no es afinar un umbral: es aceptar
+    #    que su `discount_real` se mida contra un p50 que no significa nada. Está
+    #    puesto por decisión explícita del dueño del producto para las siete
+    #    categorías conectadas en octubre, hasta que maduren — ver la migración 32,
+    #    que incluye la fecha de reversión.
+    if min_history_days is None:
+        if not baseline.has_min_history:
+            return reject(REJECT_HISTORY)
+    elif baseline.n_days < min_history_days or baseline.n_points < min_history_days:
         return reject(REJECT_HISTORY)
 
     # 4. Anti-inflado: el precio subió y se sostuvo antes de este "descuento".
@@ -190,6 +201,7 @@ async def _load_candidates(conn: asyncpg.Connection) -> list[dict[str, Any]]:
         SELECT l.id AS listing_id,
                l.name_raw,
                COALESCE(c.discount_threshold, $1) AS threshold,
+               c.min_history_days,
                b.p50_60d, b.p10_60d, b.min_60d, b.n_points, b.n_days, b.ramp_flag,
                pp.price_effective, pp.in_stock, pp.observed_at
           FROM listings          AS l
@@ -323,6 +335,7 @@ async def run(pool: asyncpg.Pool, *, persist_rejects: bool = True) -> DetectorSt
                 prior_post=await _prior_post(conn, row["listing_id"]),
                 now=observed_at,
                 name=row["name_raw"],
+                min_history_days=row["min_history_days"],
             )
             evaluated += 1
             if decision.accepted:
