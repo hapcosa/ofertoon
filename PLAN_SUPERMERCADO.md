@@ -5,8 +5,14 @@ medido ese día contra producción.
 
 Vive aparte de [`PLAN_TIENDAS.md`](PLAN_TIENDAS.md) porque no es una fase más de
 conexión de tiendas: el supermercado rompe dos supuestos del sistema —el rango de
-ticket y la unidad de compra— y eso cambia el detector, el ranker y el copy, no
-solo el adaptador.
+ticket y la unidad de compra— y eso cambia el copy y el destino, no solo el
+adaptador.
+
+**Actualizado el 2026-10-19 con tres decisiones del dueño del producto** (§2 y §6),
+que simplificaron el plan: el supermercado va como tema del canal, Belleza va
+aparte, y el ahorro unitario bajo vale porque se compran varias unidades de algo
+almacenable. Con eso, la fase bloqueante dejó de ser "cambiar el score" y pasó a
+ser "cablear el tema y guardar el precio por unidad de medida".
 
 ---
 
@@ -44,36 +50,83 @@ televisor. Y no es teórico: el 2026-10-19, con `deporte-equipamiento` y
 El estuche de $1.800 de ahorro le gana el lugar a un taladro que ahorra once veces
 más. Con supermercado adentro y ahorros de $670, el efecto se multiplica.
 
-**Conclusión: el piso de ahorro en CLP no es una mejora deseable, es el
-prerrequisito.** Ya estaba anotado como tal en PLAN_TIENDAS §2.6; acá queda con
-números.
+**Esa era la conclusión hasta la decisión de la §2**, y ahí cambia: el problema
+real no es el ahorro unitario bajo sino que compita de igual a igual con un
+televisor en la misma cuota. Resuelto eso con un destino separado, el piso en CLP
+deja de ser bloqueante. Lo que sigue en pie de esta sección es el diagnóstico: **el
+score no distingue $1.800 de $20.000**, y eso sigue siendo cierto dentro del canal
+general — el estuche de AirPods le está ganando el lugar a un taladro hoy.
 
 ---
 
-## 2. Y hay un segundo supuesto que se rompe: la unidad de compra
+## 2. La unidad de compra: resuelto, y cambia el diseño
 
-Esto no está en ninguna medición y es una afirmación de producto, así que va
-marcada como tal: **en supermercado nadie compra por oportunidad individual.**
+**Decidido el 2026-10-19 por el dueño del producto**, y la respuesta corrige el
+encuadre de la §1:
 
-Nadie va a Tottus porque un paquete de fideos está a −30%. La compra de
-supermercado es por **canasta y recurrencia**: lo que ahorra plata de verdad es
-saber que esta semana conviene cargar detergente y café, no que un SKU puntual
-bajó. El canal, tal como está construido, publica ofertas unitarias — y eso le
-sirve a un taladro, no a un paquete de arroz.
+> «Sí vale el ahorro de $670. Generalmente son cosas que vale la pena porque se
+> compran varias unidades, y son cosas consumibles que puedes guardar harto
+> tiempo.»
 
-Esto tiene una consecuencia de diseño que conviene decidir ANTES de conectar más
-cadenas, porque cambia qué hay que construir:
+O sea el ahorro relevante de una oferta de supermercado **no es el unitario**, es
+`ahorro_unitario × unidades que uno carga`, y lo que lo vuelve real es que el
+producto sea **almacenable**. Un detergente a −30% con $670 de ahorro por unidad
+son $4.000 si llevás seis, y se pueden llevar seis porque no se vencen la semana
+que viene.
 
-- **Si el supermercado es "una categoría más"**, hay que resolver el piso en CLP y
-  nada más. El canal publicará ofertas unitarias de súper, que es lo que hoy sabe
-  hacer, con el riesgo de que sean irrelevantes para el suscriptor.
-- **Si el supermercado es su propio formato**, lo que hay que construir es otra
-  cosa: un resumen periódico ("los 10 productos de la canasta que están en su
-  precio más bajo en 60 días") en vez de un mensaje por oferta. Eso es trabajo de
-  `publisher/` nuevo, no un ajuste del ranker.
+Tres consecuencias de diseño, en orden de importancia:
 
-El grupo con temas ya tiene **S.Mercado** creado para esto, así que la
-infraestructura para separarlo existe. La decisión no es mía.
+1. **El piso de ahorro en CLP deja de ser el prerrequisito** (ver §5, Fase 1). Un
+   piso duro sobre el ahorro unitario haría justo lo contrario de lo que se quiere:
+   rechazaría los $670 que en la práctica valen $4.000. Y como el supermercado va a
+   su propio tema (decisión 1 de abajo), tampoco compite con el televisor, que era
+   el otro motivo para el piso.
+2. **El copy tiene que mostrar el precio por unidad de medida.** Es lo que convierte
+   "−30%" en una decisión de stockear: *"el kilo a $3.242 contra $4.600 habitual"*.
+   Y el dato **ya está disponible y lo estamos tirando** — ver §2bis.
+3. **Refuerza la exclusión de perecederos**, ahora por una segunda razón
+   independiente de la estacionalidad: lo que no se puede guardar no se compra en
+   cantidad, así que no participa del mecanismo que hace valer la oferta.
+
+### Decisiones tomadas el 2026-10-19
+
+| pregunta | decisión |
+|---|---|
+| ¿Categoría del canal o formato propio? | **Tema del canal** — va al tema S.Mercado, no se construye un resumen de canasta |
+| ¿Belleza con supermercado? | **Aparte**, categoría propia con su propio θ |
+| ¿Vale el ahorro de $670? | **Sí**, por unidades y almacenabilidad (arriba) |
+| ¿Alcohol? | sigue pendiente |
+
+## 2bis. El precio por unidad de medida está en el payload y se descarta
+
+Medido el 2026-10-19 sobre tres llaves de Tottus (144 productos):
+
+    Despensa          48/48  con pum (100%)
+    Mascotas          48/48  (100%)
+    Aseo-y-Limpieza   42/48  (87%)
+    ──────────────────────────────────
+    TOTAL            138/144 (95%)
+
+    unidades: KG 72 · 10GR 32 · UN 17 · LT 11 · MT 4 · 100UN 1 · MR 1
+
+Viene dentro de `prices[].pum` en el mismo `__NEXT_DATA__` que ya parseamos:
+
+    "prices": [{"type": "internetPrice", "price": ["3.890"],
+                "pum": {"label": "KG", "price": ["3.242"]}}]
+
+**Y no se guarda en ninguna parte**: `falabella_family.parse_listing` no lo mira,
+`RawProduct` no tiene campo, y `price_points` no tiene columna. `raw_payload` existe
+en el dataclass pero tampoco se persiste.
+
+Para el resto del catálogo eso es correcto —el precio por kilo de un notebook no
+significa nada— pero para supermercado es **el** dato que hace comparable una
+oferta, y el que sostiene el argumento de las varias unidades. Es trabajo chico: un
+campo opcional en `RawProduct`, una columna en `price_points` y una línea en el
+parser.
+
+⚠️ Ojo con la unidad: `10GR` y `100UN` no son errores, son la base que la tienda
+elige para que el número sea legible. Compararlo entre productos exige normalizar a
+una unidad común (KG, LT, UN) o no compararlo.
 
 ---
 
@@ -176,26 +229,25 @@ listado de Tottus, que habla de modos de envío.
 
 El orden importa: **la fase 1 es bloqueante** y las demás no valen nada sin ella.
 
-### Fase 1 — El piso de ahorro en CLP (bloqueante)
+### Fase 1 — Cablear el tema S.Mercado y guardar el `pum`
 
-Sin esto, conectar más supermercado empeora el canal en vez de mejorarlo. Tres
-caminos, de menor a mayor alcance:
+La decisión del 2026-10-19 (supermercado = tema del canal) resuelve el problema de
+la §1 **sin tocar el score**: en su propio tema no compite con el televisor, así
+que el piso en CLP deja de ser bloqueante. Quedan dos trabajos chicos:
 
-1. **Piso duro por categoría.** Una columna `categories.min_ahorro_clp` y un
-   rechazo nuevo del detector. Barato, explícito, y deja el score intacto. El costo
-   es que un piso fijo es arbitrario: ¿$500? ¿$2.000?
-2. **Ponderar el score por ahorro absoluto, con tope.** Cambia
-   `compute_score`, que es el corazón de la curación, y contradice su docstring: hay
-   que reescribirlo con el nuevo razonamiento, no a escondidas. Riesgo real de
-   "inundar de electrónica cara", que es exactamente lo que ese docstring evita.
-3. **Separar el destino.** Supermercado a su propio tema/canal con cuota propia, y
-   entonces no compite con el televisor y el piso en CLP deja de ser urgente. El
-   tema **S.Mercado ya existe** (migración 26) y solo le falta el
-   `message_thread_id`.
+1. **Cablear el tema.** `telegram_topics` ya tiene S.Mercado con cuota 2 desde la
+   migración 26; le falta el `message_thread_id`, que sale del link de un mensaje
+   del tema. Es el único paso que necesita acción humana.
+2. **Guardar el precio por unidad de medida** (§2bis): campo opcional en
+   `RawProduct`, columna en `price_points`, una línea en el parser de
+   `falabella_family`. Sin esto el copy no puede sostener el argumento de las varias
+   unidades, que es lo que hace valer la oferta.
 
-**La 3 es la más barata y la que menos toca el núcleo**, y además es la que el
-grupo con temas ya anticipó. La 1 sigue haciendo falta dentro del tema de
-supermercado para no publicar ahorros de $200.
+**Lo que NO se hace**: tocar `compute_score`. Su docstring tiene razón para el
+rango de ticket del canal general, y el problema que quedaba —el estuche de $1.800
+ganándole al taladro de $20.000— es un asunto del canal general, no del
+supermercado. Si se quiere arreglar, es una decisión aparte con su propia
+medición.
 
 ### Fase 2 — Calibrar θ de supermercado contra datos propios
 
@@ -234,18 +286,23 @@ pasada es el techo de este host.
 
 ---
 
-## 6. Decisiones que no son mías
+## 6. Decisiones
 
-1. **¿Supermercado es una categoría del canal o su propio formato?** (§2). Define
-   si la Fase 1 es "piso en CLP" o "construir un resumen de canasta".
-2. **¿El canal publica alcohol?** 2.217 SKUs de Tottus esperando, no perecederos y
-   con ticket razonable ($2.490-$6.390).
-3. **¿Belleza y cuidado personal entran como supermercado o como categoría propia?**
-   El plan original decía que "un canal que mezcla shampoo y detergente es otro
-   producto".
-4. **¿Vale el ahorro de $670?** Es la pregunta de fondo. El backtest no la
-   responde: un 25% es igual de real a cualquier precio, y lo que está en juego es
-   si al suscriptor le mueve la aguja.
+Tomadas el 2026-10-19 (ver §2):
+
+1. ✅ **Supermercado es un tema del canal**, no un formato propio. No se construye
+   resumen de canasta; va al tema S.Mercado.
+2. ✅ **Belleza va aparte**, como categoría propia con su propio θ — no entra en
+   `supermercado`. Son 1.106 SKUs de Tottus y habilita después Preunic, Salcobrand y
+   Maicao, que PLAN_TIENDAS §2.6 ya tenía listadas sin auditar.
+3. ✅ **El ahorro de $670 vale**, porque se compran varias unidades de algo que se
+   puede guardar. De ahí salen las tres consecuencias de diseño de la §2.
+
+Pendiente:
+
+4. **¿El canal publica alcohol?** 2.217 SKUs de Tottus esperando (Vinos-y-licores
+   2.008 + Cervezas 209), no perecederos y con ticket $2.490-$6.390. Es la única
+   decisión que queda para completar Tottus.
 
 ## 7. Lo que NO se va a hacer, y por qué
 
