@@ -209,8 +209,16 @@ navegador:
 
 | Tienda | robots.txt | Vía de catálogo | Veredicto |
 |---|---|---|---|
-| **Jumbo** | 200, con la firma VTEX (`Disallow: *?map=`) | `/api/catalog_system/pub/*` → **404** en las 4 rutas estándar (`products/search`, `category/tree`, graphql IO, `sessions`). Migró a `provider-jumbo.ecomm.cencosud.com`, que da **403**. `sitemap.xml` sí responde (153 KB) | **L** — sin API pública; quedaría sitemap → ficha por ficha |
-| **Santa Isabel** | igual que Jumbo (mismo stack Cencosud) | idéntico: 404 en todas | **L** — se resuelve junto con Jumbo |
+| **Jumbo** | 200, con la firma VTEX (`Disallow: *?map=`) | `/api/catalog_system/pub/*` → **404** en las 4 rutas estándar (`products/search`, `category/tree`, graphql IO, `sessions`). Migró a `provider-jumbo.ecomm.cencosud.com`, que da **403**. `sitemap.xml` sí responde (153 KB) | ~~**L** — sin API pública~~ → 🟢 **VIABLE, corregido el 2026-10-19** |
+| **Santa Isabel** | igual que Jumbo (mismo stack Cencosud) | idéntico: 404 en todas | ~~**L**~~ → 🟢 **VIABLE, mismo caso** |
+
+⚠️ **La fila de Jumbo y Santa Isabel estaba equivocada, y el error era de método —
+el mismo que con Tottus.** Que su API VTEX dé 404 es cierto y no importa: **el
+listado viene renderizado en el HTML**, en un JSON-LD `ItemList` de 40 productos con
+precio en el 100%, `availability` y `brand`. No hace falta ir ficha por ficha.
+Reauditado el 2026-10-19; el detalle completo, con lo que falta medir y la
+estrategia de hojas de ≤40 (no paginan), está en
+[`PLAN_SUPERMERCADO.md`](PLAN_SUPERMERCADO.md) §4.
 | **Lider** | **200, y `Disallow: /search*`** | `super.lider.cl/search?q=` responde **200 con precios en `__NEXT_DATA__`** (996 KB, contiene `priceInfo`) — o sea que técnicamente funciona | ⚠️ **DECISIÓN, ver abajo** |
 | **aCuenta** | ConnectError + `CERTIFICATE_VERIFY_FAILED` | — | **L** — el dominio no resuelve con certificado válido |
 | **Unimarc** | **403 hasta en el `robots.txt`**, con UA de navegador y sin UA | — | **L** — bloqueo de borde tipo Fase 6 |
@@ -288,8 +296,11 @@ La alternativa limpia en Lider: su robots **ofrece cuatro sitemaps** (incluido
 de producto. Pero eso es ficha por ficha, y el diseño del scraper es por listado —
 un supermercado son decenas de miles de SKUs y el presupuesto de fetches no da.
 
-**Prerrequisito que sigue vigente y ahora está medido**: el piso absoluto de ahorro
-en CLP. `detector.compute_score` es `discount_real*100 + below_floor*50` y
+**Prerrequisito que sigue vigente, y desde el 2026-10-19 está medido con datos de
+producción** (ver [`PLAN_SUPERMERCADO.md`](PLAN_SUPERMERCADO.md) §1: el ahorro p50
+va de $12.000 a $220.000 según la categoría, supermercado proyecta ~$670, y el
+canal ya mostró un estuche de AirPods con $1.800 de ahorro puntuando más alto que
+un taladro con $20.000): el piso absoluto de ahorro en CLP. `detector.compute_score` es `discount_real*100 + below_floor*50` y
 **excluye el precio absoluto a propósito**, así que un 40% sobre $990 (ahorro
 $400) puntúa igual que un 40% sobre $990.000. Lo que acota el daño hoy es
 `ranker.MAX_PER_CATEGORY_PER_DAY = 2`: con supermercado como **una** categoría, se

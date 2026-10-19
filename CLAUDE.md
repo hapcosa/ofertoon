@@ -47,6 +47,10 @@ cada tema.
 Runbooks vivos: [`HANDOFF.md`](HANDOFF.md) (estado y traspaso de sesión),
 [`DEPLOY.md`](DEPLOY.md) (puesta en producción),
 [`HANDOFF_MERCADOPAGO.md`](HANDOFF_MERCADOPAGO.md).
+Planes: [`PLAN_TIENDAS.md`](PLAN_TIENDAS.md) y
+[`PLAN_SUPERMERCADO.md`](PLAN_SUPERMERCADO.md) — el supermercado va aparte porque
+rompe dos supuestos del sistema (el rango de ticket y la unidad de compra), no
+porque sea una fase más de conexión.
 El plan con las decisiones LOCKED vive fuera del repo, en
 `~/.claude/plans/aprovechancho-el-sistema-de-toasty-squid.md`.
 
