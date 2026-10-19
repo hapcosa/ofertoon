@@ -132,17 +132,21 @@ def test_los_topes_arrastran_lo_ya_publicado_hoy() -> None:
 def test_el_tope_deja_pasar_al_siguiente_distinto() -> None:
     """La diversidad sale de los topes, no de un round-robin explícito.
 
-    Los tres primeros tienen más score, pero la tienda 1 se llena en dos y el
-    cuarto —peor score, otra tienda— entra igual.
+    Los cuatro primeros tienen más score, pero la tienda 1 se llena en
+    `MAX_PER_STORE_PER_DAY` y el quinto —peor score, otra tienda— entra igual,
+    salteando al cuarto.
     """
     candidates = [
         make(1, store_id=1, category_id=1, score="90"),
         make(2, store_id=1, category_id=2, score="80"),
         make(3, store_id=1, category_id=3, score="70"),
-        make(4, store_id=2, category_id=4, score="10"),
+        make(4, store_id=1, category_id=4, score="60"),
+        make(5, store_id=2, category_id=5, score="10"),
     ]
     chosen = ranker.select(candidates, posted=PostedToday(), now=NOW, limit=None)
-    assert [c.candidate_id for c in chosen] == [1, 2, 4]
+
+    assert ranker.MAX_PER_STORE_PER_DAY == 3, "el fixture se calibró contra este tope"
+    assert [c.candidate_id for c in chosen] == [1, 2, 3, 5]
 
 
 def test_no_supera_la_cuota_diaria_en_una_vuelta() -> None:
@@ -268,7 +272,50 @@ def test_cuota_cero_apaga_el_tema_sin_apagar_el_resto() -> None:
 
 def test_el_default_sigue_siendo_la_cuota_del_canal() -> None:
     """Sin `max_per_day` nada cambia: es el canal sin temas de antes de la 26."""
-    candidatos = [make(i, store_id=i, category_id=i) for i in range(1, 10)]
+    # Uno por tienda y categoría para que ningún tope se active antes que la cuota.
+    candidatos = [
+        make(i, store_id=i, category_id=i) for i in range(1, ranker.MAX_PER_DAY + 6)
+    ]
 
     elegidos = ranker.select(candidatos, posted=PostedToday(), now=NOW)
     assert len(elegidos) == ranker.MAX_PER_DAY
+
+
+def test_la_cuota_alcanza_para_una_por_categoria():
+    """Subida de 6 a 14 el 2026-10-19, cuando el canal pasó a catorce categorías.
+
+    Con 6 y tope 2 por categoría, solo tres categorías aparecían por día: las
+    nuevas no se veían nunca. Lo que este test fija es la propiedad —que la cuota
+    deje lugar a una por categoría— y no el número.
+    """
+    categorias = 14
+    assert ranker.MAX_PER_DAY >= categorias
+
+    # Catorce candidatos, uno por categoría y repartidos en cinco tiendas: entran
+    # todos, porque ningún tope se activa antes que la cuota.
+    candidatos = [
+        make(i, store_id=i % 5, category_id=i) for i in range(1, categorias + 1)
+    ]
+    elegidos = ranker.select(candidatos, posted=PostedToday(), now=NOW)
+    assert len(elegidos) == categorias
+
+
+def test_el_tope_por_tienda_no_estrangula_la_cuota():
+    """Con 6 tiendas maduras y tope 2, el techo real eran 12 y la cuota 14.
+
+    O sea el limitante habría sido el tope de tienda y no la cuota, que es
+    justamente lo que el tope NO tiene que decidir.
+    """
+    tiendas_con_catalogo_maduro = 6
+    techo_real = tiendas_con_catalogo_maduro * ranker.MAX_PER_STORE_PER_DAY
+    assert techo_real >= ranker.MAX_PER_DAY
+
+
+def test_el_tope_por_tienda_sigue_impidiendo_que_una_sola_domine():
+    """Subir el tope no puede volver el canal monotienda."""
+    candidatos = [make(i, store_id=1, category_id=i) for i in range(1, 12)]
+
+    elegidos = ranker.select(candidatos, posted=PostedToday(), now=NOW)
+    assert len(elegidos) == ranker.MAX_PER_STORE_PER_DAY
+    # Y en proporción es más estricto que antes: 3 de 14 contra 2 de 6.
+    assert ranker.MAX_PER_STORE_PER_DAY / ranker.MAX_PER_DAY < 2 / 6

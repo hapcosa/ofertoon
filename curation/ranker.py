@@ -9,7 +9,13 @@ sigue contando para calibrar θ.
 Los números de abajo son producto, no ingeniería. El criterio: un canal que se
 lee vs. uno que se silencia. Seis mensajes al día se leen; treinta son un feed y
 el suscriptor lo mutea. El piso lo fija el gate de F1, que pide ≥3 ofertas por
-día y canal para considerar el sistema lanzable — 6 deja margen sin pasarse.
+día y canal para considerar el sistema lanzable.
+
+La cuota arrancó en 6 por ese criterio y subió a 14 el 2026-10-19, cuando el canal
+pasó de siete categorías a catorce: con 6 y un tope de 2 por categoría, **solo tres
+categorías aparecían por día** y las nuevas no se veían nunca. 14 es una por
+categoría en promedio y cabe en la ventana (13 h con 45 min de espaciado dan 17
+espacios).
 
 Todo el ordenamiento es una función pura (`select`) sobre dataclasses; la única
 parte con I/O es la query que la alimenta. Es lo que permite testear la cuota sin
@@ -39,9 +45,29 @@ TZ = ZoneInfo("America/Santiago")
 #: demás (medido: Tecnología ~8,8 señales/día contra ~1,5 de Ferretería). El
 #: criterio del docstring se aplica entonces por tema, que es la unidad que el
 #: suscriptor lee —y mutea— por separado.
-MAX_PER_DAY = 6
-#: Que no sean seis de la misma tienda ni seis notebooks.
-MAX_PER_STORE_PER_DAY = 2
+#:
+#: Eran 6 hasta el 2026-10-19, y 6 con `MAX_PER_CATEGORY_PER_DAY = 2` significa que
+#: **solo tres categorías de las catorce aparecen por día**. Mientras el canal tuvo
+#: siete categorías eso era una mezcla; con catorce es una lotería, y las nuevas
+#: nunca se verían.
+#:
+#: 14 es una por categoría en promedio, y cabe en la ventana física: 13 h de
+#: ventana (9-22) con `MIN_MINUTES_BETWEEN = 45` dan 17 espacios. Sigue lejos de
+#: los treinta que el docstring llama "un feed que el suscriptor mutea", y el tope
+#: por categoría —que no se toca— mantiene la mezcla.
+MAX_PER_DAY = 14
+#: Que no sea toda la cuota de la misma tienda ni de la misma categoría.
+#:
+#: El de tienda subió de 2 a 3 junto con la cuota (2026-10-19), y es **más**
+#: diverso que antes en proporción: 3 de 14 es un techo del 21% por tienda, contra
+#: el 33% que daban 2 de 6. Hacía falta porque solo 6 tiendas tienen baselines
+#: maduras hoy (falabella, paris, easy, sodimac, pcfactory, spdigital), así que con
+#: tope 2 el techo real eran 12 publicaciones y la cuota de 14 no se alcanzaba
+#: nunca: el limitante habría sido este tope y no la cuota.
+MAX_PER_STORE_PER_DAY = 3
+#: El de categoría NO se toca: con 2 de 14 hacen falta siete categorías distintas
+#: para llenar el día, que es exactamente la mezcla que se busca — y son las siete
+#: que hoy tienen baseline madura.
 MAX_PER_CATEGORY_PER_DAY = 2
 
 #: Espaciado mínimo entre posts. El pipeline produce en dos ráfagas de 12 h; sin

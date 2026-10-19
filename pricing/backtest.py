@@ -106,10 +106,21 @@ LABEL_LIQUIDATION = "liquidation"
 #:   Lo que ese día distorsiona es el PESO en el p50, porque `percentile` corre
 #:   sobre los puntos crudos y casi todos los listings tienen 1 punto en vez
 #:   de 2. Es la razón por la que está acá y no es tan grave como los otros dos.
+#: - 2026-10-14 a 2026-10-18: **cero observaciones, cinco días**. Los contenedores
+#:   de Ofertoon quedaron detenidos el 13-oct y el reinicio del host del 14-oct no
+#:   los revivió: `restart: unless-stopped` no levanta lo que fue parado a mano.
+#:   Descubierto el 19-oct, con 62.286 listings sin una sola observación en el
+#:   medio. Es el agujero más largo de la serie y corre ~5 días las fechas de
+#:   madurez de las siete categorías conectadas en octubre.
 DIAS_DEGRADADOS = (
     date(2026, 9, 18),
     date(2026, 9, 19),
     date(2026, 9, 29),
+    date(2026, 10, 14),
+    date(2026, 10, 15),
+    date(2026, 10, 16),
+    date(2026, 10, 17),
+    date(2026, 10, 18),
 )
 
 #: Umbrales que se barren por defecto. Cubren de "casi todo pasa" a "solo

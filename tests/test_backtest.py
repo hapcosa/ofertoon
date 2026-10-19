@@ -266,6 +266,14 @@ def test_los_dias_degradados_estan_documentados():
         date(2026, 9, 18),
         date(2026, 9, 19),
         date(2026, 9, 29),
+        # El agujero más largo de la serie: los contenedores quedaron detenidos el
+        # 13-oct y el reinicio del host del 14 no los revivió, porque
+        # `unless-stopped` no levanta lo que fue parado a mano.
+        date(2026, 10, 14),
+        date(2026, 10, 15),
+        date(2026, 10, 16),
+        date(2026, 10, 17),
+        date(2026, 10, 18),
     )
 
 

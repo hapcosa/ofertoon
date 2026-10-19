@@ -467,18 +467,31 @@ async def test_un_envio_fallido_libera_la_reserva_para_reintentar(
 
 
 async def test_respeta_la_cuota_diaria(db_conn, telegram_pool) -> None:
-    """Aunque haya doce aceptados, el canal no publica más de MAX_PER_DAY.
+    """Haya los aceptados que haya, el canal no publica más de `MAX_PER_DAY`.
 
-    Se varían tienda Y categoría para que los topes finos (2 por cada una) no
-    corten antes que el diario, que es lo que este test mide. Con seis tiendas
-    y siete categorías el techo de 6/día es el primero en activarse.
+    Se varían tienda Y categoría para que los topes finos no corten antes que el
+    diario, que es lo que este test mide. El cálculo hay que hacerlo con los topes
+    vigentes y no a ojo: con `MAX_PER_DAY = 14` y `MAX_PER_STORE_PER_DAY = 3` hacen
+    falta al menos cinco tiendas, y el test se quedaba en 12 publicaciones porque
+    las tiendas sembradas daban un techo más bajo que la cuota — pasaba, pero por
+    la razón equivocada.
     """
     from pricing.pipeline import run as run_pipeline
 
     tier_id, _ = await _seed_catalog(db_conn)
     stores = await db_conn.fetch("SELECT id FROM stores ORDER BY id")
+    # El techo que imponen los topes finos tiene que quedar POR ENCIMA de la cuota,
+    # o lo que se mide es el tope y no la cuota.
+    assert len(stores) * ranker.MAX_PER_STORE_PER_DAY >= ranker.MAX_PER_DAY, (
+        f"{len(stores)} tiendas × {ranker.MAX_PER_STORE_PER_DAY} no alcanzan para "
+        f"{ranker.MAX_PER_DAY}"
+    )
     slugs = [r["slug"] for r in await db_conn.fetch("SELECT slug FROM categories")]
-    for i in range(12):
+    # Más candidatos que la cuota, para que lo que corte sea la cuota y no el
+    # catálogo sembrado. Con `MAX_PER_DAY = 14` sembrar 12 hacía pasar el test por
+    # la razón equivocada.
+    sembrados = ranker.MAX_PER_DAY + 6
+    for i in range(sembrados):
         await _seed_listing(
             db_conn,
             store_id=stores[i % len(stores)]["id"],
@@ -491,15 +504,27 @@ async def test_respeta_la_cuota_diaria(db_conn, telegram_pool) -> None:
 
     fake = FakeTelegram()
     momento = PUBLISH_AT
-    for _ in range(12):
+    for _ in range(sembrados):
         await poster.run_once(telegram_pool, fake, now=momento)
         momento += timedelta(minutes=ranker.MIN_MINUTES_BETWEEN + 1)
+
+    # Lo que corta puede ser la cuota O la ventana horaria, y hay que compararlo
+    # contra el menor de los dos. `PUBLISH_AT` son las 13:00 de Santiago y la
+    # ventana cierra a las 22:00, así que con 46 min de espaciado caben 12 posts —
+    # menos que la cuota de 14. La cuota entera solo se alcanza arrancando cerca
+    # del inicio de la ventana (13 h dan 17 espacios).
+    minutos_de_ventana = (
+        ranker.WINDOW_END_HOUR - PUBLISH_AT.astimezone(ranker.TZ).hour
+    ) * 60
+    caben_en_la_ventana = minutos_de_ventana // (ranker.MIN_MINUTES_BETWEEN + 1) + 1
+    techo = min(ranker.MAX_PER_DAY, caben_en_la_ventana)
 
     publicados = await db_conn.fetchval(
         "SELECT count(*) FROM deal_posts WHERE tier_id = $1", tier_id
     )
-    assert publicados == ranker.MAX_PER_DAY
-    assert len(fake.sent) == ranker.MAX_PER_DAY
+    assert publicados == techo
+    assert len(fake.sent) == techo
+    assert publicados <= ranker.MAX_PER_DAY, "la cuota es un techo, no un objetivo"
 
 
 async def test_no_publica_fuera_de_la_ventana_horaria(db_conn, telegram_pool) -> None:
