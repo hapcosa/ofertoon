@@ -27,9 +27,13 @@ adelantándose a propósito al backtest: publica contra los θ de partida, **sin
 calibrar**. Es una prueba en vivo del canal, no el producto — las ofertas que salen
 no pasaron el gate de precisión ≥80% porque ese gate todavía no se puede correr.
 Decidido el 2026-10-19: mientras el canal no tenga usuarios, eso no bloquea.
-La cuota pasó de 6 a **14 ofertas/día** ese mismo día, cuando el canal llegó a
-catorce categorías — con 6 y el tope de 2 por categoría solo tres categorías
-aparecían por día.
+La cuota pasó de 6 a 14 ese mismo día (con 6 y el tope de 2 por categoría solo
+tres de las catorce categorías aparecían por día) y a **30 ofertas/día el
+2026-10-21**, con espaciado de 30 min y ventana de 15 h (8-23). Los tres números
+son el mismo: **15 h × 2 por hora = 30**, o sea la cuota quedó exactamente en el
+techo físico. ⚠️ Eso cruza el umbral que el docstring del ranker llama "un feed
+que el suscriptor mutea" — se tomó con el canal sin usuarios y es el primer número
+a revisar cuando los haya.
 
 **El destino pasa a ser (chat, tema).** Desde la migración 26 el canal es un
 grupo-foro con siete temas —Tecnología, Hogar, Vestuario, Deporte, S.Mercado,
@@ -572,6 +576,29 @@ la página 1 en el fixture y la verificación de centinelas— está en
   ellas por UN producto de 352 — y una alarma que suena siempre es una alarma
   apagada. `completeness()` devuelve `None` a propósito y la medición está en su
   docstring. Lo que sí hacía falta era conocer el total, y para eso alcanza el log.
+- **Al cambiar la cuota hay que recalcular los topes finos, o el limitante pasa a
+  ser el tope.** `MAX_PER_STORE_PER_DAY` y `MAX_PER_CATEGORY_PER_DAY` acotan cuánto
+  se lleva una tienda o una categoría por día, y si quedan bajos cortan antes que
+  la cuota — que es justo lo que un tope no tiene que decidir. Pasó dos veces en
+  tres días: al subir la cuota a 14, seis tiendas maduras × tope 2 daban un techo
+  real de 12; al subirla a 30, 6 × 3 = 18 y 14 categorías × 2 = 28, las dos por
+  debajo. La cuenta es `tiendas_con_baseline_madura × tope ≥ cuota` y
+  `categorías × tope ≥ cuota`. Hoy: 6 tiendas × 5 = 30 y 14 categorías × 3 = 42.
+- **El canal publica hardware de servidor si no se lo frena.** El 2026-10-20 salieron
+  dos discos HPE de $5.989.990 y $7.789.990 que se llevaron **2 de los 14 lugares
+  del día**. Lo rechaza `detector.REJECT_SERVER_HW` vía
+  `catalog.normalize.es_hardware_servidor`, y **no es un techo de precio** a
+  propósito: un televisor de 85" cuesta $1,9M y es consumo legítimo (14 aceptados en
+  esa semana). Lo que descalifica al disco es qué es, no cuánto vale — también se
+  filtra una memoria ECC de servidor de $16.990.
+  Son 14 listings de los 847 de PC Factory (1,7%) y **no hay una llave que
+  desactivar**: vienen mezclados en `Discos Internos SSD` y `Memorias PC`, que son
+  llaves legítimas. Sobre el histórico, el filtro rechaza 5 de 11.485 aceptados
+  (0,04%).
+  ⚠️ Dos patrones que parecían obvios quedaron AFUERA porque filtraban consumo, y
+  están en el docstring para que no vuelvan: **`rack`** atrapaba el "Nike Squat
+  Rack" de $449.990 y un "Rack Para Lavadora", y **`SFF`/`BC`** atrapaban una
+  "Torta Red Velvet Bc" de Tottus de $4.590.
 - **Los θ de `categories.discount_threshold` NO están calibrados.** Son valores
   de partida del plan. El gate de F1 es el output de `pricing/backtest.py`:
   precisión ≥80% con ≥3 ofertas/día/canal.

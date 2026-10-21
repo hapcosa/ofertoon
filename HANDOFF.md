@@ -1683,6 +1683,78 @@ Un ejemplo de lo que esto acepta: "Banano Jester Lumbar, p50 $29.990 → $20.990
 −30%" es un producto con dos precios en diez días, indistinguible de una oferta
 real con esa historia.
 
+## 2026-10-21: cuota de 30, alcohol conectado y el hardware de servidor
+
+### La cuota quedó en el techo físico
+
+Decisión del dueño del producto: **30 ofertas/día, una cada 30 min, 15 h de
+ventana**. Los tres números son el mismo número —15 h × 2 por hora = 30— así que la
+cuota está exactamente en el techo y no hay holgura: bajar la ventana o subir el
+espaciado la vuelve inalcanzable.
+
+    MAX_PER_DAY             14 → 30
+    MIN_MINUTES_BETWEEN     45 → 30
+    WINDOW                9-22 → 8-23   (15 h; el pedido no fijaba el horario)
+    MAX_PER_STORE_PER_DAY    3 → 5
+    MAX_PER_CATEGORY_PER_DAY 2 → 3
+
+La ventana se corrió una hora a cada lado y no 9-24, porque publicar a medianoche
+contradice el criterio que ya estaba escrito en el ranker.
+
+⚠️ Con 30 el canal **cruza el umbral que el docstring del ranker llama "un feed que
+el suscriptor mutea"**. Se tomó con el canal sin usuarios y es el primer número a
+revisar cuando los haya.
+
+**Los topes finos hubo que recalcularlos, y es la segunda vez en tres días.** Con
+los valores anteriores, 6 tiendas maduras × 3 = 18 y 14 categorías × 2 = 28: los dos
+por debajo de 30, o sea el limitante habría sido el tope y no la cuota. Verificado
+después del cambio contra los candidatos reales: con 8 tiendas y 10-11 categorías
+aportando por día, **lo que limita es la cuota**. Queda ajustado — 10 categorías × 3
+da exactamente 30 — y se holgará cuando ropa-calzado y ropa-accesorios empiecen a
+producir.
+
+### Lo que la cuota de 14 ya mostró
+
+El 20-oct salieron 14 posts (contra 6 antes) y **11 de los 14 fueron de las
+categorías nuevas**: deporte-equipamiento 4, tecno-audio 3, supermercado 2,
+deporte-calzado 1, deporte-vestuario 1. O sea la decisión del 19-oct hizo lo que
+tenía que hacer.
+
+Los dos de supermercado fueron los primeros del canal: una esponja a $1.000 (−51%)
+y un quitamanchas a $2.000 (−52%).
+
+### Hardware de servidor: `REJECT_SERVER_HW`
+
+El mismo día el canal publicó **dos discos HPE de $5.989.990 y $7.789.990**, que se
+llevaron 2 de los 14 lugares. Rechazados ahora por nombre, igual que el
+reacondicionado.
+
+**No es un techo de precio**, y es deliberado: los televisores de 85-98" cuestan
+$1,5-1,9M y son consumo legítimo (14 aceptados esa semana). Lo que descalifica al
+disco es qué es — también se filtra una memoria ECC de servidor de $16.990.
+
+Dos patrones que parecían obvios quedaron afuera porque filtraban consumo, medido
+contra el catálogo real: **`rack`** atrapaba el "Nike Squat Rack" de $449.990, y
+**`SFF`/`BC`** una "Torta Red Velvet Bc" de Tottus. Están en el docstring con su
+falso positivo para que no vuelvan.
+
+Impacto sobre el histórico: 5 de 11.485 aceptados (0,04%), de los cuales 2 ya se
+habían publicado.
+
+### Alcohol conectado (migración 33)
+
+1.650 SKUs de Vinos-y-licores y 180 de Cervezas, a `supermercado` y no a una
+categoría nueva: medido con 4 páginas por llave, su distribución de precio es la
+misma que las cinco ya conectadas (p50 del descuento 17-18% contra 18-22%). Maduran
+~18 de noviembre. Con eso **no queda ninguna decisión pendiente para Tottus**.
+
+### Una nota operativa que costó tiempo hoy
+
+Dos suites de pytest en paralelo sobre la misma `TEST_DATABASE_URL` se
+**deadlockean** en el `TRUNCATE` del fixture: 43 errores que parecían del código y
+eran de la concurrencia. Una sola a la vez. Y con la carga actual del host la suite
+tarda ~14 min, contra los 4:30 de la semana pasada.
+
 ## Lo que sigue, en orden
 
 0. **La guarda por volumen quedó cerrada** (ver la sección de arriba). Lo único
