@@ -28,7 +28,7 @@ from typing import Any
 
 import asyncpg
 
-from catalog.normalize import es_segunda_mano
+from catalog.normalize import es_hardware_servidor, es_segunda_mano
 from pricing.baselines import Baseline
 
 logger = logging.getLogger("pricing.detector")
@@ -50,6 +50,9 @@ REJECT_COOLDOWN = "cooldown"
 #: 2026-10-12: agregarlo no toca los seis anteriores, así que el histórico sigue
 #: siendo comparable — las filas viejas simplemente no lo tienen.
 REJECT_REFURBISHED = "refurbished"
+#: Hardware de servidor: real pero no es consumo. Valor NUEVO del 2026-10-21, que
+#: tampoco toca los anteriores.
+REJECT_SERVER_HW = "server_hw"
 
 
 @dataclass(frozen=True)
@@ -130,6 +133,13 @@ def evaluate(
     #    propiedad del producto y no del dato: no depende de cuánta serie haya.
     if es_segunda_mano(name):
         return reject(REJECT_REFURBISHED)
+
+    #    Y hardware de servidor, por el mismo motivo y en el mismo lugar: es una
+    #    propiedad del producto. El canal publicó dos discos HPE de $6M y $7,8M el
+    #    2026-10-20 que se llevaron 2 de los 14 lugares del día. No es un techo de
+    #    precio — un televisor de 85" cuesta $1,9M y es consumo legítimo.
+    if es_hardware_servidor(name):
+        return reject(REJECT_SERVER_HW)
 
     # 3. Historia mínima: sin serie no hay "precio de verdad" contra qué medir.
     #

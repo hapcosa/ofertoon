@@ -18,6 +18,7 @@ from pricing.detector import (
     REJECT_HISTORY,
     REJECT_RAMP,
     REJECT_REFURBISHED,
+    REJECT_SERVER_HW,
     REJECT_STOCK,
     REJECT_THRESHOLD,
     UNPERSISTED_REJECTS,
@@ -276,3 +277,61 @@ def test_un_umbral_bajo_no_salta_las_otras_guardas():
     assert check(
         95000, base=corta, min_history_days=10
     ).reject_reason == REJECT_THRESHOLD
+
+
+# -----------------------------------------------------------------------------
+# Hardware de servidor (2026-10-21)
+# -----------------------------------------------------------------------------
+
+
+def test_un_disco_de_servidor_se_rechaza():
+    """El canal es de retail de consumo, y esto no lo es por real que sea el dto.
+
+    El 2026-10-20 se publicaron dos discos HPE de $5.989.990 y $7.789.990, que se
+    llevaron 2 de los 14 lugares del día.
+    """
+    decision = check(70000, name="Disco Server HPE 1.92TB SATA MU SFF BC MV SSD")
+    assert decision.reject_reason == REJECT_SERVER_HW
+
+
+def test_no_es_un_techo_de_precio():
+    """Lo que descalifica es QUÉ es, no cuánto vale — y la diferencia importa.
+
+    Los televisores de 85" y 98" cuestan $1,5-1,9M y son consumo legítimo: hubo 14
+    aceptados en la semana del 2026-10-21. Un techo de precio los habría perdido.
+    """
+    assert check(70000, name='70" Crystal UHD U8000H 4K Vision AI Smart TV').accepted
+    assert check(70000, name='SMART TV S MINI LED 98"').accepted
+
+
+def test_los_patrones_descartados_no_filtran_consumo():
+    """Dos patrones que parecían obvios filtraban productos de consumo.
+
+    Medido el 2026-10-21 contra el catálogo real: `rack` habría filtrado el "Nike
+    Squat Rack" de $449.990 y un "Rack Para Lavadora"; `SFF`/`BC` habría filtrado
+    una "Torta Red Velvet Bc" de Tottus de $4.590. Por eso quedaron afuera, y este
+    test lo fija para que no vuelvan.
+    """
+    for nombre in (
+        "Nike Squat Rack",
+        "Nike Dumbbell & Kettlebell Storage Rack",
+        "Rack Para Lavadora Secadora Carga Frontal",
+        "Set rack destornilladores anti-estatica phillips",
+        "Torta Red Velvet Bc",
+        "Adaptador M.2 SSD a U.2 SFF-8639 1-NVME 1-NGFF",
+    ):
+        assert check(70000, name=nombre).accepted, nombre
+
+
+def test_la_memoria_ecc_barata_tambien_es_de_servidor():
+    """No alcanza con mirar el precio: hay hardware empresarial de $16.990.
+
+    Es la razón por la que el patrón es `servidor` y no un umbral: esa memoria ECC
+    es tan poco publicable como el disco de $7M.
+    """
+    decision = check(70000, name="Memoria Ram Hynix 16gb Ddr3 Ecc 1066mhz Servidor")
+    assert decision.reject_reason == REJECT_SERVER_HW
+
+
+def test_el_motivo_nuevo_se_persiste():
+    assert REJECT_SERVER_HW not in UNPERSISTED_REJECTS
