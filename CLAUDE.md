@@ -348,6 +348,29 @@ la página 1 en el fixture y la verificación de centinelas— está en
   El daño no se recupera —la serie no tiene relleno hacia atrás— y corre las fechas
   de madurez: las siete categorías conectadas en octubre pasaron de madurar el
   31-oct a hacerlo entre el 30-oct y el 6-nov.
+- **Docker puede reportar `Up` un contenedor VACÍO, y eso no lo ve ninguna guarda.**
+  El 2026-10-21 el host reinició y dejó `ofertascl-scraper` y `ofertascl-publisher`
+  en `Up 13 minutes` **sin un solo proceso adentro**: `docker ps` verde, cero líneas
+  de log, `docker logs` y `docker exec` devolviendo vacío. El shim de containerd
+  murió con el host y el daemon quedó sin forma de hablarle al contenedor; por eso
+  `docker stop` y `docker rm -f` **cuelgan** sobre ellos y `compose up` falla con
+  `Conflict. The container name is already in use`. Es peor que un `Exited`: un
+  contenedor detenido se ve, y este miente.
+  **Cómo verificarlo de verdad**: `ps -eo etime,cmd | grep -E 'scrapers\.|publisher\.'`
+  desde el host. Si no aparece `python -m scrapers.runner`, el contenedor está vacío
+  por más que `docker ps` diga `Up`.
+  **Cómo recuperar sin reiniciar el daemon** (que es la forma limpia, pero reinicia
+  TAMBIÉN los contenedores de signalsTrading y por lo tanto no se hace sin
+  autorización): `compose up` deja contenedores nuevos en `Created` con nombre
+  prefijado; se arrancan por ID con `docker start <id>` y el servicio vuelve. Quedan
+  con nombre raro hasta que se pueda limpiar el daemon.
+  En el mismo reinicio, `postgres` y `bot` quedaron en `Exited (137)` —el SIGKILL
+  del apagado, no un OOM: `free` mostraba 13 GB libres y el kernel no registró
+  ningún `oom-kill`— y `gate` y `paypal-webhook` en loop de reinicio con
+  `socket.gaierror: Name or service not known`, que es simplemente que no estaba el
+  Postgres al que resolverle el nombre: los dos se recuperaron solos al levantarlo.
+  O sea el diagnóstico correcto fue de abajo hacia arriba — **el `gaierror` de un
+  servicio no es un problema de red, es que el contenedor de la base no está**.
 - **Una caída de red saliente silencia su propia alerta.** El aviso de
   `alerts.py` viaja por `api.telegram.org`: cuando el host pierde la salida,
   fallan todas las tiendas Y el mensaje que avisaría de eso. Pasó el 19-ago y
