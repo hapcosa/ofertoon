@@ -153,8 +153,8 @@ De sus 19 paraguas de nivel 1, entraron 5. Quedan fuera, por razones distintas:
 
 | llave | SKUs | por qué quedó afuera |
 |---|---|---|
-| `Vinos-y-licores` | 2.008 | **alcohol: decisión de producto sin tomar** |
-| `Cervezas` | 209 | idem |
+| ~~`Vinos-y-licores`~~ | 1.650 | ✅ **conectada el 2026-10-19** (migración 33) |
+| ~~`Cervezas`~~ | 180 | ✅ **conectada el 2026-10-19** |
 | `Belleza` | 1.106 | no es supermercado estricto; cabría en una categoría propia |
 | `Panaderia-y-Pasteleria` | 498 | perecedero de rotación diaria |
 | `Frutas-y-Verduras` | 167 | **precio estacional**: el p50 de 60 días de un tomate es el promedio de dos temporadas |
@@ -177,9 +177,45 @@ real y no inventar rutas**—, dos se abren:
 | **Tottus** | L (403/503) | conectada | ✅ en producción |
 | **Jumbo** | L, "sin API pública" | **HTTP 200, listado en el HTML** | 🟢 **VIABLE** |
 | **Santa Isabel** | L, "idéntico a Jumbo" | **HTTP 200, listado en el HTML** | 🟢 **VIABLE** |
-| **Lider** | tajada chica | sin cambios | 🟡 costo por SKU |
-| **Unimarc** | 403 hasta en robots | **403, sin cambios** | ❌ |
+| **Lider** | tajada chica | **no está bloqueada: está vedada por robots salvo las fichas** | 🟡 permitida, pero costo por SKU |
+| **Unimarc** | 403 hasta en robots | **403 confirmado, en todo** | ❌ bloqueada de verdad |
 | **aCuenta** | certificado inválido | **`CERTIFICATE_VERIFY_FAILED`** | ❌ |
+
+### Unimarc y Lider no son el mismo caso — reauditado a fondo el 2026-10-19
+
+La pregunta surgió porque con Tottus y Jumbo el diagnóstico falló dos veces. Acá no:
+
+**Unimarc está bloqueada de verdad.** Probados once accesos: home con y sin `www`
+**403**, rutas internas **403**, `robots.txt` y `sitemap.xml` **404**, los
+subdominios `api.`/`super.`/`tienda.` **no resuelven**, su API VTEX **500**, su
+GraphQL IO **404**, y hasta el sitio de su matriz (`smu.cl`) responde **403**. No
+hay vía y lo único que quedaría es evasión de bot management, que este repo no hace.
+
+**Lider NO está bloqueada — responde 200.** Lo que la frena es su `robots.txt`, y
+es más restrictivo de lo que decía PLAN_TIENDAS:
+
+    Disallow: /search*
+    Disallow: /catalogo/category*      ← listados de catálogo
+    Disallow: /catalogo/product*       ← fichas de catálogo
+    Disallow: /supermercado/category*
+    Disallow: /supermercado/product*
+    Disallow: /supermercado*           ← TODA la sección de supermercado
+
+O sea **prohíbe exactamente las vías baratas** (los listados) e incluso la sección
+de supermercado completa. Lo que queda permitido son las fichas `/ip/...`, y eso
+está confirmado: de las 5.000 URLs del `productSitemap.xml`, **las 5.000 son `/ip/`
+y ninguna cae bajo un `Disallow`** — es el dueño del sitio ofreciendo su catálogo.
+
+Así que Lider es **viable y permitida, pero solo ficha por ficha**: 752 KB por SKU
+sobre 102.880 productos, con un techo medido de ~3.500 SKUs por pasada en este
+host. No es un problema de permiso ni de bloqueo: es presupuesto de red.
+
+⚠️ **El tecnicismo del robots sigue sin usarse, y es deliberado.** Los `Disallow`
+están escritos después del grupo `User-agent: Googlebot-Image`, así que por la
+especificación pertenecen a ese grupo y `User-agent: *` queda sin reglas. Pero la
+intención del sitio es inequívoca, y este repo respetó robots cada vez que le costó
+alcance (Kupfer, Construmart, Sparta, SP Digital). Apoyarse en el tecnicismo sería
+la primera excepción.
 
 ### Jumbo y Santa Isabel: lo medido
 
@@ -298,11 +334,16 @@ Tomadas el 2026-10-19 (ver §2):
 3. ✅ **El ahorro de $670 vale**, porque se compran varias unidades de algo que se
    puede guardar. De ahí salen las tres consecuencias de diseño de la §2.
 
-Pendiente:
+4. ✅ **El canal publica alcohol.** Conectado el mismo día (migración 33): 1.650
+   SKUs de Vinos-y-licores y 180 de Cervezas, **a `supermercado` y no a una
+   categoría nueva**, porque su distribución de precio medida con 4 páginas es la
+   misma que la de las cinco llaves ya conectadas (p50 del descuento declarado
+   17-18% contra 18-22%). Encaja con el argumento de la §2 mejor que nada: no se
+   vence, se compra por caja, y el `pum` viene en el 84% de los vinos y el 98% de
+   las cervezas.
 
-4. **¿El canal publica alcohol?** 2.217 SKUs de Tottus esperando (Vinos-y-licores
-   2.008 + Cervezas 209), no perecederos y con ticket $2.490-$6.390. Es la única
-   decisión que queda para completar Tottus.
+**No queda ninguna decisión pendiente para Tottus.** Lo que sigue es ejecución:
+cablear el tema, guardar el `pum`, y las fases 4 y 5.
 
 ## 7. Lo que NO se va a hacer, y por qué
 
