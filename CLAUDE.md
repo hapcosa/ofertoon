@@ -359,11 +359,24 @@ la página 1 en el fixture y la verificación de centinelas— está en
   **Cómo verificarlo de verdad**: `ps -eo etime,cmd | grep -E 'scrapers\.|publisher\.'`
   desde el host. Si no aparece `python -m scrapers.runner`, el contenedor está vacío
   por más que `docker ps` diga `Up`.
-  **Cómo recuperar sin reiniciar el daemon** (que es la forma limpia, pero reinicia
-  TAMBIÉN los contenedores de signalsTrading y por lo tanto no se hace sin
-  autorización): `compose up` deja contenedores nuevos en `Created` con nombre
-  prefijado; se arrancan por ID con `docker start <id>` y el servicio vuelve. Quedan
-  con nombre raro hasta que se pueda limpiar el daemon.
+  **Cómo se recuperó, en dos tiempos.** Para volver al aire sin tocar nada global:
+  `compose up` deja contenedores nuevos en `Created` con nombre prefijado y se
+  arrancan por ID con `docker start <id>`. Eso devuelve el servicio, pero **no
+  alcanza**: el nombre canónico sigue tomado, así que ni `compose up` ni un script de
+  deploy pueden recrear ese servicio nunca más — el `deploy-production.sh` de
+  signalsTrading construyó sus 19 imágenes y murió en ese punto exacto.
+  Lo único que lo arregla es `sudo systemctl restart docker`, y antes hay que matar
+  los shims colgados (`ps -eo pid,cmd | grep containerd-shim`, cruzando el `-id` con
+  el ID del contenedor). ⚠️ El reinicio del daemon relevanta los ~50 contenedores del
+  host, signalsTrading incluido: **no se hace sin autorización explícita del dueño**.
+  Dos cosas que ahorran dolor cuando se llega a ese punto:
+  **`docker rename` funciona en caliente** — una vez muerto el fantasma, el
+  reemplazo prefijado toma el nombre canónico sin cortar el servicio, y ahí el deploy
+  vuelve a funcionar; y **al reiniciar el daemon pueden quedar dos instancias vivas
+  del mismo servicio** (el fantasma revive de verdad junto a su reemplazo), que para
+  el publisher sería cuota doble y para el scraper una observación duplicada que hace
+  pesar el doble a un listing en su propio p50. Verificar siempre con
+  `docker ps --format '{{.Label "com.docker.compose.project"}}/{{.Label "com.docker.compose.service"}}' | sort | uniq -c | awk '$1>1'`.
   En el mismo reinicio, `postgres` y `bot` quedaron en `Exited (137)` —el SIGKILL
   del apagado, no un OOM: `free` mostraba 13 GB libres y el kernel no registró
   ningún `oom-kill`— y `gate` y `paypal-webhook` en loop de reinicio con
