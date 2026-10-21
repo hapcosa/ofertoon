@@ -11,11 +11,15 @@ lee vs. uno que se silencia. Seis mensajes al día se leen; treinta son un feed 
 el suscriptor lo mutea. El piso lo fija el gate de F1, que pide ≥3 ofertas por
 día y canal para considerar el sistema lanzable.
 
-La cuota arrancó en 6 por ese criterio y subió a 14 el 2026-10-19, cuando el canal
-pasó de siete categorías a catorce: con 6 y un tope de 2 por categoría, **solo tres
-categorías aparecían por día** y las nuevas no se veían nunca. 14 es una por
-categoría en promedio y cabe en la ventana (13 h con 45 min de espaciado dan 17
-espacios).
+La cuota arrancó en 6 por ese criterio, subió a 14 el 2026-10-19 —con 6 y un tope
+de 2 por categoría solo tres categorías aparecían por día— y a **30 el 2026-10-21**,
+por decisión del dueño del producto y junto con bajar el espaciado a 30 min y
+ampliar la ventana a 15 h.
+
+⚠️ Con 30 el canal **cruza el umbral que este docstring llama "un feed"**. Se tomó
+con el canal sin usuarios y es el primer número a revisar cuando los haya. Y los
+tres números quedan atados: 15 h × 2 por hora = 30, o sea la cuota está en el techo
+físico y no hay holgura.
 
 Todo el ordenamiento es una función pura (`select`) sobre dataclasses; la única
 parte con I/O es la query que la alimenta. Es lo que permite testear la cuota sin
@@ -46,38 +50,55 @@ TZ = ZoneInfo("America/Santiago")
 #: criterio del docstring se aplica entonces por tema, que es la unidad que el
 #: suscriptor lee —y mutea— por separado.
 #:
-#: Eran 6 hasta el 2026-10-19, y 6 con `MAX_PER_CATEGORY_PER_DAY = 2` significa que
-#: **solo tres categorías de las catorce aparecen por día**. Mientras el canal tuvo
-#: siete categorías eso era una mezcla; con catorce es una lotería, y las nuevas
-#: nunca se verían.
+#: Historia: 6 hasta el 2026-10-19 (con 6 y el tope de 2 por categoría, solo tres
+#: de las catorce categorías aparecían por día), 14 ese día, y **30 desde el
+#: 2026-10-21 por decisión del dueño del producto**, junto con bajar el espaciado a
+#: 30 min y ampliar la ventana a 15 h.
 #:
-#: 14 es una por categoría en promedio, y cabe en la ventana física: 13 h de
-#: ventana (9-22) con `MIN_MINUTES_BETWEEN = 45` dan 17 espacios. Sigue lejos de
-#: los treinta que el docstring llama "un feed que el suscriptor mutea", y el tope
-#: por categoría —que no se toca— mantiene la mezcla.
-MAX_PER_DAY = 14
-#: Que no sea toda la cuota de la misma tienda ni de la misma categoría.
+#: Los tres números son el mismo número: **15 h × 2 posts/hora = 30**. La cuota
+#: está exactamente en el techo físico, así que ya no hay holgura — bajar la ventana
+#: o subir el espaciado la vuelve inalcanzable.
 #:
-#: El de tienda subió de 2 a 3 junto con la cuota (2026-10-19), y es **más**
-#: diverso que antes en proporción: 3 de 14 es un techo del 21% por tienda, contra
-#: el 33% que daban 2 de 6. Hacía falta porque solo 6 tiendas tienen baselines
-#: maduras hoy (falabella, paris, easy, sodimac, pcfactory, spdigital), así que con
-#: tope 2 el techo real eran 12 publicaciones y la cuota de 14 no se alcanzaba
-#: nunca: el limitante habría sido este tope y no la cuota.
-MAX_PER_STORE_PER_DAY = 3
-#: El de categoría NO se toca: con 2 de 14 hacen falta siete categorías distintas
-#: para llenar el día, que es exactamente la mezcla que se busca — y son las siete
-#: que hoy tienen baseline madura.
-MAX_PER_CATEGORY_PER_DAY = 2
+#: ⚠️ Esto cruza el umbral que el docstring del módulo llama "un feed que el
+#: suscriptor mutea". Es una decisión de producto tomada con el canal sin usuarios;
+#: cuando los haya, es el primer número a revisar.
+MAX_PER_DAY = 30
+#: Que no sea toda la cuota de la misma tienda ni de la misma categoría. Los dos
+#: se recalculan cada vez que cambia la cuota, porque si quedan bajos **el
+#: limitante pasa a ser el tope y no la cuota**, que es justo lo que un tope no
+#: tiene que decidir.
+#:
+#: Al pasar la cuota a 30 (2026-10-21), con los valores anteriores:
+#:     6 tiendas maduras × 3 = 18  < 30   ← estrangulaba
+#:     14 categorías      × 2 = 28  < 30   ← estrangulaba
+#:
+#: Hoy tienen baseline madura seis tiendas (falabella, paris, easy, sodimac,
+#: pcfactory, spdigital), así que 5 por tienda da exactamente 30. Es ajustado a
+#: propósito: cuando maduren Tottus, Nike y Andesgear habrá nueve más y este tope
+#: dejará de ser cerca del límite.
+MAX_PER_STORE_PER_DAY = 5
+#: 3 de 30 es un techo del 10% por categoría, **más** diverso en proporción que el
+#: 14% que daban 2 de 14: hacen falta diez categorías distintas para llenar el día.
+MAX_PER_CATEGORY_PER_DAY = 3
 
 #: Espaciado mínimo entre posts. El pipeline produce en dos ráfagas de 12 h; sin
 #: esto el canal escupiría la cuota entera en cuatro minutos y quedaría mudo el
 #: resto del día.
-MIN_MINUTES_BETWEEN = 45
+#:
+#: 30 min desde el 2026-10-21, bajado de 45 junto con la cuota: 30 posts en 15 h
+#: son exactamente uno cada 30 min, así que este número y `MAX_PER_DAY` son la
+#: misma decisión mirada de dos maneras.
+MIN_MINUTES_BETWEEN = 30
 
 #: Ventana de publicación, hora de Santiago. `END` es exclusiva.
-WINDOW_START_HOUR = 9
-WINDOW_END_HOUR = 22
+#:
+#: 15 h desde el 2026-10-21 (eran 9-22, o sea 13 h). El pedido fue "15 horas
+#: disponibles" sin fijar el horario, así que se corrió una hora hacia cada lado:
+#: **8-23**. Se eligió así y no 9-24 porque publicar a medianoche contradice el
+#: criterio que ya estaba escrito acá —nadie compra un taladro de madrugada— y las
+#: 23:00 todavía es horario de mirar el teléfono.
+WINDOW_START_HOUR = 8
+WINDOW_END_HOUR = 23
 
 #: Vencimiento del candidato. Un aceptado que no entró en la cuota de ayer no se
 #: publica hoy: su precio tiene más de un ciclo de scraping de antigüedad y no

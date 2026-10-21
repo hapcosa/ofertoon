@@ -51,13 +51,33 @@ def make(
 # -----------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("hour", [0, 3, 8, 22, 23])
+# Las horas salen de las constantes y no escritas a mano: la ventana ya cambió dos
+# veces (9-22 → 8-23 el 2026-10-21) y los números fijos quedaban obsoletos sin que
+# el test dijera nada útil.
+@pytest.mark.parametrize(
+    "hour",
+    [
+        0,
+        3,
+        ranker.WINDOW_START_HOUR - 1,
+        # El borde superior es exclusivo, así que esta hora ya está afuera. No se
+        # prueba `END + 1` porque con END = 23 daría la hora 24, que no existe.
+        ranker.WINDOW_END_HOUR,
+    ],
+)
 def test_fuera_de_ventana_no_publica(hour: int) -> None:
     now = NOW.replace(hour=hour)
     assert ranker.select([make(1)], posted=PostedToday(), now=now) == []
 
 
-@pytest.mark.parametrize("hour", [9, 13, 21])
+@pytest.mark.parametrize(
+    "hour",
+    [
+        ranker.WINDOW_START_HOUR,
+        (ranker.WINDOW_START_HOUR + ranker.WINDOW_END_HOUR) // 2,
+        ranker.WINDOW_END_HOUR - 1,
+    ],
+)
 def test_dentro_de_ventana_publica(hour: int) -> None:
     now = NOW.replace(hour=hour)
     chosen = ranker.select(
@@ -136,21 +156,30 @@ def test_el_tope_deja_pasar_al_siguiente_distinto() -> None:
     `MAX_PER_STORE_PER_DAY` y el quinto —peor score, otra tienda— entra igual,
     salteando al cuarto.
     """
+    # `tope + 1` de la tienda 1, con score descendente, y uno de la tienda 2 al
+    # final: entran los `tope` primeros y el de la otra tienda, salteando al que
+    # sobra. Derivado de la constante para que no haya que recalibrarlo a mano.
+    tope = ranker.MAX_PER_STORE_PER_DAY
     candidates = [
-        make(1, store_id=1, category_id=1, score="90"),
-        make(2, store_id=1, category_id=2, score="80"),
-        make(3, store_id=1, category_id=3, score="70"),
-        make(4, store_id=1, category_id=4, score="60"),
-        make(5, store_id=2, category_id=5, score="10"),
+        make(i, store_id=1, category_id=i, score=str(100 - i))
+        for i in range(1, tope + 2)
     ]
+    ultimo = tope + 2
+    candidates.append(make(ultimo, store_id=2, category_id=ultimo, score="10"))
+
     chosen = ranker.select(candidates, posted=PostedToday(), now=NOW, limit=None)
 
-    assert ranker.MAX_PER_STORE_PER_DAY == 3, "el fixture se calibró contra este tope"
-    assert [c.candidate_id for c in chosen] == [1, 2, 3, 5]
+    esperado = list(range(1, tope + 1)) + [ultimo]
+    assert [c.candidate_id for c in chosen] == esperado
 
 
 def test_no_supera_la_cuota_diaria_en_una_vuelta() -> None:
-    candidates = [make(i, store_id=i, category_id=i) for i in range(1, 20)]
+    # Uno por tienda y categoría, y más que la cuota: así lo que corta es la cuota
+    # y no un tope fino. Con 19 candidatos y cuota 30 el test pasaba por la razón
+    # equivocada (cortaba el catálogo sembrado).
+    candidates = [
+        make(i, store_id=i, category_id=i) for i in range(1, ranker.MAX_PER_DAY + 10)
+    ]
     chosen = ranker.select(candidates, posted=PostedToday(), now=NOW, limit=None)
     assert len(chosen) == ranker.MAX_PER_DAY
 
