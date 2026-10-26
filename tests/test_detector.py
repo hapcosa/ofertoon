@@ -17,6 +17,8 @@ from pricing.detector import (
     REJECT_COOLDOWN,
     REJECT_HISTORY,
     REJECT_RAMP,
+    REJECT_REFURBISHED,
+    REJECT_SERVER_HW,
     REJECT_STOCK,
     REJECT_THRESHOLD,
     UNPERSISTED_REJECTS,
@@ -41,7 +43,16 @@ def baseline(
     )
 
 
-def check(price, *, base=None, in_stock=True, threshold=THETA, prior=None):
+def check(
+    price,
+    *,
+    base=None,
+    in_stock=True,
+    threshold=THETA,
+    prior=None,
+    name=None,
+    min_history_days=None,
+):
     return evaluate(
         price=Decimal(price),
         in_stock=in_stock,
@@ -49,6 +60,8 @@ def check(price, *, base=None, in_stock=True, threshold=THETA, prior=None):
         threshold=threshold,
         prior_post=prior,
         now=NOW,
+        name=name,
+        min_history_days=min_history_days,
     )
 
 
@@ -145,3 +158,180 @@ def test_p50_en_cero_no_divide_por_cero(p50):
     decision = check(1000, base=baseline(p50=p50, p10=0))
     assert decision.discount_real == Decimal(0)
     assert not decision.accepted
+
+
+# -----------------------------------------------------------------------------
+# Producto que no es nuevo (2026-10-12)
+# -----------------------------------------------------------------------------
+
+
+def test_un_reacondicionado_se_rechaza():
+    """Su precio baja y se QUEDA abajo: la curva no es la de una oferta.
+
+    Medido sobre `tecno-celulares` el 2026-10-12: excluirlos sube la precisión de
+    67,4% a 78,1% (θ 0.10) y de 41,7% a 71,4% (θ 0.20), y hace desaparecer el
+    patrón invertido de esa categoría —un descuento más grande predecía peor—
+    porque entre los aceptados con ≥30% el 44% eran reacondicionados contra el 8%
+    entre los de menos de 30%.
+    """
+    decision = check(70000, name="iPhone 13 256GB - Rojo - Reacondicionado")
+    assert not decision.accepted
+    assert decision.reject_reason == REJECT_REFURBISHED
+
+
+def test_el_mismo_producto_nuevo_se_acepta():
+    """El control: lo único que cambia es la palabra en el nombre."""
+    assert check(70000, name="iPhone 13 256GB - Rojo").accepted
+
+
+def test_sin_nombre_no_se_rechaza():
+    """`None` no puede significar "sospechoso": sin dato no se bloquea."""
+    assert check(70000, name=None).accepted
+
+
+def test_la_guarda_de_stock_manda_sobre_la_de_segunda_mano():
+    """El orden del dataset: se registra la primera guarda que falla.
+
+    Stock va antes porque publicar lo que no se puede comprar es peor, y así el
+    motivo registrado no cambia para las filas que ya existían.
+    """
+    decision = check(70000, in_stock=False, name="iPhone 13 Reacondicionado")
+    assert decision.reject_reason == REJECT_STOCK
+
+
+def test_el_reacondicionado_se_rechaza_aunque_no_tenga_historia():
+    """Va antes que `history` a propósito: es propiedad del producto, no del dato.
+
+    Si fuera después, un reacondicionado sin serie se registraría como `history`,
+    que es el motivo que NO se persiste (`UNPERSISTED_REJECTS`), y el dataset no
+    permitiría contar cuántos hay.
+    """
+    decision = check(
+        70000,
+        base=baseline(n_points=3, n_days=2),
+        name="Notebook DELL Reacondicionado",
+    )
+    assert decision.reject_reason == REJECT_REFURBISHED
+
+
+def test_el_motivo_nuevo_se_persiste():
+    """A diferencia de `history`: son pocos y sirven para medir el sesgo."""
+    assert REJECT_REFURBISHED not in UNPERSISTED_REJECTS
+
+
+# -----------------------------------------------------------------------------
+# Historia mínima por categoría (migración 32)
+# -----------------------------------------------------------------------------
+
+
+def test_sin_umbral_de_categoria_rige_el_global():
+    """El default: `MIN_DAYS`/`MIN_POINTS` como siempre."""
+    corta = baseline(n_points=20, n_days=15)
+    assert check(70000, base=corta).reject_reason == REJECT_HISTORY
+    assert check(70000, base=corta, min_history_days=None).reject_reason == REJECT_HISTORY
+
+
+def test_una_categoria_puede_aceptar_con_menos_historia():
+    """Decisión del dueño del producto, 2026-10-19 — ver la migración 32.
+
+    Lo que se acepta a cambio está escrito ahí: con 10 días el p50 sale de ~20
+    puntos de dos semanas, así que `discount_real` se mide contra un número que no
+    significa nada. Es temporal y reversible.
+    """
+    corta = baseline(n_points=20, n_days=15)
+    assert check(70000, base=corta, min_history_days=10).accepted
+
+
+def test_el_umbral_de_categoria_tambien_exige_puntos():
+    """Una sola palanca: se piden tantos puntos como días, igual que el 30/30.
+
+    Un listing con 15 días pero 8 observaciones no tiene serie: la tienda lo
+    mostró de forma intermitente.
+    """
+    intermitente = baseline(n_points=8, n_days=15)
+    assert check(70000, base=intermitente, min_history_days=10).reject_reason == (
+        REJECT_HISTORY
+    )
+
+
+def test_un_umbral_bajo_no_salta_las_otras_guardas():
+    """Lo que se relaja es la historia, no el resto.
+
+    Importa porque es lo que impide que esta palanca se convierta en "publicar
+    cualquier cosa": un reacondicionado, un agotado o un precio sobre el piso
+    siguen rechazados igual.
+    """
+    corta = baseline(n_points=20, n_days=15)
+    assert check(
+        70000, base=corta, min_history_days=10, name="iPhone Reacondicionado"
+    ).reject_reason == REJECT_REFURBISHED
+    assert check(
+        70000, base=corta, min_history_days=10, in_stock=False
+    ).reject_reason == REJECT_STOCK
+    # 80.000 pasa θ (−20%) pero queda sobre el p10 de 75.000: `above_floor` igual.
+    corta_con_piso_bajo = baseline(p10=75000, n_points=20, n_days=15)
+    assert check(
+        80000, base=corta_con_piso_bajo, min_history_days=10
+    ).reject_reason == REJECT_ABOVE_FLOOR
+    # Y el θ sigue aplicándose: un 5% no es oferta por más que la historia sea corta.
+    assert check(
+        95000, base=corta, min_history_days=10
+    ).reject_reason == REJECT_THRESHOLD
+
+
+# -----------------------------------------------------------------------------
+# Hardware de servidor (2026-10-21)
+# -----------------------------------------------------------------------------
+
+
+def test_un_disco_de_servidor_se_rechaza():
+    """El canal es de retail de consumo, y esto no lo es por real que sea el dto.
+
+    El 2026-10-20 se publicaron dos discos HPE de $5.989.990 y $7.789.990, que se
+    llevaron 2 de los 14 lugares del día.
+    """
+    decision = check(70000, name="Disco Server HPE 1.92TB SATA MU SFF BC MV SSD")
+    assert decision.reject_reason == REJECT_SERVER_HW
+
+
+def test_no_es_un_techo_de_precio():
+    """Lo que descalifica es QUÉ es, no cuánto vale — y la diferencia importa.
+
+    Los televisores de 85" y 98" cuestan $1,5-1,9M y son consumo legítimo: hubo 14
+    aceptados en la semana del 2026-10-21. Un techo de precio los habría perdido.
+    """
+    assert check(70000, name='70" Crystal UHD U8000H 4K Vision AI Smart TV').accepted
+    assert check(70000, name='SMART TV S MINI LED 98"').accepted
+
+
+def test_los_patrones_descartados_no_filtran_consumo():
+    """Dos patrones que parecían obvios filtraban productos de consumo.
+
+    Medido el 2026-10-21 contra el catálogo real: `rack` habría filtrado el "Nike
+    Squat Rack" de $449.990 y un "Rack Para Lavadora"; `SFF`/`BC` habría filtrado
+    una "Torta Red Velvet Bc" de Tottus de $4.590. Por eso quedaron afuera, y este
+    test lo fija para que no vuelvan.
+    """
+    for nombre in (
+        "Nike Squat Rack",
+        "Nike Dumbbell & Kettlebell Storage Rack",
+        "Rack Para Lavadora Secadora Carga Frontal",
+        "Set rack destornilladores anti-estatica phillips",
+        "Torta Red Velvet Bc",
+        "Adaptador M.2 SSD a U.2 SFF-8639 1-NVME 1-NGFF",
+    ):
+        assert check(70000, name=nombre).accepted, nombre
+
+
+def test_la_memoria_ecc_barata_tambien_es_de_servidor():
+    """No alcanza con mirar el precio: hay hardware empresarial de $16.990.
+
+    Es la razón por la que el patrón es `servidor` y no un umbral: esa memoria ECC
+    es tan poco publicable como el disco de $7M.
+    """
+    decision = check(70000, name="Memoria Ram Hynix 16gb Ddr3 Ecc 1066mhz Servidor")
+    assert decision.reject_reason == REJECT_SERVER_HW
+
+
+def test_el_motivo_nuevo_se_persiste():
+    assert REJECT_SERVER_HW not in UNPERSISTED_REJECTS

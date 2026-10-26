@@ -5,3 +5,7 @@ python-dotenv>=1.0
 selectolax>=0.3.21
 aiohttp>=3.10
 cryptography>=42.0
+# Fallback de zoneinfo: la cuota diaria y la ventana horaria del publisher son
+# en America/Santiago, y python:3.12-slim no garantiza la tzdata del sistema.
+# Sin esto, ZoneInfo("America/Santiago") revienta dentro del contenedor.
+tzdata>=2024.1

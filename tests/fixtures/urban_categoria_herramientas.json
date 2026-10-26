@@ -1,0 +1,141 @@
+[
+ {
+  "id": 39967,
+  "name": "Aspiradora de Cenizas Einhell TC-AV 2032 DW",
+  "permalink": "https://urbancomercial.cl/tienda/aspiradora-de-cenizas-einhell-2032dw-urban-comercial/",
+  "sku": "2351667",
+  "prices": {
+   "price": "64990",
+   "regular_price": "99990",
+   "sale_price": "64990",
+   "price_range": null,
+   "currency_code": "CLP",
+   "currency_symbol": "$",
+   "currency_minor_unit": 0,
+   "currency_decimal_separator": ",",
+   "currency_thousand_separator": ".",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "is_in_stock": true,
+  "attributes": [
+   {
+    "name": "EAN",
+    "terms": [
+     {
+      "name": "4006825685022"
+     }
+    ]
+   },
+   {
+    "name": "Marca",
+    "terms": [
+     {
+      "name": "Einhell"
+     }
+    ]
+   }
+  ],
+  "images": [
+   {
+    "src": "https://urbancomercial.cl/wp-content/uploads/2026/08/Sin-titulo-1.webp"
+   }
+  ]
+ },
+ {
+  "id": 39896,
+  "name": "Sierra Circular Inalámbrica Stanley 20V 7-1/4 SBC551B &#8211; Sin Batería",
+  "permalink": "https://urbancomercial.cl/tienda/sierra-circular-inalambrica-stanley-sin-bateria/",
+  "sku": "SBC551B",
+  "prices": {
+   "price": "139900",
+   "regular_price": "199990",
+   "sale_price": "139900",
+   "price_range": null,
+   "currency_code": "CLP",
+   "currency_symbol": "$",
+   "currency_minor_unit": 0,
+   "currency_decimal_separator": ",",
+   "currency_thousand_separator": ".",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "is_in_stock": true,
+  "attributes": [
+   {
+    "name": "Marca",
+    "terms": [
+     {
+      "name": "Stanley"
+     }
+    ]
+   }
+  ],
+  "images": [
+   {
+    "src": "https://urbancomercial.cl/wp-content/uploads/2026/08/Sierra-Circular-Inalambrica-Stanley-20V-7-1-4-SBC551B-Sin-Bateria.webp"
+   }
+  ]
+ },
+ {
+  "id": 37870,
+  "name": "Taladro Percutor Inal. Bosch GSB 180-LI, 1 Bat + 23 Acces",
+  "permalink": "https://urbancomercial.cl/tienda/taladro-percutor-inal-bosch-gsb-180-li-1-bat-23-acces/",
+  "sku": "06019F83E5",
+  "prices": {
+   "price": "119990",
+   "regular_price": "199990",
+   "sale_price": "119990",
+   "price_range": null,
+   "currency_code": "CLP",
+   "currency_symbol": "$",
+   "currency_minor_unit": 0,
+   "currency_decimal_separator": ",",
+   "currency_thousand_separator": ".",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "is_in_stock": true,
+  "attributes": [],
+  "images": [
+   {
+    "src": "https://urbancomercial.cl/wp-content/uploads/2026/06/Taladro-Atornillador-Percutor-Inalambrico-18V-1-Bat-23-Acces-Bosch-GSB-180-LI-.webp"
+   }
+  ]
+ },
+ {
+  "id": 39958,
+  "name": "Fresadora Inalámbrica Makita DRT52F001 Inc. Carg y 1 Bat 3AH",
+  "permalink": "https://urbancomercial.cl/tienda/fresadora-inalambrica-makita-carg-bat/",
+  "sku": "DRT52F001",
+  "prices": {
+   "price": "254990",
+   "regular_price": "254990",
+   "sale_price": "254990",
+   "price_range": null,
+   "currency_code": "CLP",
+   "currency_symbol": "$",
+   "currency_minor_unit": 0,
+   "currency_decimal_separator": ",",
+   "currency_thousand_separator": ".",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "is_in_stock": true,
+  "attributes": [
+   {
+    "name": "Marca",
+    "terms": [
+     {
+      "name": "Makita"
+     }
+    ]
+   }
+  ],
+  "images": [
+   {
+    "src": "https://urbancomercial.cl/wp-content/uploads/2026/08/Fresadora-Inalambrica-Makita-DRT52F001-Inc.-Carg-y-1-Bat-3AH-1.webp"
+   }
+  ]
+ }
+]

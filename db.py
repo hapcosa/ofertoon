@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from datetime import date, datetime
 from typing import Any
 
 import asyncpg
@@ -37,7 +38,12 @@ async def load_store_targets(conn: asyncpg.Connection) -> list[dict[str, Any]]:
           JOIN store_categories AS sc ON sc.store_id = s.id
           JOIN categories       AS c  ON c.id = sc.category_id
          WHERE s.is_active AND sc.is_active
-         ORDER BY s.slug, c.slug
+         -- `store_key` también, y no es cosmético: cuando una tienda cross-lista
+         -- el mismo SKU en dos llaves de la misma categoría (Andesgear), el
+         -- adaptador lo emite UNA vez y la llave que gana es la primera de este
+         -- orden. Sin el tercer criterio, el empate lo resolvía Postgres y la
+         -- asignación podía cambiar entre pasadas.
+         ORDER BY s.slug, c.slug, sc.store_key
         """
     )
     return [dict(r) for r in rows]
@@ -98,8 +104,8 @@ async def insert_price_point(
         """
         INSERT INTO price_points (listing_id, observed_at, price_effective,
                                   price_normal, price_card, in_stock,
-                                  claimed_discount)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+                                  claimed_discount, pum_price, pum_label)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (listing_id, observed_at) DO NOTHING
         """,
         listing_id,
@@ -109,6 +115,11 @@ async def insert_price_point(
         product.price_card,
         product.in_stock,
         product.claimed_discount,
+        # Las dos juntas o ninguna: un precio por unidad sin su unidad es un
+        # número que nadie puede interpretar (lo hace cumplir el CHECK de la
+        # migración 34).
+        product.pum.price if product.pum else None,
+        product.pum.label if product.pum else None,
     )
     return status.endswith("1")
 
@@ -157,16 +168,24 @@ async def start_run(
     store_id: int,
     category_id: int | None,
     store_key: str | None = None,
+    is_partial_run: bool = False,
 ) -> int:
+    """Abre una corrida. `is_partial_run` la marca como no-pasada.
+
+    Una corrida de `--store` o `--category` no es una pasada: recorre un
+    subconjunto de los objetivos a propósito. Queda marcada para que
+    `volumen_por_pasada` la excluya — ver la migración 29.
+    """
     return await conn.fetchval(
         """
-        INSERT INTO scrape_runs (store_id, category_id, store_key)
-             VALUES ($1, $2, $3)
+        INSERT INTO scrape_runs (store_id, category_id, store_key, is_partial_run)
+             VALUES ($1, $2, $3, $4)
           RETURNING id
         """,
         store_id,
         category_id,
         store_key,
+        is_partial_run,
     )
 
 
@@ -178,11 +197,22 @@ async def recent_items_seen(
     store_key: str | None,
     window: int = 7,
 ) -> list[int]:
-    """`items_seen` de las últimas `window` corridas sanas del MISMO target.
+    """`items_seen` de las últimas `window` corridas del MISMO target.
 
-    Solo `status='ok'`: una corrida rota no puede ser referencia de lo que es
-    volumen normal, y si lo fuera el canario se autoanestesiaría (dos pasadas
-    degradadas seguidas bajarían la vara para la tercera).
+    Se listan `ok` y `partial`. Queda afuera `failed` —una corrida que reventó no
+    vio nada, su cero no es un volumen— y `running`, que no terminó y cuyo
+    `items_seen` todavía es 0. Antes solo entraban las `ok`, y
+    eso enclavaba el canario: apenas un target caía en `partial`, sus corridas
+    dejaban de alimentar la historia y la mediana quedaba congelada en el nivel
+    viejo **para siempre**. Pasó con SP Digital, que perdió un tercio de su stock
+    el 28 de agosto y siguió reportando "18 items vs mediana 47" días después,
+    con las siete corridas previas en 18. Una alarma que no se apaga no es una
+    alarma: entierra los errores de verdad.
+
+    El riesgo que el filtro anterior quería evitar —que el canario se
+    autoanestesie— lo cubre la mediana: con `window=7` hacen falta 4 corridas
+    degradadas seguidas (2 días) para mover la vara, así que un adaptador roto
+    sigue gritando mientras hay margen para arreglarlo.
 
     El target incluye `store_key` porque un mismo (tienda, categoría) puede
     tener varias — con volúmenes que difieren en un orden de magnitud.
@@ -194,7 +224,7 @@ async def recent_items_seen(
          WHERE store_id = $1
            AND category_id IS NOT DISTINCT FROM $2
            AND store_key   IS NOT DISTINCT FROM $3
-           AND status = 'ok'
+           AND status IN ('ok', 'partial')
          ORDER BY started_at DESC
          LIMIT $4
         """,
@@ -228,3 +258,141 @@ async def finish_run(
         items_ok,
         error,
     )
+
+
+#: Cuántos días hacia atrás se buscan agujeros en la serie. El aviso tiene que
+#: salir cuando el scraper se recupera y después callarse solo, sin estado que
+#: mantener ni tabla que marcar como "ya notificado": el corte es la ventana.
+#:
+#: Eran 3 días, y 3 días es más corto que el tiempo que tarda un operador en
+#: mirar. El agujero del 18-19 de septiembre de 2026 se descubrió cinco días
+#: después, o sea que esta consulta ya no lo veía: una caída de viernes a la que
+#: se llega el lunes caía afuera de la ventana y no se reportaba NUNCA. Con 7
+#: días el aviso sobrevive a un fin de semana, que es el ciclo real de atención.
+#: El costo es repetir el mismo aviso en 14 pasadas en vez de 6; el mensaje dice
+#: cuántos días son y desaparece solo.
+GAP_LOOKBACK_DAYS = 7
+
+
+async def dias_sin_observaciones(
+    conn: asyncpg.Connection, *, lookback: int = GAP_LOOKBACK_DAYS
+) -> list[date]:
+    """Días COMPLETOS sin una sola fila en `price_points`, del más viejo al más nuevo.
+
+    Hoy queda afuera a propósito: hasta que corra la primera pasada del día está
+    legítimamente vacío, y avisar de eso sería una falsa alarma cada mañana.
+
+    Un día sin observaciones no es "la pasada salió con pocos items" —eso lo
+    cubre el canario—, es la serie interrumpida: le baja `n_days` a cada listing
+    vivo y deja al backtest sin candidatos que evaluar ese día.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT d::date AS dia
+          FROM generate_series(
+                   CURRENT_DATE - ($1::int) * INTERVAL '1 day',
+                   CURRENT_DATE - INTERVAL '1 day',
+                   INTERVAL '1 day'
+               ) AS d
+         WHERE NOT EXISTS (
+               SELECT 1 FROM price_points
+                WHERE observed_at >= d::date
+                  AND observed_at <  d::date + INTERVAL '1 day'
+           )
+         ORDER BY dia
+        """,
+        lookback,
+    )
+    return [r["dia"] for r in rows]
+
+
+#: Cuánto puede durar una pasada. Con las tiendas conectadas a septiembre de
+#: 2026 tarda 11-14 min; 2 h deja
+#: margen para el doble de catálogo y sigue estando lejísimos de las 12 h que
+#: separan una pasada de la siguiente, que es la única confusión posible.
+PASS_WINDOW = "2 hours"
+
+
+async def ultima_pasada(conn: asyncpg.Connection) -> datetime | None:
+    """Instante en que ARRANCÓ la última pasada, sin importar cómo terminó.
+
+    Es el ancla de la cadencia del loop: la serie tiene que quedar muestreada a
+    intervalos parejos porque `compute_baseline` saca el p50 de los puntos
+    crudos, así que la cantidad de observaciones de un día ES su peso en la
+    mediana. Contar el intervalo desde el arranque del proceso en vez de desde
+    la última pasada hace que cada despliegue y cada reinicio corra su propia
+    pasada extra.
+
+    Ojo con el `MIN`: `scrape_runs` tiene una fila por (tienda, llave), no una
+    por pasada, y esas filas arrancan escalonadas a lo largo de los ~13 min que
+    la pasada tarda en recorrer todas las tiendas. Un `MAX(started_at)` acá
+    devolvería el arranque de la ÚLTIMA tienda y le sumaría esos 13 min al
+    ciclo, que es exactamente la deriva que este ancla existe para eliminar.
+    """
+    return await conn.fetchval(
+        f"""
+        SELECT MIN(started_at)
+          FROM scrape_runs
+         WHERE started_at >= (SELECT MAX(started_at) FROM scrape_runs)
+                             - INTERVAL '{PASS_WINDOW}'
+        """
+    )
+
+
+#: Cuántas pasadas se traen para evaluar volumen. Son las `evaluar` que se
+#: reportan más las que hacen de historia, y quien las reparte es el runner.
+#:
+#: El scan se acota a 30 días por costo: `scrape_runs` crece ~300 filas/día y la
+#: función window tiene que ordenarlas enteras. Con 2 pasadas/día, 30 días son
+#: 60 pasadas y el límite que manda es siempre el `LIMIT`, nunca la fecha.
+VOLUME_SCAN_DAYS = 30
+
+
+async def volumen_por_pasada(
+    conn: asyncpg.Connection, *, limite: int
+) -> list[tuple[datetime, int]]:
+    """`(inicio, observaciones escritas)` por pasada, de la más nueva a la más vieja.
+
+    `scrape_runs` no tiene una fila por pasada sino una por (tienda, llave), y
+    esas filas arrancan escalonadas a lo largo de los ~13 min que la pasada
+    tarda en recorrer las tiendas. La pasada se reconstruye agrupando por el
+    hueco: dos corridas separadas por más de `PASS_WINDOW` son de pasadas
+    distintas. Es el mismo criterio que usa `ultima_pasada`, por el mismo motivo.
+
+    Se suma `items_ok` —observaciones NUEVAS escritas— y no `items_seen`, porque
+    lo que esta guarda vigila es cuánta serie entró. Un target que enumera 900
+    productos y no logra persistir ninguno es exactamente el agujero que hay que
+    ver, y en `items_seen` no se nota.
+
+    Una corrida que murió a mitad queda en 'running' con `items_ok` en 0 hasta
+    que `sweep_stale_runs` la cierre, así que su volumen real no se cuenta. El
+    sesgo es hacia subestimar, que del lado seguro de una guarda de "faltó
+    volumen" es el lado correcto.
+    """
+    rows = await conn.fetch(
+        f"""
+        WITH corridas AS (
+            SELECT started_at, items_ok,
+                   CASE WHEN started_at - LAG(started_at) OVER (ORDER BY started_at)
+                             > INTERVAL '{PASS_WINDOW}'
+                        THEN 1 ELSE 0 END AS corte
+              FROM scrape_runs
+             WHERE started_at >= NOW() - ($1::int) * INTERVAL '1 day'
+               -- Antes de agrupar, no después: una corrida manual en el medio de
+               -- la tarde no puede partir en dos la pasada que la rodea.
+               AND NOT is_partial_run
+        ), pasadas AS (
+            SELECT SUM(corte) OVER (ORDER BY started_at) AS pasada,
+                   started_at, items_ok
+              FROM corridas
+        )
+        SELECT MIN(started_at) AS inicio, SUM(items_ok)::int AS observaciones
+          FROM pasadas
+         GROUP BY pasada
+         ORDER BY inicio DESC
+         LIMIT $2
+        """,
+        VOLUME_SCAN_DAYS,
+        limite,
+    )
+    return [(r["inicio"], int(r["observaciones"])) for r in rows]

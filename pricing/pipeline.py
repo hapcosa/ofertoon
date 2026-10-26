@@ -1,0 +1,105 @@
+"""La fase de pricing: recomputa baselines, corre el detector y asigna identidad.
+
+Es la pieza que hasta F3 no existía. `baselines.py` y `detector.py` estaban
+escritos y testeados pero no los invocaba nadie en producción: el único
+entrypoint era `backtest.py`, una herramienta offline. Esto los conecta.
+
+**Corre dentro del ciclo del scraper**, no como servicio con reloj propio. La
+razón es que el trigger correcto de una baseline no es una hora del día sino
+"llegaron observaciones nuevas", y el único proceso que sabe cuándo pasó eso es
+el runner que las acaba de escribir. Un cron separado tendría que adivinarlo —
+y cuando se desincroniza (una pasada tarda más que otra) el detector evalúa
+medio catálogo contra la foto de hace 12 h y medio contra la de recién.
+
+El publisher NO vive acá. Ése sí tiene reloj propio, porque *cuándo se publica*
+es una decisión de producto independiente de cuándo llegó el dato.
+
+Uso:
+    python -m pricing.pipeline          # una corrida contra DATABASE_URL
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
+import sys
+from dataclasses import dataclass
+
+import asyncpg
+
+import db
+from catalog import identity
+from pricing import baselines, detector
+
+logger = logging.getLogger("pricing.pipeline")
+
+
+@dataclass(frozen=True)
+class PipelineStats:
+    baselines: baselines.BaselineStats
+    detector: detector.DetectorStats
+    #: `None` cuando la asignación de identidad falló. No es lo mismo que una
+    #: corrida con todo en cero, que significa "no había nada que vincular".
+    identity: identity.IdentityStats | None = None
+
+    def __str__(self) -> str:
+        ident = "falló" if self.identity is None else str(self.identity)
+        return (
+            f"baselines[{self.baselines}] detector[{self.detector}] "
+            f"identidad[{ident}]"
+        )
+
+
+async def run(pool: asyncpg.Pool) -> PipelineStats:
+    """Recomputa baselines, evalúa las observaciones nuevas y vincula
+    listings a `products`. Idempotente.
+
+    El orden de los dos primeros es obligatorio: el detector lee
+    `listing_baselines`, así que correrlo antes de recomputar mediría el precio
+    de hoy contra la referencia de ayer. La identidad, en cambio, va última
+    porque es independiente: no alimenta al detector.
+    """
+    baseline_stats = await baselines.recompute_all(pool)
+    detector_stats = await detector.run(pool)
+
+    # La identidad va última y aislada por el mismo criterio con el que el
+    # runner aísla toda esta fase: no alimenta al detector —solo el copy del
+    # mensaje—, así que un fallo suyo no puede costar la corrida de la señal,
+    # que ya quedó persistida arriba. Se rehace sola en la próxima pasada.
+    try:
+        identity_stats = await identity.assign_products(pool)
+    except Exception:
+        logger.exception("la asignación de identidad falló; el pricing ya corrió")
+        identity_stats = None
+
+    stats = PipelineStats(baseline_stats, detector_stats, identity_stats)
+    # Este log es el que distingue "el job no corrió" de "el job corrió y
+    # descartó todo". Durante el cold-start (hasta ~2026-09-02) el resultado
+    # correcto es 0 aceptados con todo el catálogo rechazado por `history`, y
+    # esos rechazos no dejan fila en `deal_candidates` — una tabla vacía no
+    # prueba nada por sí sola. Estas dos líneas sí.
+    logger.info("pipeline: %s", stats)
+    return stats
+
+
+async def main() -> int:
+    logging.basicConfig(
+        level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+
+    dsn = os.environ.get("DATABASE_URL", "").strip()
+    if not dsn:
+        logger.error("DATABASE_URL es obligatoria")
+        return 2
+
+    pool = await db.create_pool(dsn)
+    try:
+        await run(pool)
+    finally:
+        await pool.close()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(asyncio.run(main()))

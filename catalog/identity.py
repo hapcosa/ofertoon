@@ -199,6 +199,13 @@ async def cross_store_prices(
 
     Es todo lo que el publisher necesita para el "más barato que en X". Devuelve
     lista vacía cuando el listing no está vinculado, que es el caso mayoritario.
+
+    Excluye la tienda del propio listing, y eso NO es una obviedad: una misma
+    tienda publica el mismo GTIN en dos listings distintos —Paris lista el
+    GS51MPP con `store_sku` numérico y otra vez con uno alfanumérico; medidos
+    hoy, 13 GTIN así en Paris, 13 en Ferretek, 1 en SP Digital—. Sin este
+    filtro, esos dos listings comparten `product_id` y el copy saldría "más
+    barato que en Paris" sobre una oferta **de Paris**.
     """
     rows = await conn.fetch(
         """
@@ -208,7 +215,8 @@ async def cross_store_prices(
                pp.price_effective,
                pp.observed_at
           FROM listings AS l
-          JOIN listings AS o  ON o.product_id = l.product_id AND o.id <> l.id
+          JOIN listings AS o  ON o.product_id = l.product_id
+                             AND o.store_id <> l.store_id
           JOIN stores   AS s  ON s.id = o.store_id
           JOIN LATERAL (
                SELECT price_effective, observed_at

@@ -4,3 +4,6 @@ __pycache__/
 .env
 data/
 .pytest_cache/
+
+# Infra de la maquina, no del proyecto (define el tunnel Cloudflare).
+docker-compose.override.yml

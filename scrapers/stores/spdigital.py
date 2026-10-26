@@ -292,9 +292,16 @@ class SpDigitalAdapter:
     def __init__(self, http: HttpClient, categories: Sequence[CategoryRef]) -> None:
         self._http = http
         self._categories = tuple(categories)
+        #: store_key → (edges enumerados, totalCount declarado) de la última
+        #: `discover`. Alimenta el chequeo de completitud del runner; ver
+        #: `scrapers.base.CountingAdapter`.
+        self._completeness: dict[str, tuple[int, int]] = {}
 
     def categories(self) -> Sequence[CategoryRef]:
         return self._categories
+
+    def completeness(self, category: CategoryRef) -> tuple[int, int] | None:
+        return self._completeness.get(category.store_key)
 
     def _body(self, category: CategoryRef, cursor: str | None) -> dict[str, Any]:
         return {
@@ -310,18 +317,32 @@ class SpDigitalAdapter:
     async def discover(self, category: CategoryRef) -> AsyncIterator[RawProduct]:
         seen: set[str] = set()
         cursor: str | None = None
+        enumerated = 0
+        declared: int | None = None
+        self._completeness.pop(category.store_key, None)
 
         for page in range(self.max_pages):
             raw = await self._http.post_json(
                 API_URL, self._body(category, cursor), rps=self.rate_limit_rps
             )
             scraped_at = datetime.now(timezone.utc)
+            payload = json.loads(raw)
             products, end_cursor, has_next = parse_listing(
-                json.loads(raw),
+                payload,
                 store_slug=self.slug,
                 category=category,
                 scraped_at=scraped_at,
             )
+
+            block = (payload.get("data") or {}).get("products") or {}
+            enumerated += len(block.get("edges") or [])
+            if declared is None and isinstance(block.get("totalCount"), int):
+                # Se toma de la primera página y no se vuelve a mirar: si el
+                # inventario se mueve mientras paginamos, la referencia tiene que
+                # ser la del arranque o el chequeo se persigue la cola.
+                declared = block["totalCount"]
+            if declared is not None:
+                self._completeness[category.store_key] = (enumerated, declared)
 
             if not products and page == 0:
                 # Un id de categoría inexistente devuelve `edges: []` con HTTP

@@ -1,8 +1,10 @@
 """El aviso post-pasada: silencio cuando todo está verde, ruido cuando no."""
 from __future__ import annotations
 
+from datetime import date, datetime
+
 import alerts
-from alerts import MAX_LINES, RunOutcome, format_summary, send_alert
+from alerts import MAX_LINES, PasadaFlaca, RunOutcome, format_summary, send_alert
 
 
 def ok(store="falabella", cat="tecno", key="cat1", seen=900):
@@ -95,3 +97,106 @@ async def test_telegram_caido_no_tumba_la_pasada(monkeypatch):
 def test_alerts_no_importa_aiohttp_si_no_hay_nada_que_mandar():
     """El import del cliente es perezoso: la pasada verde no paga aiohttp."""
     assert "aiohttp" not in dir(alerts)
+
+
+# -----------------------------------------------------------------------------
+# El aviso de agujero en la serie
+# -----------------------------------------------------------------------------
+# Existe porque la alerta de una caída de red viaja por la misma red que se
+# cayó: del 18 al 20 de septiembre de 2026 hubo 48 h sin una sola observación,
+# 562 corridas `failed` y cero avisos. Lo que sobrevive a esa caída es la serie
+# en el Postgres local, así que el agujero se detecta leyendo la DB y se reporta
+# en la primera pasada que SÍ logra hablar con Telegram — aunque esa pasada haya
+# salido verde.
+
+
+def test_pasada_verde_con_agujero_si_avisa():
+    """El caso del 18-sep: la pasada de hoy anduvo, pero faltan días."""
+    summary = format_summary([ok(), ok()], [date(2026, 9, 18), date(2026, 9, 19)])
+    assert summary is not None
+    assert "2 día(s) SIN observaciones" in summary
+    assert "2026-09-18" in summary and "2026-09-19" in summary
+
+
+def test_sin_agujero_la_pasada_verde_sigue_callada():
+    assert format_summary([ok(), ok()], []) is None
+
+
+def test_agujero_y_fallos_van_en_el_mismo_mensaje():
+    """Una sola alerta: son el mismo incidente visto por dos lados."""
+    summary = format_summary([ok(), bad("failed")], [date(2026, 9, 18)])
+    assert summary is not None
+    assert "1 día(s) SIN observaciones" in summary
+    assert "1 fallo(s)" in summary
+    # El agujero va primero: es el dato más viejo y el más grave.
+    assert summary.index("SIN observaciones") < summary.index("fallo(s)")
+
+
+def test_el_agujero_explica_por_que_importa():
+    """Un aviso que no dice qué rompe se ignora a la tercera vez."""
+    summary = format_summary([ok()], [date(2026, 9, 18)])
+    assert "n_days" in summary and "backtest" in summary
+
+
+# -----------------------------------------------------------------------------
+# El aviso de pasada a medias
+# -----------------------------------------------------------------------------
+# El tercer caso, y el que no veía ninguna de las dos guardas anteriores: el
+# 29-sep-2026 una pasada perdió 62 de 129 objetivos y escribió 1.481
+# observaciones contra ~16.500. El día no quedó vacío (así que la guarda de
+# agujero lo vio sano), los objetivos que no corrieron no dejaron fila (así que
+# el canario por target no tuvo qué comparar) y el proceso murió dentro de
+# `run_once`, antes de `send_alert`. Se reporta en la pasada siguiente, leyendo
+# la DB local, por el mismo motivo que el agujero.
+
+
+def flaca(obs=1481, mediana=16509.0, dia=29):
+    return PasadaFlaca(datetime(2026, 9, dia, 3, 16), obs, mediana)
+
+
+def test_pasada_verde_con_una_flaca_anterior_si_avisa():
+    """El caso del 29-sep: la pasada de ahora anduvo, la anterior corrió a medias."""
+    summary = format_summary([ok(), ok()], [], [flaca()])
+    assert summary is not None
+    assert "1 pasada(s) a medias" in summary
+    assert "2026-09-29 03:16" in summary
+
+
+def test_la_flaca_muestra_el_volumen_contra_su_mediana():
+    """Un aviso sin el número al lado no deja decidir si es un incidente."""
+    summary = format_summary([ok()], [], [flaca()])
+    assert "1.481 obs" in summary          # separador chileno, como el resto
+    assert "vs mediana 16.509" in summary
+    assert "91% menos" in summary
+
+
+def test_la_flaca_explica_por_que_ninguna_otra_guarda_la_ve():
+    """Si no dice eso, el lector asume que es lo mismo que el canario y lo ignora."""
+    summary = format_summary([ok()], [], [flaca()])
+    assert "p50" in summary
+    assert "canario" in summary and "agujero" in summary
+
+
+def test_sin_flacas_la_pasada_verde_sigue_callada():
+    assert format_summary([ok(), ok()], [], []) is None
+
+
+def test_las_tres_guardas_van_en_el_mismo_mensaje():
+    """Una sola alerta: son el mismo incidente visto desde tres alturas."""
+    summary = format_summary([ok(), bad("failed")], [date(2026, 9, 18)], [flaca()])
+    assert summary is not None
+    # De lo más viejo y más grave a lo más nuevo: agujero, pasada, targets.
+    assert summary.index("SIN observaciones") < summary.index("a medias")
+    assert summary.index("a medias") < summary.index("fallo(s)")
+
+
+def test_varias_flacas_se_listan_todas():
+    summary = format_summary([ok()], [], [flaca(dia=27), flaca(dia=29)])
+    assert "2 pasada(s) a medias" in summary
+    assert "2026-09-27 03:16" in summary and "2026-09-29 03:16" in summary
+
+
+def test_una_pasada_en_cero_no_divide_por_cero():
+    """El patrón del 18-sep: volumen 0 contra una mediana sana."""
+    summary = format_summary([ok()], [], [flaca(obs=0, mediana=10713.0)])
+    assert "0 obs" in summary and "100% menos" in summary

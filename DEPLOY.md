@@ -193,7 +193,65 @@ docker compose up -d scraper
 Corre en loop de 12h. Si en la máquina de desarrollo ya había historia de
 precios y se la quiere conservar, hay que migrar el volumen de Postgres
 (`pg_dump` / `pg_restore`); si no, la historia arranca de cero y **F1 no se
-puede calibrar hasta 45 días después** de la primera pasada.
+puede calibrar hasta 60 días después** de la primera pasada: 30 para que la
+baseline cumpla `MIN_DAYS` y el detector emita su primera señal, más los 30 de
+`LABEL_WINDOW_DAYS` que el backtest necesita para etiquetarla.
+
+Cerrada cada pasada, el mismo proceso corre la **fase de pricing** (baselines +
+detector). No es un servicio aparte a propósito: el trigger de una baseline es
+"llegaron observaciones nuevas", y este proceso es el único que sabe cuándo pasó
+eso. Se ve en el log como una línea por pasada:
+
+```
+docker compose logs scraper | grep "pipeline:"
+# pipeline: baselines[10697 listings, 10697 baselines escritas, 0 con historia
+#           suficiente, 0 con rampa] detector[0 evaluados, 0 aceptados (…)]
+```
+
+**Esa línea es la que hay que mirar durante el cold-start.** Hasta que el
+catálogo tenga 30 días calendario de historia, el detector rechaza el 100% por
+`history` y esos rechazos NO se persisten — o sea que una `deal_candidates`
+vacía no distingue "el job no corrió" de "corrió y descartó todo". El log sí.
+
+Para correr la fase a mano sin esperar la pasada:
+`docker compose exec scraper python -m pricing.pipeline`.
+
+## 10. Publisher — se prende cuando haya qué publicar
+
+```bash
+docker compose up -d publisher      # arranca inerte
+```
+
+Igual que el gate, nace apagado (`PUBLISHER_ENABLED=false`) porque publicar en
+un canal es irreversible.
+
+Postea con `ONBOARDING_BOT_TOKEN` (`@Ofertoon_bot`), que es **el único admin del
+canal vip con `can_post_messages`** — verificado contra la Bot API el
+2026-09-21. `GATE_BOT_TOKEN` (`@Ofertoonvip_bot`) administra membresías pero no
+es admin del canal: el fallback del daemon caía en él y todo post habría
+fallado. Por eso `docker-compose.yml` resuelve `PUBLISHER_BOT_TOKEN` al de
+onboarding. **Antes de cambiar de bot hay que darle admin en el canal.**
+
+La política de publicación —cuota diaria, topes por tienda y categoría,
+espaciado y ventana horaria— vive entera en `curation/ranker.py`, no en env
+vars: son decisiones de producto y cambiarlas debería quedar en el historial de
+git, no en un `.env` que nadie revisa. Los valores están en las constantes del
+módulo.
+
+Prenderlo **no tiene sentido antes de ~2026-09-02**: hasta entonces no hay
+baselines con historia suficiente y el ranker no va a tener nada que elegir. Y
+publicar con los θ del plan, sin el backtest que recién cierra el **2026-10-02**,
+es publicar contra umbrales que nadie midió.
+Cuando llegue el momento:
+
+```bash
+# .env → PUBLISHER_ENABLED=true
+docker compose up -d publisher
+docker compose logs -f publisher
+```
+
+Apagado de urgencia: `PUBLISHER_ENABLED=false` + `docker compose up -d
+publisher`. Los mensajes ya publicados quedan; se dejan de emitir nuevos.
 
 ---
 

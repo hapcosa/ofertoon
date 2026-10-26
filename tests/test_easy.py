@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from scrapers.base import CategoryRef
-from scrapers.http import BROWSER_USER_AGENT, DEFAULT_USER_AGENT
+from scrapers.http import BROWSER_USER_AGENT, DEFAULT_USER_AGENT, FetchError
 from scrapers.stores.easy import (
     EasyAdapter,
     NextDataMissing,
@@ -238,3 +238,139 @@ async def test_shell_despues_de_la_pagina_1_es_fin_de_catalogo():
     productos = [p async for p in adapter.discover(CATEGORY)]
     assert len(productos) == 6
     assert http.calls == 2  # cortó en la segunda, no siguió hasta max_pages
+
+
+@pytest.mark.asyncio
+async def test_404_despues_de_la_pagina_1_es_fin_de_catalogo():
+    """Easy 404ea la primera página pasada del final; no sirve el shell vacío.
+
+    Verificado en vivo el 2026-09-23 sobre `sierras-electricas`: página 8 → 200,
+    página 9 → 404. Sin este guard el `FetchError` escapaba de `discover` y el
+    runner marcaba `failed` la categoría entera, tirando además el lote pendiente.
+    """
+
+    class _Http:
+        def __init__(self):
+            self.calls = 0
+
+        async def get_text(self, url, **kw):
+            self.calls += 1
+            if self.calls == 1:
+                return FIXTURE.read_text(encoding="utf-8")
+            raise FetchError(f"{url} -> HTTP 404", status_code=404)
+
+    http = _Http()
+    productos = [p async for p in EasyAdapter(http, []).discover(CATEGORY)]
+    assert len(productos) == 6
+    assert http.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_404_en_la_pagina_1_es_error_de_configuracion():
+    """Un `store_key` inexistente no puede verse como una categoría vacía."""
+
+    class _Http:
+        async def get_text(self, url, **kw):
+            raise FetchError(f"{url} -> HTTP 404", status_code=404)
+
+    with pytest.raises(FetchError):
+        async for _ in EasyAdapter(_Http(), []).discover(CATEGORY):
+            pass
+
+
+@pytest.mark.asyncio
+async def test_otros_errores_http_siguen_propagando():
+    """Solo el 404 significa "fin"; un 403 es un bloqueo y tiene que gritar."""
+
+    class _Http:
+        def __init__(self):
+            self.calls = 0
+
+        async def get_text(self, url, **kw):
+            self.calls += 1
+            if self.calls == 1:
+                return FIXTURE.read_text(encoding="utf-8")
+            raise FetchError(f"{url} -> HTTP 403", status_code=403)
+
+    with pytest.raises(FetchError):
+        async for _ in EasyAdapter(_Http(), []).discover(CATEGORY):
+            pass
+
+
+# -----------------------------------------------------------------------------
+# El juego completo de headers de navegador (Fase 6)
+# -----------------------------------------------------------------------------
+# Medido el 2026-10-01: de las 8 tiendas que el plan tenía como "bloqueadas por
+# 403", cinco pasan el borde solo con los headers que cualquier navegador manda
+# —Tottus y Nike dan 200 directo— y tres siguen en 403 duro con bot management.
+# Lo que las delataba no era el User-Agent: era la AUSENCIA de `Accept-Language`,
+# `Accept-Encoding` y la familia `Sec-Fetch-*`.
+
+
+def test_browser_headers_no_se_identifica_como_bot():
+    from scrapers.http import BROWSER_HEADERS
+
+    assert "ofertascl-bot" not in BROWSER_HEADERS["User-Agent"]
+
+
+def test_browser_headers_trae_lo_que_delataba_al_cliente_pelado():
+    """Estos tres grupos son los que marcan la diferencia entre 403 y 200."""
+    from scrapers.http import BROWSER_HEADERS
+
+    assert BROWSER_HEADERS["Accept-Language"].startswith("es-CL")
+    # Lo que delata a un cliente pelado es la AUSENCIA del header, no que ofrezca
+    # `br`. Este assert pedía "br" y era la afirmación equivocada: pedíamos una
+    # compresión que no sabemos descomprimir — ver
+    # `test_no_prometemos_una_compresion_que_no_sabemos_leer`.
+    assert BROWSER_HEADERS["Accept-Encoding"]
+    for h in ("Sec-Fetch-Dest", "Sec-Fetch-Mode", "Sec-Fetch-Site", "Sec-Fetch-User"):
+        assert h in BROWSER_HEADERS
+
+
+def test_la_variante_json_es_coherente_con_una_xhr():
+    """Un `Sec-Fetch-Mode: navigate` pidiendo JSON es incoherente y lo marcan."""
+    from scrapers.http import BROWSER_HEADERS, BROWSER_HEADERS_JSON
+
+    assert BROWSER_HEADERS_JSON["Accept"] == "application/json"
+    assert BROWSER_HEADERS_JSON["Sec-Fetch-Mode"] == "cors"
+    assert BROWSER_HEADERS_JSON["Sec-Fetch-Dest"] == "empty"
+    # El resto se hereda: un solo lugar donde mantener el UA y el idioma.
+    assert BROWSER_HEADERS_JSON["User-Agent"] == BROWSER_HEADERS["User-Agent"]
+    assert BROWSER_HEADERS_JSON["Accept-Language"] == BROWSER_HEADERS["Accept-Language"]
+
+
+def test_el_default_sigue_identificandose_como_bot():
+    """Lo nuevo es por adaptador: el default no pierde la honestidad."""
+    from scrapers.http import DEFAULT_USER_AGENT
+
+    assert "ofertascl-bot" in DEFAULT_USER_AGENT
+
+
+def test_no_prometemos_una_compresion_que_no_sabemos_leer():
+    """El bug del 2026-10-02: el header pedía `br` y brotli no estaba instalado.
+
+    Una tienda que elige `br` devuelve entonces un cuerpo binario con HTTP 200 y el
+    parser lo lee como página sin productos — un `failed` cuyo síntoma aparenta
+    "la tienda cambió de formato". Medido contra Falabella, que sí responde `br`
+    cuando se lo ofrecen: 190 KB ilegibles contra 1.068 KB de HTML.
+
+    Este test es la guarda de la clase entera: si alguien vuelve a escribir el
+    header a mano, o saca un codec de `requirements.txt`, acá se ve.
+    """
+    import importlib.util
+
+    from scrapers.http import BROWSER_HEADERS, BROWSER_HEADERS_JSON
+
+    disponibles = {"gzip", "deflate"}
+    if importlib.util.find_spec("brotli") or importlib.util.find_spec("brotlicffi"):
+        disponibles.add("br")
+    if importlib.util.find_spec("zstandard"):
+        disponibles.add("zstd")
+
+    for headers in (BROWSER_HEADERS, BROWSER_HEADERS_JSON):
+        pedidos = {t.strip() for t in headers["Accept-Encoding"].split(",")}
+        assert pedidos <= disponibles, (
+            f"se pide {pedidos - disponibles} y no hay con qué descomprimirlo"
+        )
+        # gzip siempre: sin él duplicamos el tráfico de un host que sale por WiFi USB.
+        assert "gzip" in pedidos

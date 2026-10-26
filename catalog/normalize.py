@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from decimal import Decimal, InvalidOperation
 
 #: CLP no usa decimales y el punto es separador de miles: "1.299.990" → 1299990.
@@ -100,3 +101,100 @@ def normalize_gtin(raw: str | int | None, sku: str | None = None) -> str | None:
     if not value.strip("0"):
         return None
     return value
+
+
+#: Marcas de producto que NO es nuevo, tal como las escriben las tiendas chilenas.
+#: Verificado contra los nombres reales el 2026-10-12 — las variantes son pocas y
+#: consistentes: "(Reacondicionado)", "- Reacondicionado", "Reacondicionado
+#: Iphone 13 Pro...", "Open Box".
+#:
+#: Se buscan sobre el nombre con tildes normalizadas, que es la lección de la
+#: migración 24: medir "Botín" con el patrón `botin` daba 32% y era un bug del
+#: clasificador, no del dato.
+_SEGUNDA_MANO = (
+    "reacondicionado",
+    "reacondicionada",
+    "refurbished",
+    "open box",
+    "openbox",
+    "usado",
+    "segunda mano",
+)
+
+
+def es_segunda_mano(nombre: str | None) -> bool:
+    """¿El nombre dice que el producto no es nuevo?
+
+    Importa porque un reacondicionado **no tiene la curva de precio de una
+    oferta**: baja y se queda abajo, porque el precio sigue la depreciación y el
+    grado del equipo, no una promoción. Medido el 2026-10-12 sobre
+    `tecno-celulares`, excluirlos sube la precisión del detector entre 10 y 30
+    puntos según θ (67,4% → 78,1% a θ 0.10; 41,7% → 71,4% a θ 0.20) y **hace
+    desaparecer el patrón invertido** que tenía esa categoría, donde un descuento
+    más grande predecía peor: entre los aceptados con ≥30% de descuento el 44% eran
+    reacondicionados, contra el 8% entre los de menos de 30%.
+
+    Y es un problema de producto antes que de métrica: el canal promete ofertas de
+    retail, y para cuando se midió esto **8 de las 132 ofertas publicadas eran
+    reacondicionados**.
+
+    Se mira el nombre y no un campo estructurado porque ninguna de las tiendas
+    conectadas expone la condición del producto por separado.
+    """
+    if not nombre:
+        return False
+    plano = unicodedata.normalize("NFKD", nombre.lower())
+    plano = "".join(ch for ch in plano if not unicodedata.combining(ch))
+    return any(marca in plano for marca in _SEGUNDA_MANO)
+
+
+#: Hardware de servidor: no es producto de consumo y no va al canal.
+#:
+#: Los cuatro patrones están verificados contra el catálogo real el 2026-10-21, y
+#: dos que parecían obvios quedaron AFUERA porque filtraban consumo:
+#:
+#:     server|servidor   31 listings, p50 $599.990 — limpio, incluye las memorias
+#:                       ECC de servidor de $16.990 que también son empresariales
+#:     HPE               17 — limpio (es la marca empresarial de HP, no "HP")
+#:     SAS               12 — limpio, todos discos de servidor
+#:     enterprise         3 — limpio
+#:     ── descartados ──────────────────────────────────────────────────────────
+#:     rack               ✗ filtraba "Nike Squat Rack" ($449.990) y "Rack Para
+#:                          Lavadora Secadora" ($122.990)
+#:     SFF | BC           ✗ filtraba "Torta Red Velvet Bc" de Tottus ($4.590) y un
+#:                          "Adaptador M.2 SSD a U.2 SFF-8639" de consumo
+#:
+#: `proliant` entra por completitud aunque hoy dé 0: es la línea de servidores de
+#: HPE y aparecería junto a los demás.
+_HARDWARE_SERVIDOR = (
+    r"\bserver\b",
+    r"\bservidor",
+    r"\bhpe\b",
+    r"\bproliant\b",
+    r"\bsas\b",
+    r"\benterprise\b",
+)
+
+
+def es_hardware_servidor(nombre: str | None) -> bool:
+    """¿El nombre dice que es hardware de servidor?
+
+    El canal es de ofertas de retail de consumo, y un disco de servidor no lo es
+    por más real que sea su descuento. El 2026-10-20 el canal publicó dos —de
+    $5.989.990 y $7.789.990— que ocuparon **2 de los 14 lugares del día**.
+
+    No es un techo de precio, y eso es deliberado: los televisores de 85" y 98"
+    cuestan $1,5-1,9M y son consumo legítimo (14 aceptados en la semana). Lo que
+    descalifica al disco de servidor es qué es, no cuánto vale. Medido: son 14
+    listings de los 847 de PC Factory (1,7%) y vienen mezclados dentro de llaves
+    legítimas —`Discos Internos SSD`, `Memorias PC`—, así que no hay una llave que
+    desactivar.
+
+    Mismo mecanismo que `es_segunda_mano`: se mira el nombre porque ninguna tienda
+    marca "esto es para servidores" en un campo aparte.
+    """
+    if not nombre:
+        return False
+    plano = unicodedata.normalize("NFKD", nombre.lower())
+    plano = "".join(ch for ch in plano if not unicodedata.combining(ch))
+    return any(re.search(p, plano) for p in _HARDWARE_SERVIDOR)

@@ -16,6 +16,7 @@ import pytest
 import db as db_module
 from scrapers import runner
 from scrapers.base import CategoryRef, RawProduct
+from scrapers.http import FetchError
 
 
 class FakePool:
@@ -74,6 +75,31 @@ def calls(monkeypatch):
     return registro
 
 
+class _AdapterQueRevientaAMitad:
+    """Emite `emitidos` productos y después lanza, como la API de Nike en una página."""
+
+    slug = "nike"
+    rate_limit_rps = 0.5
+
+    def __init__(self, *, emitidos: int) -> None:
+        self._emitidos = emitidos
+
+    def categories(self):
+        return ()
+
+    async def discover(self, category):
+        for i in range(self._emitidos):
+            yield RawProduct(
+                store_slug=self.slug,
+                store_sku=f"sku-{i}",
+                url=f"https://nike.cl/{i}",
+                name=f"Zapatilla {i}",
+                price_effective=Decimal("89990"),
+                scraped_at=datetime.now(timezone.utc),
+            )
+        raise FetchError("https://www.nike.cl/...: agotados 3 reintentos")
+
+
 TARGET = {
     "category_id": 1,
     "category": CategoryRef(slug="tecno", store_key="Q2F0ZWdvcnk6MTIzOA==", label="Notebooks"),
@@ -96,6 +122,8 @@ async def test_historia_y_corrida_van_por_store_key(calls):
         "store_id": 6,
         "category_id": 1,
         "store_key": "Q2F0ZWdvcnk6MTIzOA==",
+        # La pasada del loop no está filtrada: es una pasada de verdad.
+        "is_partial_run": False,
     }
     assert outcome.status == "ok"
     assert (outcome.store_slug, outcome.store_key) == ("spdigital", "Q2F0ZWdvcnk6MTIzOA==")
@@ -139,3 +167,87 @@ async def test_dry_run_no_toca_la_db(calls):
     assert calls["start_args"] is None
     assert calls["finish_args"] is None
     assert outcome.status == "ok" and outcome.items_seen == 30
+
+
+async def test_lo_scrapeado_antes_del_fallo_se_persiste(calls):
+    """Un adaptador que revienta a mitad no se lleva el lote pendiente.
+
+    Caso real: el 404 de paginación de Easy hacía `failed` la categoría entera y
+    además tiraba las observaciones que quedaban en el buffer — entre 20 y 99 por
+    corrida, medido sobre `scrape_runs`. Una observación scrapeada que no se
+    escribe es un hueco permanente en la serie: la baseline del SKU se calcula
+    con menos puntos y `MIN_POINTS=30` la rechaza por más tiempo.
+    """
+
+    class RompeAlFinal(FakeAdapter):
+        async def discover(self, category):
+            async for product in FakeAdapter.discover(self, category):
+                yield product
+            raise RuntimeError("HTTP 404 pasada la última página")
+
+    calls["history"] = [150, 150, 150]
+    # 130 = un lote completo de 100 + 30 en el buffer al momento de reventar.
+    outcome = await runner.scrape_target(
+        FakePool(), RompeAlFinal(130), TARGET, store_id=6, dry_run=False
+    )
+
+    # `partial` y no `failed` desde el 2026-10-12: reventar con 130 productos ya
+    # enumerados no es "no vi nada", y el canario descarta los `failed` de su
+    # historia de volumen. Lo que este test fija sigue siendo lo mismo: que los
+    # 130 se persistan.
+    assert outcome.status == "partial"
+    assert outcome.items_seen == 130
+    assert outcome.items_ok == 130  # antes eran 100: los 30 del buffer se perdían
+    assert calls["finish_args"]["items_ok"] == 130
+
+
+async def test_una_corrida_filtrada_se_marca_como_parcial(calls):
+    """Lo que la guarda de volumen usa para no leerla como pasada. Migración 29."""
+    calls["history"] = [88, 90, 89]
+    await runner.scrape_target(
+        FakePool(),
+        FakeAdapter(87),
+        TARGET,
+        store_id=6,
+        dry_run=False,
+        is_partial_run=True,
+    )
+
+    assert calls["start_args"]["is_partial_run"] is True
+
+
+async def test_un_corte_a_mitad_es_partial_y_no_failed(calls):
+    """Reventar con contenido ya enumerado no es lo mismo que no ver nada.
+
+    La diferencia importa para el canario: `recent_items_seen` excluye las
+    corridas `failed` porque "una corrida que reventó no vio nada, su cero no es un
+    volumen", y eso es cierto solo cuando de verdad no vio nada.
+
+    Medido en Nike el 2026-10-12: de sus 10 corridas fallidas en 7 días, siete
+    persistieron contenido (350, 800, 749, 398, 300, 200 y 50 observaciones de las
+    ~1.038 de una corrida sana), porque su API falla en una página suelta por la
+    red del host. Marcarlas `failed` tiraba esos volúmenes de la historia del
+    canario.
+    """
+    calls["history"] = [1000, 1010, 990]
+    outcome = await runner.scrape_target(
+        FakePool(), _AdapterQueRevientaAMitad(emitidos=800), TARGET,
+        store_id=6, dry_run=False,
+    )
+
+    assert outcome.status == "partial"
+    assert outcome.items_seen == 800
+    assert "FetchError" in outcome.error
+    assert calls["finish_args"]["status"] == "partial"
+
+
+async def test_reventar_sin_haber_visto_nada_sigue_siendo_failed(calls):
+    """El caso que `failed` describe de verdad: la tienda no entregó nada."""
+    calls["history"] = [1000, 1010, 990]
+    outcome = await runner.scrape_target(
+        FakePool(), _AdapterQueRevientaAMitad(emitidos=0), TARGET,
+        store_id=6, dry_run=False,
+    )
+
+    assert outcome.status == "failed"
+    assert outcome.items_seen == 0

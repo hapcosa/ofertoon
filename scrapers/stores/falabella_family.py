@@ -21,14 +21,24 @@ from decimal import Decimal
 from typing import Any
 
 from catalog.normalize import clean_text, normalize_brand, parse_clp
-from scrapers.base import MAX_PLAUSIBLE_CLP, CategoryRef, RawProduct
-from scrapers.http import HttpClient
+from scrapers.base import (
+    MAX_PLAUSIBLE_CLP,
+    PUM_LABEL_MAX_CHARS,
+    CategoryRef,
+    Pum,
+    RawProduct,
+)
+from scrapers.http import BROWSER_HEADERS, HttpClient
 
 logger = logging.getLogger(__name__)
 
 _NEXT_DATA = re.compile(
     r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', re.S
 )
+
+#: Productos por página que sirve esta familia. Solo es el respaldo para calcular
+#: la ventana: el valor real viene en `pagination.perPage` de cada respuesta.
+PAGE_SIZE = 48
 
 #: Precio con tarjeta propia de la casa. Requiere plástico → NO es el precio que
 #: paga cualquiera, así que queda fuera del detector (se guarda para mostrarlo).
@@ -64,23 +74,52 @@ def extract_next_data(html: str) -> dict[str, Any]:
     return json.loads(match.group(1))
 
 
+def _entry_price(entry: dict[str, Any]) -> Decimal | None:
+    """El precio de una entrada de `prices`. La tienda lo manda en una lista."""
+    raw = entry.get("price")
+    return parse_clp(raw[0] if isinstance(raw, list) and raw else raw)
+
+
+def resolve_pum(entry: dict[str, Any]) -> Pum | None:
+    """El precio por unidad de medida de UNA entrada de `prices`, si lo trae.
+
+    Nunca lanza: el `pum` es un dato opcional del copy, así que una etiqueta rara
+    o un número ilegible lo descartan en silencio en vez de voltear la categoría
+    entera. Por eso valida las precondiciones acá y recién después construye el
+    `Pum`, que sí es estricto.
+    """
+    pum = entry.get("pum")
+    if not isinstance(pum, dict):
+        return None
+    label = clean_text(pum.get("label"))
+    price = _entry_price(pum)
+    if not label or price is None or len(label) > PUM_LABEL_MAX_CHARS:
+        logger.debug("pum_ilegible label=%r price=%r", pum.get("label"), pum.get("price"))
+        return None
+    return Pum(label=label, price=price)
+
+
 def resolve_prices(
     prices: Sequence[dict[str, Any]],
-) -> tuple[Decimal | None, Decimal | None, Decimal | None]:
-    """Reparte los precios de un producto en (efectivo, normal declarado, tarjeta).
+) -> tuple[Decimal | None, Decimal | None, Decimal | None, Pum | None]:
+    """Reparte los precios en (efectivo, normal declarado, tarjeta, pum).
 
     Tipos observados en producción: `cmrPrice`, `internetPrice`, `eventPrice`,
     `normalPrice`. El efectivo es el MÍNIMO de los precios pagables sin tarjeta
     de la casa y no tachados; si no hay ninguno, cae al normal no tachado.
+
+    El `pum` **cuelga de una entrada concreta**, así que se devuelve el de la
+    entrada que ganó el precio efectivo y no el primero que aparezca: el del
+    `normalPrice` tachado sería el precio por kilo de un precio que ya no existe,
+    y el del `cmrPrice` el de un precio que exige tarjeta de la casa.
     """
     card: Decimal | None = None
     claimed_normal: Decimal | None = None
-    payable: list[Decimal] = []
-    fallback: list[Decimal] = []
+    payable: list[tuple[Decimal, Pum | None]] = []
+    fallback: list[tuple[Decimal, Pum | None]] = []
 
     for entry in prices:
-        raw = entry.get("price")
-        value = parse_clp(raw[0] if isinstance(raw, list) and raw else raw)
+        value = _entry_price(entry)
         if value is None:
             continue
 
@@ -92,13 +131,18 @@ def resolve_prices(
             claimed_normal = value if claimed_normal is None else min(claimed_normal, value)
             # Un normalPrice sin tachar es el precio vigente (no hay oferta).
             if not entry.get("crossed"):
-                fallback.append(value)
+                fallback.append((value, resolve_pum(entry)))
             continue
         if not entry.get("crossed"):
-            payable.append(value)
+            payable.append((value, resolve_pum(entry)))
 
-    effective = min(payable) if payable else (min(fallback) if fallback else None)
-    return effective, claimed_normal, card
+    winners = payable or fallback
+    if not winners:
+        return None, claimed_normal, card, None
+    # `key` explícito: dos entradas al mismo precio harían comparar los `Pum`,
+    # que no son ordenables.
+    effective, pum = min(winners, key=lambda w: w[0])
+    return effective, claimed_normal, card, pum
 
 
 def parse_listing(
@@ -122,7 +166,7 @@ def parse_listing(
         if not (sku and url and name):
             continue
 
-        effective, claimed_normal, card = resolve_prices(item.get("prices") or [])
+        effective, claimed_normal, card, pum = resolve_prices(item.get("prices") or [])
         if effective is None:
             # Sin precio pagable no hay serie que construir; se descarta en vez
             # de inventar un cero que ensucie la baseline.
@@ -153,6 +197,7 @@ def parse_listing(
                 category_path=category.slug,
                 image_url=media[0] if media else None,
                 claimed_discount=clean_text(badge.get("label")),
+                pum=pum,
                 in_stock=True,  # el listado solo devuelve comprables
                 scraped_at=scraped_at,
                 raw_payload=item,
@@ -171,7 +216,26 @@ class _FalabellaFamilyAdapter:
     #: Prefijo del listado por categoría. `store_key` es el resto del path
     #: (`cat70057/Notebooks`), así que NO se url-encodea: lleva `/` significativo.
     listing_path: str = ""
-    max_pages: int = 20
+    #: Páginas máximas por llave. 55 × 48 = 2.640 productos.
+    #:
+    #: Eran 20 (960) y eso recortaba el catálogo **en silencio** — ver
+    #: `completeness`. Con 55 entran completas las llaves medianas, que son las que
+    #: producen la baseline del sistema hoy:
+    #:
+    #:     cat70057/Notebooks     1.243 → 26 páginas ✓
+    #:     cat720161/Smartphones  2.022 → 43 páginas ✓
+    #:     cat690245/Botines      2.545 → 54 páginas ✓
+    #:     cat7190148/Smart-TV      324 →  7 páginas ✓
+    #:
+    #: Las tres gigantes siguen sin entrar (Zapatillas 18.412 pediría 384 páginas,
+    #: Refrigeradores 13.754 → 287, Audífonos 8.485 → 177) pero pasan de ver 960 a
+    #: ver 2.640. Cubrirlas enteras costaría ~850 requests por pasada para tres
+    #: llaves, contra las ~440 que hoy cuesta Falabella completa.
+    max_pages: int = 55
+    #: Headers por request. `None` = los del `HttpClient`, que se identifican como
+    #: bot. Una tienda cuyo borde exige parecer un navegador lo sobreescribe (ver
+    #: `TottusAdapter`).
+    _headers: dict[str, str] | None = None
 
     def __init__(self, http: HttpClient, categories: Sequence[CategoryRef]) -> None:
         self._http = http
@@ -180,16 +244,55 @@ class _FalabellaFamilyAdapter:
     def categories(self) -> Sequence[CategoryRef]:
         return self._categories
 
+    def completeness(self, category: CategoryRef) -> tuple[int, int] | None:
+        """Siempre `None`: esta familia NO puede sostener un canario exacto.
+
+        Lo intenté el 2026-10-12 y hay que dejar escrito por qué no va, porque la
+        idea es tentadora: `pagination.count` trae el total declarado en cada
+        página, así que parece gratis.
+
+        **El problema es que Falabella repite productos cuanto más profundo se
+        pagina**, así que lo enumerado nunca alcanza lo declarado y el gap es
+        función de la profundidad, no de un incidente. Medido llave por llave
+        contra producción:
+
+            Lavadoras              5 págs    204 de  204   100%   ok
+            Microondas             4 págs    174 de  175  99,4%
+            Refrigeradores         8 págs    351 de  352  99,7%
+            Tarjetas-de-Memoria   15 págs    614 de  697    88%
+            Notebooks             26 págs  1.047 de 1244    84%
+            Almacenamiento        37 págs  1.351 de 1750    77%
+            Smartphones           43 págs  1.675 de 2019    83%
+
+        Con el canario exacto encendido, **diecinueve llaves quedarían en `partial`
+        permanente** — incluida Refrigeradores, que saltaría por UN producto de 352.
+        Una alarma que suena siempre es una alarma apagada: es el mismo error que
+        las corridas manuales ensuciando la guarda de volumen, y ponerle una
+        tolerancia sería inventar un umbral, que es justo lo que CLAUDE.md prohíbe
+        para el chequeo exacto de Andesgear.
+
+        Lo que sí quedó de ese intento es lo que de verdad hacía falta: el aviso
+        `catalogo_mas_grande_que_la_ventana` cuando `max_pages` recorta —el problema
+        real, que estuvo tapado diez días— y el canario **estadístico**, que compara
+        cada llave contra su propia historia y por lo tanto no le molesta un gap
+        constante. Para el recorte no hace falta un canario: hace falta saber el
+        total, y eso ahora se loguea.
+        """
+        return None
+
     def _page_url(self, category: CategoryRef, page: int) -> str:
         return f"{self.base_url}{self.listing_path}/{category.store_key}?page={page}"
 
     async def discover(self, category: CategoryRef) -> AsyncIterator[RawProduct]:
         seen: set[str] = set()
+        declarado: int | None = None
         page = 1
 
         while page <= self.max_pages:
             url = self._page_url(category, page)
-            html = await self._http.get_text(url, rps=self.rate_limit_rps)
+            html = await self._http.get_text(
+                url, rps=self.rate_limit_rps, headers=self._headers
+            )
             scraped_at = datetime.now(timezone.utc)
             try:
                 products, pagination = parse_listing(
@@ -245,9 +348,35 @@ class _FalabellaFamilyAdapter:
                 break
 
             total = pagination.get("count") or 0
+            if total:
+                declarado = int(total)
             if len(seen) >= total:
                 break
             page += 1
+
+        if declarado is not None:
+            alcanzable = self.max_pages * (pagination.get("perPage") or PAGE_SIZE)
+            if declarado > alcanzable:
+                # El catálogo excede lo que decidimos enumerar, así que NO se
+                # reporta completitud: el runner cae al canario estadístico.
+                #
+                # Reportar `(2.640, 18.412)` dejaría estas tres llaves en `partial`
+                # permanente, y una alarma que siempre suena es una alarma apagada
+                # —el mismo error que las corridas manuales ensuciando la guarda de
+                # volumen—. Degradar a la guarda más débil es correcto; inventar un
+                # total alcanzable y llamarlo "completo" sería mentir. El hecho
+                # queda en el log, que es donde se mira a propósito.
+                logger.warning(
+                    "catalogo_mas_grande_que_la_ventana store=%s categoria=%s "
+                    "llave=%s enumerados=%d declarados=%d ventana=%d — sin canario "
+                    "exacto para esta llave",
+                    self.slug,
+                    category.slug,
+                    category.store_key,
+                    len(seen),
+                    declarado,
+                    alcanzable,
+                )
 
 
 class FalabellaAdapter(_FalabellaFamilyAdapter):
@@ -287,3 +416,73 @@ class SodimacAdapter(_FalabellaFamilyAdapter):
     slug = "sodimac"
     base_url = "https://www.sodimac.cl"
     listing_path = "/sodimac-cl/lista"
+
+
+class TottusAdapter(_FalabellaFamilyAdapter):
+    """El supermercado del grupo Falabella. `store_key` = `CATG27055/Despensa`.
+
+    **No es VTEX, y eso costó un descarte equivocado.** El plan la tenía como
+    "borde abierto, origen roto" porque su API de catálogo VTEX contesta 503 y las
+    rutas inventadas 526. Las dos cosas son ciertas y ninguna es un problema:
+    Tottus corre la plataforma de Falabella (`__NEXT_DATA__`, 641 menciones de
+    `falabella` en su home), así que **nunca tuvo una API VTEX** — el 503 es lo
+    que devuelve un upstream al que se le pide una ruta que no existe. Verificado
+    el 2026-10-01: con el `store_key` real da HTTP 200 y `parse_listing` lo
+    entiende sin una línea nueva.
+
+    Y el 200 de la home tampoco probaba nada: venía con `cf-cache-status: HIT` y
+    `age: 2381`, o sea de la cache de Cloudflare, no del origen.
+
+    **Exige el juego COMPLETO de headers de navegador**, no solo el User-Agent.
+    Aislado el 2026-10-01, 3 intentos de cada uno contra la misma URL:
+
+        DEFAULT_USER_AGENT      403 ×3
+        BROWSER_USER_AGENT      403 ×3   ← el UA solo NO alcanza
+        BROWSER_HEADERS         200 ×3
+
+    Es el caso que `http.BROWSER_HEADERS` documenta —lo que delata al cliente es
+    la ausencia de `Accept-Language`, `Accept-Encoding` y `Sec-Fetch-*`— y la
+    diferencia con Prat, donde el UA de navegador bastaba.
+
+    Su paraguas más grande, Despensa, declara 2.060 productos = 43 páginas, así que
+    entra en el `max_pages = 55` que la familia trae por defecto desde el
+    2026-10-12. Antes tenía un override de 45 por la misma razón, hoy redundante.
+
+    ⚠️ **`in_stock` es ciego acá, igual que en Falabella y Paris.** Su
+    `availability` no habla de stock sino de modos de envío (`expressShipping`,
+    `pickUpFromStoreShipping`), así que no sirve para la guarda del detector.
+    """
+
+    slug = "tottus"
+    base_url = "https://www.tottus.cl"
+    listing_path = "/tottus-cl/lista"
+    #: Sin esto, HTTP 403 en todas las páginas. Ver el docstring.
+    _headers = BROWSER_HEADERS
+
+    #: Orden explícito por precio ascendente, y es lo que hace confiable su serie.
+    #:
+    #: Su default es `_score,desc` ("Recomendados"), un ranking de relevancia con
+    #: boost de publicidad que **cambia entre requests**: paginarlo devuelve
+    #: productos repetidos en el medio del catálogo y deja otros sin ver nunca.
+    #: Medido el 2026-10-01 sobre `Mascotas` (427 declarados, 9 páginas), tres
+    #: recorridos completos:
+    #:
+    #:     sin sortBy          435 filas → 389 únicos   cobertura 0,911
+    #:     _score,desc         435 filas → 389 únicos   cobertura 0,911
+    #:     currentPrice,asc    427 filas → 422 únicos   cobertura 0,988
+    #:
+    #: El perfil por página lo explica: con el orden por precio cada página aporta
+    #: casi 48 nuevos (48, 45, 48, 48, 48, 46, 48, 48, 43), con el default las
+    #: páginas 5 a 8 aportan 40, 46, 40 y 28. Y el default no es estable ni entre
+    #: corridas: dos recorridos del mismo día dieron 326 y 389 únicos.
+    #:
+    #: Lo que se gana no es cobertura por la cobertura: un SKU que aparece de
+    #: forma intermitente no acumula observaciones y nunca llega a `MIN_DAYS`, así
+    #: que con el orden inestable una fracción del catálogo jamás produce una
+    #: baseline. El precio tampoco es perfectamente estable —cambia dos veces al
+    #: día y mueve productos de página— pero es dos órdenes más estable que un
+    #: score de relevancia, y los números lo confirman.
+    SORT_BY = "derived.currentPrice%2Casc"
+
+    def _page_url(self, category: CategoryRef, page: int) -> str:
+        return f"{super()._page_url(category, page)}&sortBy={self.SORT_BY}"

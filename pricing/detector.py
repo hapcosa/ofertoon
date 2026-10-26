@@ -28,6 +28,7 @@ from typing import Any
 
 import asyncpg
 
+from catalog.normalize import es_hardware_servidor, es_segunda_mano
 from pricing.baselines import Baseline
 
 logger = logging.getLogger("pricing.detector")
@@ -45,6 +46,13 @@ REJECT_RAMP = "ramp"
 REJECT_THRESHOLD = "threshold"
 REJECT_ABOVE_FLOOR = "above_floor"
 REJECT_COOLDOWN = "cooldown"
+#: Producto que no es nuevo (reacondicionado, open box, usado). Valor NUEVO del
+#: 2026-10-12: agregarlo no toca los seis anteriores, así que el histórico sigue
+#: siendo comparable — las filas viejas simplemente no lo tienen.
+REJECT_REFURBISHED = "refurbished"
+#: Hardware de servidor: real pero no es consumo. Valor NUEVO del 2026-10-21, que
+#: tampoco toca los anteriores.
+REJECT_SERVER_HW = "server_hw"
 
 
 @dataclass(frozen=True)
@@ -94,6 +102,8 @@ def evaluate(
     threshold: Decimal,
     prior_post: PriorPost | None = None,
     now: datetime | None = None,
+    name: str | None = None,
+    min_history_days: int | None = None,
 ) -> Decision:
     """Aplica las guardas en orden y devuelve el veredicto.
 
@@ -114,24 +124,51 @@ def evaluate(
     if not in_stock:
         return reject(REJECT_STOCK)
 
-    # 2. Historia mínima: sin serie no hay "precio de verdad" contra qué medir.
-    if not baseline.has_min_history:
+    # 2. No es producto nuevo. Un reacondicionado baja de precio y se QUEDA abajo
+    #    —sigue la depreciación y el grado del equipo, no una promoción—, así que
+    #    su curva no es la de una oferta. Medido el 2026-10-12 en
+    #    `tecno-celulares`: excluirlos sube la precisión de 67,4% a 78,1% (θ 0.10)
+    #    y de 41,7% a 71,4% (θ 0.20), y hace desaparecer el patrón invertido que
+    #    tenía la categoría. Va acá arriba, antes de la historia, porque es una
+    #    propiedad del producto y no del dato: no depende de cuánta serie haya.
+    if es_segunda_mano(name):
+        return reject(REJECT_REFURBISHED)
+
+    #    Y hardware de servidor, por el mismo motivo y en el mismo lugar: es una
+    #    propiedad del producto. El canal publicó dos discos HPE de $6M y $7,8M el
+    #    2026-10-20 que se llevaron 2 de los 14 lugares del día. No es un techo de
+    #    precio — un televisor de 85" cuesta $1,9M y es consumo legítimo.
+    if es_hardware_servidor(name):
+        return reject(REJECT_SERVER_HW)
+
+    # 3. Historia mínima: sin serie no hay "precio de verdad" contra qué medir.
+    #
+    #    `min_history_days` viene de `categories.min_history_days` y por default es
+    #    `MIN_DAYS`. Bajarlo para una categoría no es afinar un umbral: es aceptar
+    #    que su `discount_real` se mida contra un p50 que no significa nada. Está
+    #    puesto por decisión explícita del dueño del producto para las siete
+    #    categorías conectadas en octubre, hasta que maduren — ver la migración 32,
+    #    que incluye la fecha de reversión.
+    if min_history_days is None:
+        if not baseline.has_min_history:
+            return reject(REJECT_HISTORY)
+    elif baseline.n_days < min_history_days or baseline.n_points < min_history_days:
         return reject(REJECT_HISTORY)
 
-    # 3. Anti-inflado: el precio subió y se sostuvo antes de este "descuento".
+    # 4. Anti-inflado: el precio subió y se sostuvo antes de este "descuento".
     if baseline.ramp_flag:
         return reject(REJECT_RAMP)
 
-    # 4. Umbral por categoría: debajo de esto es fluctuación normal, no oferta.
+    # 5. Umbral por categoría: debajo de esto es fluctuación normal, no oferta.
     if discount_real < threshold:
         return reject(REJECT_THRESHOLD)
 
-    # 5. Cercanía al piso: si está por encima del p10, este precio ya se vio
+    # 6. Cercanía al piso: si está por encima del p10, este precio ya se vio
     #    varias veces en dos meses. No es noticia.
     if price > baseline.p10:
         return reject(REJECT_ABOVE_FLOOR)
 
-    # 6. Cooldown: no repetir el mismo producto salvo que haya bajado de verdad.
+    # 7. Cooldown: no repetir el mismo producto salvo que haya bajado de verdad.
     if prior_post is not None and now - prior_post.posted_at < timedelta(days=COOLDOWN_DAYS):
         if price > prior_post.price * COOLDOWN_OVERRIDE_RATIO:
             return reject(REJECT_COOLDOWN)
@@ -147,17 +184,34 @@ def evaluate(
 #: upsert le asigna una en la primera pasada que lo ve).
 DEFAULT_THRESHOLD = Decimal("0.20")
 
+#: Vencimiento de la observación. Un listing que dejó de aparecer en el catálogo
+#: conserva para siempre su último `price_point`, y sin este corte el detector lo
+#: re-evaluaría en cada corrida como si fuera el precio de hoy — publicando una
+#: oferta de un producto que ya nadie vende. Dos ciclos de scraping (12 h) más
+#: margen: una pasada que falla no descarta el catálogo entero, dos sí.
+PRICE_MAX_AGE_HOURS = 26
+
 
 async def _load_candidates(conn: asyncpg.Connection) -> list[dict[str, Any]]:
-    """Último precio observado de cada listing que ya tiene baseline.
+    """Observaciones frescas todavía sin evaluar, de listings con baseline.
 
     El detector corre después del job de baselines, sobre la foto más reciente:
     la observación de hoy contra la referencia de los 60 días previos.
+
+    Dos filtros que hacen al job re-ejecutable. El de edad descarta la foto
+    vieja de un listing que ya no se raspa (ver `PRICE_MAX_AGE_HOURS`). El
+    `NOT EXISTS` descarta lo ya decidido: cada observación se evalúa una sola
+    vez, así correr el pipeline dos veces seguidas no duplica candidatos ni
+    infla las stats. Los rechazos por `history` sí se re-evalúan en cada
+    corrida, porque no dejan fila — y son justamente los que hay que seguir
+    contando para saber cuánto falta para tener catálogo publicable.
     """
     rows = await conn.fetch(
         """
         SELECT l.id AS listing_id,
+               l.name_raw,
                COALESCE(c.discount_threshold, $1) AS threshold,
+               c.min_history_days,
                b.p50_60d, b.p10_60d, b.min_60d, b.n_points, b.n_days, b.ramp_flag,
                pp.price_effective, pp.in_stock, pp.observed_at
           FROM listings          AS l
@@ -171,8 +225,15 @@ async def _load_candidates(conn: asyncpg.Connection) -> list[dict[str, Any]]:
                 LIMIT 1
           ) AS pp ON TRUE
          WHERE l.is_active
+           AND pp.observed_at >= NOW() - ($2 || ' hours')::INTERVAL
+           AND NOT EXISTS (
+               SELECT 1 FROM deal_candidates AS dc
+                WHERE dc.listing_id  = l.id
+                  AND dc.detected_at = pp.observed_at
+           )
         """,
         DEFAULT_THRESHOLD,
+        str(PRICE_MAX_AGE_HOURS),
     )
     return [dict(r) for r in rows]
 
@@ -214,6 +275,7 @@ async def _persist(
         INSERT INTO deal_candidates (listing_id, detected_at, price, p50_60d,
                                      discount_real, score, verdict, reject_reason)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (listing_id, detected_at) DO NOTHING
         """,
         listing_id,
         detected_at,
@@ -248,21 +310,25 @@ class DetectorStats:
         return f"{self.evaluated} evaluados, {self.accepted} aceptados ({reasons})"
 
 
-async def run(
-    pool: asyncpg.Pool, *, now: datetime | None = None, persist_rejects: bool = True
-) -> DetectorStats:
-    """Evalúa la foto actual y persiste los candidatos.
+async def run(pool: asyncpg.Pool, *, persist_rejects: bool = True) -> DetectorStats:
+    """Evalúa las observaciones frescas sin decidir y persiste los candidatos.
+
+    Cada observación se evalúa **a su propia fecha** (`observed_at`), no a la
+    hora en que corre el job: es la misma convención que usa
+    `pricing/backtest.py` al hacer replay, y es lo que hace que el resultado no
+    dependa de cuándo se disparó el pipeline. `detected_at` guarda esa fecha, y
+    con el UNIQUE de la migración 14 correr el job dos veces es un no-op.
 
     `persist_rejects=False` existe solo para corridas exploratorias: en
     producción los rechazos SON el dato que permite calibrar.
     """
-    now = now or datetime.now(timezone.utc)
     rejected_by: dict[str, int] = {}
     evaluated = accepted = 0
 
     async with pool.acquire() as conn:
         rows = await _load_candidates(conn)
         for row in rows:
+            observed_at = row["observed_at"]
             baseline = Baseline(
                 p50=row["p50_60d"],
                 p10=row["p10_60d"],
@@ -277,7 +343,9 @@ async def run(
                 baseline=baseline,
                 threshold=Decimal(str(row["threshold"])),
                 prior_post=await _prior_post(conn, row["listing_id"]),
-                now=now,
+                now=observed_at,
+                name=row["name_raw"],
+                min_history_days=row["min_history_days"],
             )
             evaluated += 1
             if decision.accepted:
@@ -294,7 +362,7 @@ async def run(
                 price=row["price_effective"],
                 p50=row["p50_60d"],
                 decision=decision,
-                detected_at=now,
+                detected_at=observed_at,
             )
 
     stats = DetectorStats(evaluated, accepted, rejected_by)

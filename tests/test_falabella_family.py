@@ -6,6 +6,10 @@ el canario en vivo lo detecte.
 """
 from __future__ import annotations
 
+import json
+import logging
+import re
+
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -95,7 +99,7 @@ def test_marca_normalizada(parsed):
 
 def test_resolve_prices_sin_precio_pagable_cae_al_normal():
     prices = [{"type": "normalPrice", "price": ["149.990"], "crossed": False}]
-    effective, claimed, card = resolve_prices(prices)
+    effective, claimed, card, _ = resolve_prices(prices)
     assert effective == Decimal("149990")
     assert claimed == Decimal("149990")
     assert card is None
@@ -104,7 +108,7 @@ def test_resolve_prices_sin_precio_pagable_cae_al_normal():
 def test_resolve_prices_normal_tachado_no_es_efectivo():
     """Un normalPrice tachado sin alternativa pagable no da precio efectivo."""
     prices = [{"type": "normalPrice", "price": ["149.990"], "crossed": True}]
-    effective, claimed, _ = resolve_prices(prices)
+    effective, claimed, _, _ = resolve_prices(prices)
     assert effective is None
     assert claimed == Decimal("149990")
 
@@ -114,12 +118,89 @@ def test_resolve_prices_toma_el_minimo_pagable():
         {"type": "internetPrice", "price": ["199.990"], "crossed": False},
         {"type": "eventPrice", "price": ["179.990"], "crossed": False},
     ]
-    effective, _, _ = resolve_prices(prices)
+    effective, _, _, _ = resolve_prices(prices)
     assert effective == Decimal("179990")
 
 
 def test_resolve_prices_vacio():
-    assert resolve_prices([]) == (None, None, None)
+    assert resolve_prices([]) == (None, None, None, None)
+
+
+# --- el `pum`: cuelga de una entrada, no del producto ------------------------
+
+
+def test_el_pum_sale_de_la_entrada_QUE_GANO_el_precio_efectivo():
+    """Es el punto fino: cada entrada de `prices` trae su propio `pum`.
+
+    El del `normalPrice` tachado es el precio por kilo de un precio que ya no
+    existe, y publicarlo mentiría sobre el dato que justifica la oferta.
+    """
+    prices = [
+        {
+            "type": "normalPrice",
+            "price": ["5.090"],
+            "crossed": True,
+            "pum": {"label": "KG", "price": ["5.090"]},
+        },
+        {
+            "type": "internetPrice",
+            "price": ["3.890"],
+            "crossed": False,
+            "pum": {"label": "KG", "price": ["3.242"]},
+        },
+    ]
+    effective, _, _, pum = resolve_prices(prices)
+    assert effective == Decimal("3890")
+    assert (pum.label, pum.price) == ("KG", Decimal("3242"))
+
+
+def test_el_pum_de_la_tarjeta_de_la_casa_no_se_usa():
+    """`cmrPrice` exige plástico: su precio por unidad no es el que paga cualquiera."""
+    prices = [
+        {
+            "type": "cmrPrice",
+            "price": ["2.990"],
+            "crossed": False,
+            "pum": {"label": "KG", "price": ["2.491"]},
+        },
+        {
+            "type": "internetPrice",
+            "price": ["3.890"],
+            "crossed": False,
+            "pum": {"label": "KG", "price": ["3.242"]},
+        },
+    ]
+    effective, _, card, pum = resolve_prices(prices)
+    assert (effective, card) == (Decimal("3890"), Decimal("2990"))
+    assert pum.price == Decimal("3242")
+
+
+def test_sin_pum_el_producto_se_emite_igual():
+    """El 5% del supermercado no lo trae. Que falte no puede frenar una oferta."""
+    prices = [{"type": "internetPrice", "price": ["3.890"], "crossed": False}]
+    effective, _, _, pum = resolve_prices(prices)
+    assert effective == Decimal("3890")
+    assert pum is None
+
+
+@pytest.mark.parametrize(
+    "pum",
+    [
+        {"label": "", "price": ["3.242"]},            # etiqueta vacía
+        {"label": "KG"},                               # sin precio
+        {"label": "KG", "price": ["0"]},               # precio cero
+        {"label": "K" * 17, "price": ["3.242"]},       # no cabe en la columna
+        "KG a $3.242",                                  # ni es un dict
+    ],
+)
+def test_un_pum_ilegible_se_descarta_sin_voltear_la_categoria(pum):
+    """`Pum` es estricto; el parser no. Un dato de copy no tira una pasada."""
+    prices = [
+        {"type": "internetPrice", "price": ["3.890"], "crossed": False, "pum": pum}
+    ]
+    effective, _, _, resuelto = resolve_prices(prices)
+    assert effective == Decimal("3890")
+    assert resuelto is None
 
 
 def test_producto_sin_precio_se_descarta():
@@ -241,3 +322,113 @@ async def test_shell_despues_de_la_pagina_1_es_fin_de_catalogo():
     cat = CategoryRef(slug="tecno-notebooks", store_key="cat70057/Notebooks")
     productos = [p async for p in adapter.discover(cat)]
     assert productos, "la página 1 del fixture debe haberse consumido"
+
+
+# -----------------------------------------------------------------------------
+# El canario exacto (2026-10-12): esta familia era la única grande sin él
+# -----------------------------------------------------------------------------
+
+
+class _FakeHttp:
+    """Sirve páginas canned por número de página."""
+
+    def __init__(self, paginas: dict[int, str]) -> None:
+        self.paginas = paginas
+        self.pedidos: list[int] = []
+
+    async def get_text(self, url, *, rps=None, headers=None):
+        page = int(re.search(r"page=(\d+)", url).group(1))
+        self.pedidos.append(page)
+        return self.paginas.get(page, _pagina([], declarado=0))
+
+
+def _pagina(skus, *, declarado, current=None):
+    """Una página con la forma de `__NEXT_DATA__` de la familia."""
+    results = [
+        {
+            "skuId": str(s),
+            "url": f"https://x/{s}",
+            "displayName": f"Producto {s}",
+            "prices": [{"type": "internetPrice", "price": ["10.000"]}],
+        }
+        for s in skus
+    ]
+    payload = {
+        "props": {
+            "pageProps": {
+                "results": results,
+                "pagination": {
+                    "count": declarado,
+                    "perPage": 48,
+                    "currentPage": current if current is not None else 1,
+                },
+            }
+        }
+    }
+    return (
+        '<script id="__NEXT_DATA__" type="application/json">'
+        + json.dumps(payload)
+        + "</script>"
+    )
+
+
+@pytest.mark.asyncio
+async def test_no_reporta_completitud_porque_la_familia_no_la_sostiene():
+    """La decisión del 2026-10-12, con su medición en el docstring de `completeness`.
+
+    Falabella repite productos cuanto más profundo se pagina, así que lo enumerado
+    nunca alcanza lo declarado: Refrigeradores da 351 de 352 y Almacenamiento 1.351
+    de 1.750. Con el canario exacto encendido, diecinueve llaves quedarían en
+    `partial` permanente y una de ellas por UN producto.
+    """
+    cat = CategoryRef(slug="tecno-notebooks", store_key="cat1/X")
+    http = _FakeHttp({1: _pagina(range(10), declarado=10, current=1)})
+    adapter = FalabellaAdapter(http, [cat])
+
+    productos = [p async for p in adapter.discover(cat)]
+
+    assert len(productos) == 10
+    assert adapter.completeness(cat) is None, (
+        "ni siquiera cuando el catálogo entra completo: un canario que a veces "
+        "mide y a veces no es peor que uno que no mide"
+    )
+
+
+@pytest.mark.asyncio
+async def test_avisa_cuando_max_pages_recorta_el_catalogo(caplog):
+    """Esto es lo que de verdad hacía falta, y estuvo tapado diez días.
+
+    `max_pages` recortaba en silencio: 960 productos por llave contra los 18.412
+    que declara `cat2083/Zapatillas`. El canario estadístico no podía verlo porque
+    el volumen enumerado es estable corrida a corrida — 960 de 18.412 se ve igual
+    de sano que 960 de 1.000 cuando se compara contra la propia historia.
+    """
+    cat = CategoryRef(slug="ropa-calzado", store_key="cat2083/Zapatillas")
+    paginas = {
+        p: _pagina(range(p * 100, p * 100 + 48), declarado=5000, current=p)
+        for p in range(1, 4)
+    }
+
+    class Recortado(FalabellaAdapter):
+        max_pages = 3
+
+    adapter = Recortado(_FakeHttp(paginas), [cat])
+    with caplog.at_level(logging.WARNING):
+        productos = [p async for p in adapter.discover(cat)]
+
+    assert len(productos) == 144
+    assert "catalogo_mas_grande_que_la_ventana" in caplog.text
+    assert "declarados=5000" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_un_catalogo_que_entra_no_ensucia_el_log(caplog):
+    """El aviso tiene que salir solo cuando el recorte es real."""
+    cat = CategoryRef(slug="tecno-notebooks", store_key="cat1/X")
+    http = _FakeHttp({1: _pagina(range(5), declarado=5, current=1)})
+    adapter = FalabellaAdapter(http, [cat])
+
+    with caplog.at_level(logging.WARNING):
+        [p async for p in adapter.discover(cat)]
+
+    assert "catalogo_mas_grande_que_la_ventana" not in caplog.text

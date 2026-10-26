@@ -1,0 +1,450 @@
+"""Publica al canal y registra en `deal_posts`. La parte irreversible de F3.
+
+Un mensaje enviado a un canal no se puede "desenviar" de la cabeza de nadie, así
+que el orden de las operaciones acá es la única defensa real contra publicar dos
+veces lo mismo:
+
+    1. RESERVAR  — INSERT en `deal_posts` con `telegram_message_id` NULL.
+                   Si el UNIQUE(candidate_id, tier_id) lo rechaza, otro ciclo o
+                   proceso ya lo tomó: se saltea sin enviar nada.
+    2. ENVIAR    — recién ahora se habla con Telegram.
+    3. CONFIRMAR — UPDATE con el `message_id` que devolvió.
+
+El orden inverso (enviar y después registrar) es el que produce el error que no
+se puede deshacer: si el proceso muere entre el envío y el INSERT, el ciclo
+siguiente lo publica de nuevo. Con este orden, morir entre el paso 2 y el 3 deja
+una fila con `message_id` NULL — el candidato no se re-publica (correcto) y la
+fila queda visible para auditar. Un envío fallido sí borra la reserva, para que
+el próximo ciclo reintente.
+
+El costo de esta elección es que un crash en el peor momento puede *perder* una
+oferta. Es la dirección correcta para equivocarse: nadie nota la oferta que no
+se publicó, todos notan la repetida.
+"""
+from __future__ import annotations
+
+import logging
+from collections.abc import Sequence
+from dataclasses import dataclass
+from datetime import datetime, timezone
+
+import asyncpg
+
+from curation import ranker
+from curation.ranker import Candidate
+from publisher import stock
+from publisher.formatter import format_deal
+from scrapers.http import HttpClient
+from subscriptions.telegram_client import TelegramClient
+
+logger = logging.getLogger("publisher.poster")
+
+
+@dataclass(frozen=True)
+class Tier:
+    """Un canal de destino."""
+
+    id: int
+    slug: str
+    channel_id: int
+
+
+@dataclass(frozen=True)
+class Topic:
+    """Un tema de un grupo-foro: el destino real dentro del chat del tier.
+
+    `quota` es la cuota diaria del tema y no del canal — ver la migración 26 §3.
+    `thread_id` nunca es None acá: un tema sin cablear no es un destino y
+    `load_active_topics` no lo devuelve.
+    """
+
+    id: int
+    slug: str
+    name: str
+    thread_id: int
+    quota: int
+
+
+#: Resultado de un intento de publicación. Se distingue el duplicado del fallo
+#: porque significan cosas opuestas: el duplicado es la defensa funcionando, el
+#: fallo es algo roto que hay que mirar.
+PUBLISHED = "published"
+DUPLICATE = "duplicate"
+FAILED = "failed"
+#: La ficha dice que está agotado. Es la guarda funcionando, igual que el
+#: duplicado: no hay nada roto que mirar y el candidato no se reintenta porque el
+#: resultado quedó en `deal_candidates.stock_ok`.
+OUT_OF_STOCK = "out_of_stock"
+
+
+@dataclass(frozen=True)
+class PublishStats:
+    tiers: int = 0
+    considered: int = 0
+    published: int = 0
+    failed: int = 0
+    skipped_duplicate: int = 0
+    skipped_out_of_stock: int = 0
+
+    def __str__(self) -> str:
+        base = (
+            f"{self.tiers} canal(es), {self.considered} elegidos, "
+            f"{self.published} publicados, {self.failed} fallidos, "
+            f"{self.skipped_duplicate} duplicados salteados"
+        )
+        if self.skipped_out_of_stock:
+            base += f", {self.skipped_out_of_stock} agotados en la ficha"
+        return base
+
+
+async def load_active_tiers(conn: asyncpg.Connection) -> list[Tier]:
+    """Canales que pueden recibir ofertas.
+
+    `is_active` es la guarda que importa: el tier 'ferre' quedó inactivo en la
+    migración 12 pero conserva sus filas en `telegram_tier_categories`, así que
+    sin este filtro las dos categorías de ferretería se publicarían dos veces.
+    Un tier sin `telegram_channel_id` tampoco entra: no hay dónde postear.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT id, slug, telegram_channel_id
+          FROM telegram_tiers
+         WHERE is_active
+           AND telegram_channel_id IS NOT NULL
+         ORDER BY id
+        """
+    )
+    return [Tier(r["id"], r["slug"], int(r["telegram_channel_id"])) for r in rows]
+
+
+async def load_active_topics(conn: asyncpg.Connection, *, tier_id: int) -> list[Topic]:
+    """Temas que pueden recibir ofertas, el que hace más tiempo que no postea primero.
+
+    `message_thread_id IS NOT NULL` es la guarda equivalente a la del canal: un
+    tema sin cablear existe en la tabla pero no es un destino. Una lista vacía
+    significa "este tier no es un grupo-foro todavía" y el poster cae al canal
+    plano — así la migración 26 se pudo aplicar con el publisher encendido.
+
+    El orden es el round-robin, y no es cosmético: `run_once` publica un solo
+    mensaje por vuelta en todo el chat, así que con un orden fijo el primer tema
+    se quedaría siempre con el lugar. Tecnología produce ~8,8 señales/día contra
+    ~1,5 de Ferretería: ordenado por id, Ferretería no publicaría nunca. Por
+    último post ascendente con NULLS FIRST, el turno rota solo y el tema que
+    todavía no habló va primero.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT tp.id, tp.slug, tp.name, tp.message_thread_id, tp.daily_quota,
+               (SELECT MAX(dp.posted_at)
+                  FROM deal_posts AS dp
+                 WHERE dp.topic_id = tp.id) AS last_posted_at
+          FROM telegram_topics AS tp
+         WHERE tp.tier_id = $1
+           AND tp.is_active
+           AND tp.message_thread_id IS NOT NULL
+         ORDER BY last_posted_at ASC NULLS FIRST, tp.id
+        """,
+        tier_id,
+    )
+    return [
+        Topic(
+            r["id"],
+            r["slug"],
+            r["name"],
+            int(r["message_thread_id"]),
+            int(r["daily_quota"]),
+        )
+        for r in rows
+    ]
+
+
+async def warn_categories_without_topic(
+    conn: asyncpg.Connection, *, tier_id: int
+) -> list[str]:
+    """Categorías ruteadas al tier que no tienen tema: no se publican en ninguno.
+
+    Se avisa porque el síntoma es indistinguible del normal. Una categoría sin
+    `topic_id` simplemente no aparece en ninguna query de tema, así que deja de
+    publicar **en silencio** — exactamente como una categoría que no tiene
+    ofertas. Una categoría nueva nace sin tema, y ese es el momento en que esto
+    pasa.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT c.slug
+          FROM telegram_tier_categories AS tc
+          JOIN categories AS c ON c.id = tc.category_id
+         WHERE tc.tier_id = $1
+           AND tc.topic_id IS NULL
+         ORDER BY c.slug
+        """,
+        tier_id,
+    )
+    slugs = [r["slug"] for r in rows]
+    if slugs:
+        logger.warning(
+            "%d categoría(s) del tier %s sin tema asignado — no se publican en "
+            "ningún tema: %s",
+            len(slugs),
+            tier_id,
+            ", ".join(slugs),
+        )
+    return slugs
+
+
+async def _registrar_stock(
+    pool: asyncpg.Pool, *, candidate_id: int, disponible: bool | None
+) -> None:
+    """Deja el resultado de la verificación en el candidato.
+
+    Se persiste incluso cuando es `None`: `stock_checked_at` es lo que distingue
+    "no se intentó" de "se intentó y no se supo", y sin eso un candidato cuya ficha
+    no responde se re-consultaría en cada vuelta del daemon — ~150 fetches de la
+    misma ficha contra un presupuesto diario de 10-30.
+    """
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE deal_candidates
+               SET stock_ok = $2, stock_checked_at = NOW()
+             WHERE id = $1
+            """,
+            candidate_id,
+            disponible,
+        )
+
+
+async def _hay_stock(
+    pool: asyncpg.Pool,
+    http: HttpClient | None,
+    *,
+    candidate: Candidate,
+    store_slug: str | None,
+) -> bool:
+    """¿Se puede publicar este candidato? Solo un `False` explícito lo frena.
+
+    Sin `http` no se verifica nada y se publica: es el comportamiento de antes de
+    la migración 30, y el que usan los tests que no quieren salir a la red.
+    """
+    # Sin lector para la tienda no se escribe nada: no hubo verificación, y
+    # registrarla mentiría en el dataset además de costar un UPDATE por vuelta.
+    if http is None or not stock.sabe_leer(store_slug):
+        return True
+
+    disponible = await stock.verificar(http, store_slug=store_slug, url=candidate.url)
+    await _registrar_stock(pool, candidate_id=candidate.candidate_id, disponible=disponible)
+    if disponible is False:
+        logger.info(
+            "candidato %s agotado en la ficha — no se publica: %s",
+            candidate.candidate_id,
+            candidate.name[:60],
+        )
+        return False
+    return True
+
+
+async def _reserve(
+    conn: asyncpg.Connection,
+    *,
+    candidate_id: int,
+    tier_id: int,
+    posted_at: datetime,
+    topic_id: int | None = None,
+) -> int | None:
+    """Toma el turno para publicar. `None` si ya estaba tomado.
+
+    El `ON CONFLICT` sigue siendo por (candidate_id, tier_id) y no incluye el
+    tema a propósito: un candidato tiene una categoría, que tiene un tema, así
+    que no puede ir a dos temas del mismo tier. Sumar el tema a la llave no
+    evitaría ningún duplicado y sí permitiría publicar lo mismo dos veces si
+    alguien duplicara el mapeo. Ver la migración 26 §5.
+    """
+    row = await conn.fetchrow(
+        """
+        INSERT INTO deal_posts (candidate_id, tier_id, posted_at, topic_id)
+             VALUES ($1, $2, $3, $4)
+        ON CONFLICT (candidate_id, tier_id) DO NOTHING
+          RETURNING id
+        """,
+        candidate_id,
+        tier_id,
+        posted_at,
+        topic_id,
+    )
+    return row["id"] if row else None
+
+
+async def publish_one(
+    pool: asyncpg.Pool,
+    client: TelegramClient,
+    *,
+    tier: Tier,
+    candidate: Candidate,
+    now: datetime | None = None,
+    topic: Topic | None = None,
+    http: HttpClient | None = None,
+) -> tuple[str, int | None]:
+    """Reserva, publica y confirma.
+
+    Devuelve `(PUBLISHED, message_id)`, `(DUPLICATE, None)` o `(FAILED, None)`.
+
+    Con `topic` el mensaje va al tema de ese grupo-foro; sin él, al chat plano
+    como hasta la migración 26.
+    """
+    now = now or datetime.now(timezone.utc)
+    destino = f"{tier.slug}/{topic.slug}" if topic else tier.slug
+
+    # Antes de reservar: una ficha que dice "agotado" no gasta el turno del
+    # candidato ni deja una fila en `deal_posts` que después haya que explicar.
+    if not await _hay_stock(
+        pool, http, candidate=candidate, store_slug=candidate.store_slug
+    ):
+        return OUT_OF_STOCK, None
+
+    async with pool.acquire() as conn:
+        post_id = await _reserve(
+            conn,
+            candidate_id=candidate.candidate_id,
+            tier_id=tier.id,
+            posted_at=now,
+            topic_id=topic.id if topic else None,
+        )
+    if post_id is None:
+        logger.info(
+            "candidato %s ya publicado en %s — se saltea",
+            candidate.candidate_id,
+            destino,
+        )
+        return DUPLICATE, None
+
+    try:
+        message_id = await client.send_message(
+            tier.channel_id,
+            format_deal(candidate),
+            "HTML",
+            # La card del link es la foto del producto. Ver `publisher/formatter.py`.
+            disable_web_page_preview=False,
+            message_thread_id=topic.thread_id if topic else None,
+        )
+    except Exception:
+        # `TelegramClient` no lanza, pero `format_deal` sí podría ante un dato
+        # inesperado. Sin este rescate la reserva quedaría huérfana y el
+        # candidato no se reintentaría nunca: se perdería en silencio, que es
+        # el modo de falla más caro de diagnosticar.
+        logger.exception(
+            "error armando o enviando el candidato %s; se libera la reserva",
+            candidate.candidate_id,
+        )
+        message_id = None
+
+    async with pool.acquire() as conn:
+        if message_id is None:
+            # El envío no salió: se libera el turno para reintentar. `TelegramClient`
+            # nunca lanza, devuelve None ante cualquier fallo — token, red o 429.
+            await conn.execute("DELETE FROM deal_posts WHERE id = $1", post_id)
+            logger.warning(
+                "no se pudo publicar el candidato %s en %s; se reintenta",
+                candidate.candidate_id,
+                destino,
+            )
+            return FAILED, None
+
+        await conn.execute(
+            "UPDATE deal_posts SET telegram_message_id = $2 WHERE id = $1",
+            post_id,
+            message_id,
+        )
+
+    logger.info(
+        "publicado candidato %s en %s (message_id=%s): %s",
+        candidate.candidate_id,
+        destino,
+        message_id,
+        candidate.name[:60],
+    )
+    return PUBLISHED, message_id
+
+
+async def run_once(
+    pool: asyncpg.Pool,
+    client: TelegramClient,
+    *,
+    now: datetime | None = None,
+    limit_per_tier: int | None = 1,
+    http: HttpClient | None = None,
+) -> PublishStats:
+    """Una vuelta del publisher sobre todos los canales activos.
+
+    `limit_per_tier=1` es el default a propósito: el daemon despierta seguido y
+    publica de a una, y el espaciado mínimo del ranker hace el resto. Publicar la
+    cuota entera de una vuelta convertiría el canal en una ráfaga cada 12 h.
+
+    Con temas (migración 26) el destino es el par (chat, tema) y la cuota es de
+    cada tema, pero el límite por vuelta sigue siendo **uno por chat**: siete
+    temas publicando uno cada uno serían siete notificaciones juntas, que es la
+    ráfaga que el espaciado existe para evitar. El turno rota por orden de
+    `load_active_topics`, así que repartir entre temas es cuestión de vueltas, no
+    de mandar todo junto.
+    """
+    now = now or datetime.now(timezone.utc)
+
+    async with pool.acquire() as conn:
+        tiers = await load_active_tiers(conn)
+
+    considered = published = failed = duplicates = agotados = 0
+    for tier in tiers:
+        async with pool.acquire() as conn:
+            topics = await load_active_topics(conn, tier_id=tier.id)
+            if topics:
+                await warn_categories_without_topic(conn, tier_id=tier.id)
+
+        # Sin temas cableados, el canal plano de siempre. `destinos` es la lista
+        # de (tema, cuota) a recorrer; `None` es "el chat, sin thread".
+        destinos: list[Topic | None] = list(topics) if topics else [None]
+        #: Local al chat: `published` es el acumulado de todos los tiers, y usarlo
+        #: para cortar haría que el primer tier que publica deje muda la vuelta
+        #: entera del segundo.
+        publicados_aca = 0
+
+        for topic in destinos:
+            async with pool.acquire() as conn:
+                batch: Sequence[Candidate] = await ranker.next_batch(
+                    conn,
+                    tier_id=tier.id,
+                    now=now,
+                    limit=limit_per_tier,
+                    topic_id=topic.id if topic else None,
+                    max_per_day=topic.quota if topic else ranker.MAX_PER_DAY,
+                )
+            considered += len(batch)
+            for candidate in batch:
+                outcome, _ = await publish_one(
+                    pool,
+                    client,
+                    tier=tier,
+                    candidate=candidate,
+                    now=now,
+                    topic=topic,
+                    http=http,
+                )
+                if outcome == PUBLISHED:
+                    published += 1
+                    publicados_aca += 1
+                elif outcome == DUPLICATE:
+                    duplicates += 1
+                elif outcome == OUT_OF_STOCK:
+                    agotados += 1
+                else:
+                    failed += 1
+            # Un mensaje por chat por vuelta: si este tema publicó, los demás
+            # esperan la próxima. El duplicado y el fallo NO consumen el turno —
+            # el primero no mandó nada y el segundo liberó su reserva.
+            if publicados_aca and topic is not None:
+                break
+
+    stats = PublishStats(
+        len(tiers), considered, published, failed, duplicates, agotados
+    )
+    if considered or published:
+        logger.info("publisher: %s", stats)
+    return stats
