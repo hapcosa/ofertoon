@@ -336,6 +336,14 @@ la página 1 en el fixture y la verificación de centinelas— está en
 - **Después de tocar el código hay que reconstruir el contenedor.** El
   Dockerfile copia las fuentes, no las monta: un cambio en el host no llega al
   scraper que ya está corriendo.
+- **Eso vale también para `db-migrate`, y ahí el fallo es SILENCIOSO.** Una
+  migración nueva no está en la imagen vieja, así que
+  `docker compose run --rm db-migrate` contesta `listo — 0 migración(es)
+  aplicada(s)` — que es **exactamente** lo que contesta una corrida idempotente
+  sana, o sea el mensaje de éxito y el de "tu migración no existe acá" son el
+  mismo. Pasó el 2026-10-26 con la 34. Es `docker compose build db-migrate`
+  primero, o `--build` en el `run`; y verificar la columna en la base, no el
+  mensaje.
 - **`restart: unless-stopped` NO protege de un apagado manual, y eso ya costó
   dos agujeros.** Si los contenedores se detienen explícitamente (`docker compose
   stop/down`), Docker recuerda ese estado y **no los levanta** cuando el host
@@ -635,6 +643,18 @@ la página 1 en el fixture y la verificación de centinelas— está en
   están en el docstring para que no vuelvan: **`rack`** atrapaba el "Nike Squat
   Rack" de $449.990 y un "Rack Para Lavadora", y **`SFF`/`BC`** atrapaban una
   "Torta Red Velvet Bc" de Tottus de $4.590.
+- **El `pum` (precio por unidad de medida) cuelga de UNA entrada de `prices`, no
+  del producto.** Cada entrada trae el suyo, así que `resolve_prices` devuelve el
+  de la entrada que ganó el precio efectivo: el del `normalPrice` tachado es el
+  precio por kilo de un precio que ya no existe y el del `cmrPrice` es el de un
+  precio que exige tarjeta de la casa. Se persiste desde la migración 34
+  (`price_points.pum_price` + `pum_label`, las dos juntas o ninguna) y es **copy,
+  no señal**: `discount_real` sigue saliendo solo de `1 − price_today / p50_60d`.
+  El "antes real" por unidad del mensaje se **deriva** del p50
+  (`p50 × pum_hoy / price_hoy`) y no tiene baseline propia — una segunda serie con
+  su propio p50 sería la implementación divergente que la regla 2 prohíbe. Y la
+  etiqueta va verbatim: `10GR` y `100UN` no son errores, son la base que elige la
+  tienda, y dos `pum` de bases distintas no se comparan sin normalizar.
 - **Los θ de `categories.discount_threshold` NO están calibrados.** Son valores
   de partida del plan. El gate de F1 es el output de `pricing/backtest.py`:
   precisión ≥80% con ≥3 ofertas/día/canal.

@@ -114,9 +114,10 @@ Viene dentro de `prices[].pum` en el mismo `__NEXT_DATA__` que ya parseamos:
     "prices": [{"type": "internetPrice", "price": ["3.890"],
                 "pum": {"label": "KG", "price": ["3.242"]}}]
 
-**Y no se guarda en ninguna parte**: `falabella_family.parse_listing` no lo mira,
-`RawProduct` no tiene campo, y `price_points` no tiene columna. `raw_payload` existe
-en el dataclass pero tampoco se persiste.
+~~**Y no se guarda en ninguna parte**~~ — **se guarda desde el 2026-10-26**
+(migración 34): `price_points.pum_price` + `pum_label`, `RawProduct.pum`, y
+`resolve_pum` en el parser. `raw_payload` existe en el dataclass y sigue sin
+persistirse. Ver la Fase 1 de la §5 para las dos decisiones de implementación.
 
 Para el resto del catálogo eso es correcto —el precio por kilo de un notebook no
 significa nada— pero para supermercado es **el** dato que hace comparable una
@@ -269,15 +270,37 @@ El orden importa: **la fase 1 es bloqueante** y las demás no valen nada sin ell
 
 La decisión del 2026-10-19 (supermercado = tema del canal) resuelve el problema de
 la §1 **sin tocar el score**: en su propio tema no compite con el televisor, así
-que el piso en CLP deja de ser bloqueante. Quedan dos trabajos chicos:
+que el piso en CLP deja de ser bloqueante. Eran dos trabajos chicos:
 
 1. **Cablear el tema.** `telegram_topics` ya tiene S.Mercado con cuota 2 desde la
    migración 26; le falta el `message_thread_id`, que sale del link de un mensaje
-   del tema. Es el único paso que necesita acción humana.
-2. **Guardar el precio por unidad de medida** (§2bis): campo opcional en
-   `RawProduct`, columna en `price_points`, una línea en el parser de
-   `falabella_family`. Sin esto el copy no puede sostener el argumento de las varias
-   unidades, que es lo que hace valer la oferta.
+   del tema. Es el único paso que necesita acción humana — **sigue pendiente**.
+2. ✅ **Guardar el precio por unidad de medida** (§2bis) — hecho el 2026-10-26,
+   migración 34: `Pum` (etiqueta + precio, los dos juntos) en `RawProduct`, dos
+   columnas en `price_points` con un CHECK que impide una sin la otra,
+   `resolve_pum` en el parser de `falabella_family` y la línea del copy en
+   `publisher/formatter.py`, limitada a `supermercado` por `PUM_CATEGORIES`.
+
+**Dos decisiones que se tomaron al implementarlo**, y conviene no redescubrirlas:
+
+- **El `pum` sale de la entrada de `prices` que ganó el precio efectivo**, no del
+  producto. Cada entrada trae el suyo: el del `normalPrice` tachado es el precio
+  por kilo de un precio que ya no existe y el del `cmrPrice` exige tarjeta de la
+  casa. Publicar cualquiera de los dos mentiría sobre el único dato que justifica
+  la oferta.
+- **El "antes real" por unidad se DERIVA del p50, no se guarda.** Como
+  `pum = price / tamaño`, `p50 × (pum_hoy / price_hoy)` es el p50 llevado a la
+  misma base, exacto mientras el envase no cambie de tamaño (y un formato nuevo es
+  un SKU nuevo). Una baseline de `pum` sería una segunda implementación del p50
+  —lo que la regla de no-look-ahead prohíbe— y metería el dato en el job de
+  baselines, o sea del lado de la señal. Cuando el redondeo a CLP entero empata
+  los dos números (un `pum` de $8 con base `100UN`) sale el precio por unidad
+  solo, sin el contraste.
+
+La etiqueta se muestra **tal como la manda la tienda** (`KG`, `LT`, `10GR`,
+`100UN`): traducirla a palabras obliga a decidir qué son `MR` y `MT`, las dos
+presentes en el catálogo, y una unidad mal traducida miente sobre la mitad del
+dato.
 
 **Lo que NO se hace**: tocar `compute_score`. Su docstring tiene razón para el
 rango de ticket del canal general, y el problema que quedaba —el estuche de $1.800
