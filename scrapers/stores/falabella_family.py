@@ -21,7 +21,13 @@ from decimal import Decimal
 from typing import Any
 
 from catalog.normalize import clean_text, normalize_brand, parse_clp
-from scrapers.base import MAX_PLAUSIBLE_CLP, CategoryRef, RawProduct
+from scrapers.base import (
+    MAX_PLAUSIBLE_CLP,
+    PUM_LABEL_MAX_CHARS,
+    CategoryRef,
+    Pum,
+    RawProduct,
+)
 from scrapers.http import BROWSER_HEADERS, HttpClient
 
 logger = logging.getLogger(__name__)
@@ -68,23 +74,52 @@ def extract_next_data(html: str) -> dict[str, Any]:
     return json.loads(match.group(1))
 
 
+def _entry_price(entry: dict[str, Any]) -> Decimal | None:
+    """El precio de una entrada de `prices`. La tienda lo manda en una lista."""
+    raw = entry.get("price")
+    return parse_clp(raw[0] if isinstance(raw, list) and raw else raw)
+
+
+def resolve_pum(entry: dict[str, Any]) -> Pum | None:
+    """El precio por unidad de medida de UNA entrada de `prices`, si lo trae.
+
+    Nunca lanza: el `pum` es un dato opcional del copy, así que una etiqueta rara
+    o un número ilegible lo descartan en silencio en vez de voltear la categoría
+    entera. Por eso valida las precondiciones acá y recién después construye el
+    `Pum`, que sí es estricto.
+    """
+    pum = entry.get("pum")
+    if not isinstance(pum, dict):
+        return None
+    label = clean_text(pum.get("label"))
+    price = _entry_price(pum)
+    if not label or price is None or len(label) > PUM_LABEL_MAX_CHARS:
+        logger.debug("pum_ilegible label=%r price=%r", pum.get("label"), pum.get("price"))
+        return None
+    return Pum(label=label, price=price)
+
+
 def resolve_prices(
     prices: Sequence[dict[str, Any]],
-) -> tuple[Decimal | None, Decimal | None, Decimal | None]:
-    """Reparte los precios de un producto en (efectivo, normal declarado, tarjeta).
+) -> tuple[Decimal | None, Decimal | None, Decimal | None, Pum | None]:
+    """Reparte los precios en (efectivo, normal declarado, tarjeta, pum).
 
     Tipos observados en producción: `cmrPrice`, `internetPrice`, `eventPrice`,
     `normalPrice`. El efectivo es el MÍNIMO de los precios pagables sin tarjeta
     de la casa y no tachados; si no hay ninguno, cae al normal no tachado.
+
+    El `pum` **cuelga de una entrada concreta**, así que se devuelve el de la
+    entrada que ganó el precio efectivo y no el primero que aparezca: el del
+    `normalPrice` tachado sería el precio por kilo de un precio que ya no existe,
+    y el del `cmrPrice` el de un precio que exige tarjeta de la casa.
     """
     card: Decimal | None = None
     claimed_normal: Decimal | None = None
-    payable: list[Decimal] = []
-    fallback: list[Decimal] = []
+    payable: list[tuple[Decimal, Pum | None]] = []
+    fallback: list[tuple[Decimal, Pum | None]] = []
 
     for entry in prices:
-        raw = entry.get("price")
-        value = parse_clp(raw[0] if isinstance(raw, list) and raw else raw)
+        value = _entry_price(entry)
         if value is None:
             continue
 
@@ -96,13 +131,18 @@ def resolve_prices(
             claimed_normal = value if claimed_normal is None else min(claimed_normal, value)
             # Un normalPrice sin tachar es el precio vigente (no hay oferta).
             if not entry.get("crossed"):
-                fallback.append(value)
+                fallback.append((value, resolve_pum(entry)))
             continue
         if not entry.get("crossed"):
-            payable.append(value)
+            payable.append((value, resolve_pum(entry)))
 
-    effective = min(payable) if payable else (min(fallback) if fallback else None)
-    return effective, claimed_normal, card
+    winners = payable or fallback
+    if not winners:
+        return None, claimed_normal, card, None
+    # `key` explícito: dos entradas al mismo precio harían comparar los `Pum`,
+    # que no son ordenables.
+    effective, pum = min(winners, key=lambda w: w[0])
+    return effective, claimed_normal, card, pum
 
 
 def parse_listing(
@@ -126,7 +166,7 @@ def parse_listing(
         if not (sku and url and name):
             continue
 
-        effective, claimed_normal, card = resolve_prices(item.get("prices") or [])
+        effective, claimed_normal, card, pum = resolve_prices(item.get("prices") or [])
         if effective is None:
             # Sin precio pagable no hay serie que construir; se descarta en vez
             # de inventar un cero que ensucie la baseline.
@@ -157,6 +197,7 @@ def parse_listing(
                 category_path=category.slug,
                 image_url=media[0] if media else None,
                 claimed_discount=clean_text(badge.get("label")),
+                pum=pum,
                 in_stock=True,  # el listado solo devuelve comprables
                 scraped_at=scraped_at,
                 raw_payload=item,

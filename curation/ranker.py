@@ -137,6 +137,17 @@ class Candidate:
     #: precio de la oferta y `price <= min_60d` sería cierto para todo aceptado
     #: que sea mínimo. La afirmación "el más barato en 60 días" quedaría vacía.
     min_prior: Decimal | None = None
+    #: Slug de la categoría. Lo usa `publisher.formatter` para decidir si el copy
+    #: lleva precio por unidad de medida, que solo significa algo en supermercado:
+    #: el precio por kilo de un notebook no le dice nada a nadie.
+    category_slug: str | None = None
+    #: Precio por unidad de medida de ESTA observación y su base, tal como los
+    #: declaró la tienda (ver la migración 34). Van juntos o no van: `10GR` y
+    #: `100UN` son bases legítimas y el número no significa nada sin la etiqueta.
+    #: Opcional de verdad — lo trae el 95% del supermercado y ~nada del resto, y
+    #: que falte no puede frenar una oferta.
+    pum_price: Decimal | None = None
+    pum_label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -250,7 +261,10 @@ _CANDIDATES_SQL = """
            s.name          AS store_name,
            s.slug          AS store_slug,
            c.name          AS category_name,
+           c.slug          AS category_slug,
            b.p10_60d       AS p10,
+           pum.pum_price,
+           pum.pum_label,
            (SELECT MIN(pp.price_effective)
               FROM price_points AS pp
              WHERE pp.listing_id = l.id
@@ -275,6 +289,13 @@ _CANDIDATES_SQL = """
             AND ($3::int IS NULL OR tc.topic_id = $3)
       LEFT JOIN categories        AS c ON c.id = l.category_id
       LEFT JOIN listing_baselines AS b ON b.listing_id = l.id
+      -- El precio por unidad de medida de LA observación que se publica, no el
+      -- último conocido: `detected_at` ES el `observed_at` de esa observación
+      -- (lo fija `detector._load_candidates`), así que el join cae sobre la PK de
+      -- `price_points` y trae a lo sumo una fila. Un MAX(observed_at) traería el
+      -- pum de un precio distinto del que dice el mensaje.
+      LEFT JOIN price_points      AS pum ON pum.listing_id  = l.id
+                                        AND pum.observed_at = dc.detected_at
      WHERE dc.verdict = 'accepted'
        -- Agotado en la ficha: no se publica. `NULL` (no se verificó, tienda sin
        -- verificador, o la ficha no respondió) sí pasa — la duda no bloquea.

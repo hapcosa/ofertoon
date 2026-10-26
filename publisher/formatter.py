@@ -18,6 +18,10 @@ Las decisiones de producto que están adentro, porque el formato ES el producto:
    sin tarjeta de la casa. Mezclarlos es la mentira de la que vive el retail.
 5. **URL sin tag de afiliado.** No hay programa dado de alta; cuando lo haya, el
    único punto a tocar es `deal_url()`.
+6. **El precio por unidad de medida sale solo en supermercado.** Es el dato que
+   convierte un "−30%" de $670 de ahorro en una decisión de stockear
+   (PLAN_SUPERMERCADO §2), y es exactamente lo que no significa nada en el resto
+   del canal: el precio por kilo de un notebook no le dice nada a nadie.
 """
 from __future__ import annotations
 
@@ -29,6 +33,14 @@ from curation.ranker import Candidate
 #: Telegram corta los captions en 1024 y los mensajes en 4096. Ni cerca, pero el
 #: nombre crudo de un listing de Falabella puede traer 200 caracteres de specs.
 MAX_NAME_CHARS = 90
+
+#: Categorías cuyo copy lleva precio por unidad de medida. Es una lista blanca y
+#: no un "si el dato existe, mostralo": el `pum` llega en el 95% del supermercado
+#: y también en alguna llave de otras tiendas, pero "el precio por metro" de un
+#: cable o "por unidad" de un pack de pilas no es el argumento de compra que
+#: sostiene al supermercado — ahí sí lo es, porque lo que vuelve real un ahorro de
+#: $670 es llevarse varias unidades de algo que se puede guardar.
+PUM_CATEGORIES = frozenset({"supermercado"})
 
 
 def format_clp(value: Decimal) -> str:
@@ -71,6 +83,66 @@ def evidence_line(candidate: Candidate) -> str:
     return "📉 Por debajo de su piso habitual de 60 días"
 
 
+def pum_habitual(candidate: Candidate) -> Decimal | None:
+    """El precio por unidad de medida que tenía este producto habitualmente.
+
+    Se **deriva** del p50, no se guarda: `pum = price / tamaño`, así que
+    `pum / price` es `1 / tamaño` y entonces
+
+        pum_habitual = p50 × (pum_hoy / price_hoy)
+
+    es exactamente el p50 llevado a la misma base que la tienda eligió. Es exacto
+    mientras el envase del SKU no cambie de tamaño, que es lo normal: un formato
+    nuevo es un SKU nuevo.
+
+    No se calcula una baseline de `pum` a propósito, por dos razones. La primera
+    es la regla de no-look-ahead: una segunda serie con su propio p50 sería una
+    segunda implementación de la baseline, y dos implementaciones divergen. La
+    segunda es la frontera del dato: el `pum` es copy, no señal, y meterlo en el
+    job de baselines lo pone del lado de la señal.
+
+    `None` cuando no hay con qué: sin `pum`, o con un `price` en cero que haría
+    estallar la división.
+    """
+    if candidate.pum_price is None or candidate.price <= 0:
+        return None
+    derivado = candidate.p50 * candidate.pum_price / candidate.price
+    return derivado.quantize(Decimal(1), rounding=ROUND_HALF_UP)
+
+
+def pum_line(candidate: Candidate) -> str | None:
+    """"$3.242 por KG · antes real $4.600", y `None` si no corresponde.
+
+    Tres razones para no emitirla, y ninguna frena la publicación — el `pum` es
+    opcional de verdad (el 5% del supermercado no lo trae, y el mensaje de ese 5%
+    sale igual, sin la línea):
+
+    * la categoría no es de supermercado;
+    * la tienda no declaró el `pum` de esta observación;
+    * el "antes" derivado no es mayor que el de hoy, o sea no hay contraste que
+      mostrar. Pasa con los `pum` de pocos pesos (una base `100UN` a $8), donde el
+      redondeo a CLP entero deja los dos números iguales y la línea diría "$8 ·
+      antes real $8". En ese caso sale el precio por unidad solo, que ya es el
+      dato que el comprador compara en la góndola.
+
+    **La etiqueta va tal como la manda la tienda** (`KG`, `LT`, `10GR`, `100UN`).
+    No se traduce a palabras: traducir `KG` a "kilo" obliga a decidir qué es `MR`
+    o `MT` —las dos aparecen en el catálogo— y una traducción equivocada miente
+    sobre la unidad, que es justo la mitad del dato que no se puede perder.
+    """
+    if candidate.category_slug not in PUM_CATEGORIES:
+        return None
+    if candidate.pum_price is None or not candidate.pum_label:
+        return None
+
+    unidad = html.escape(candidate.pum_label)
+    linea = f"📦 {format_clp(candidate.pum_price)} por {unidad}"
+    habitual = pum_habitual(candidate)
+    if habitual is not None and habitual > candidate.pum_price:
+        linea += f"  ·  antes real {format_clp(habitual)}"
+    return linea
+
+
 def deal_url(candidate: Candidate) -> str:
     """La URL a publicar. Único punto a tocar el día que haya afiliados."""
     return candidate.url
@@ -87,6 +159,11 @@ def format_deal(candidate: Candidate) -> str:
         "",
         f"<b>{format_clp(candidate.price)}</b>  ·  "
         f"antes real <s>{format_clp(candidate.p50)}</s>",
+    ]
+    unitario = pum_line(candidate)
+    if unitario is not None:
+        parts.append(unitario)
+    parts += [
         evidence_line(candidate),
         "",
         f'<a href="{html.escape(deal_url(candidate), quote=True)}">Ver oferta →</a>',

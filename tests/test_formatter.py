@@ -125,6 +125,128 @@ def test_mensaje_completo() -> None:
     )
 
 
+# -----------------------------------------------------------------------------
+# El precio por unidad de medida: solo en supermercado
+# -----------------------------------------------------------------------------
+
+
+def super_candidate(**overrides) -> Candidate:
+    """Una oferta de supermercado con `pum`, con los números del fixture real.
+
+    $3.890 el producto, $3.242 el kilo → 1,2 kg. El p50 de $5.550 llevado a la
+    misma base da $4.625: es el "antes real" por kilo.
+    """
+    base = dict(
+        category_id=9,
+        category_name="Supermercado",
+        category_slug="supermercado",
+        name="Detergente Líquido Soft Floral 1,2 kg",
+        store_name="Tottus",
+        price=Decimal("3890"),
+        p50=Decimal("5550"),
+        discount_real=Decimal("0.2991"),
+        p10=Decimal("4190"),
+        min_prior=Decimal("4190"),
+        pum_price=Decimal("3242"),
+        pum_label="KG",
+    )
+    base.update(overrides)
+    return make(**base)
+
+
+def test_la_linea_del_pum_muestra_el_precio_por_unidad_y_su_antes() -> None:
+    """Lo que convierte "−30%" en una decisión de stockear (PLAN_SUPERMERCADO §2).
+
+    La etiqueta va **tal como la manda la tienda**: traducir `KG` a "kilo" obliga
+    a decidir qué son `MR` y `MT`, y una unidad mal traducida miente sobre la
+    mitad del dato.
+    """
+    assert formatter.pum_line(super_candidate()) == (
+        "📦 $3.242 por KG  ·  antes real $4.625"
+    )
+
+
+def test_el_antes_por_unidad_es_el_p50_llevado_a_la_misma_base() -> None:
+    """Se deriva, no se guarda: `pum/price` es `1/tamaño`, así que `p50 × eso`
+    es el p50 por unidad. Sin segunda baseline que pueda divergir."""
+    candidate = super_candidate(price=Decimal("1000"), p50=Decimal("2000"),
+                                pum_price=Decimal("500"), pum_label="LT")
+    # 1.000 por 2 L → el p50 de 2.000 son 1.000 el litro.
+    assert formatter.pum_habitual(candidate) == Decimal("1000")
+
+
+def test_fuera_de_supermercado_no_sale_aunque_la_tienda_lo_declare() -> None:
+    """El precio por metro de un cable no es el argumento de compra del canal."""
+    cable = super_candidate(category_slug="tecno-componentes", pum_label="MT",
+                            pum_price=Decimal("37"))
+    assert formatter.pum_line(cable) is None
+    assert "📦" not in formatter.format_deal(cable)
+
+
+def test_sin_pum_la_oferta_de_supermercado_se_publica_igual() -> None:
+    """Es el 5% del catálogo: que falte el dato NO puede frenar una oferta."""
+    sin_pum = super_candidate(pum_price=None, pum_label=None)
+    assert formatter.pum_line(sin_pum) is None
+    message = formatter.format_deal(sin_pum)
+    assert "<b>$3.890</b>" in message
+    assert "📦" not in message
+
+
+def test_un_pum_a_medias_tampoco_frena_el_mensaje() -> None:
+    """La etiqueta es la mitad del dato: sin ella el número no se puede mostrar.
+
+    El CHECK de la migración 34 hace que esta fila no exista en la base; la guarda
+    está igual porque el formatter no puede confiar en eso para no quedarse sin
+    mensaje.
+    """
+    assert formatter.pum_line(super_candidate(pum_label=None)) is None
+    assert formatter.pum_line(super_candidate(pum_price=None)) is None
+
+
+def test_sin_contraste_muestra_el_precio_por_unidad_solo() -> None:
+    """Con un pum de pocos pesos el redondeo a CLP entero empata los dos números.
+
+    Caso real del fixture: base `100UN` a $8. "📦 $8 por 100UN · antes real $8"
+    no dice nada, así que sale solo la mitad que sí dice algo.
+    """
+    pilas = super_candidate(
+        price=Decimal("1190"), p50=Decimal("1200"),
+        pum_price=Decimal("8"), pum_label="100UN",
+    )
+    assert formatter.pum_habitual(pilas) == Decimal("8")
+    assert formatter.pum_line(pilas) == "📦 $8 por 100UN"
+
+
+def test_escapa_la_etiqueta_de_la_unidad() -> None:
+    """Viene de la tienda: un `&` sin escapar hace que Telegram rechace todo."""
+    raro = super_candidate(pum_label="KG & LT")
+    assert "KG &amp; LT" in formatter.pum_line(raro)
+
+
+def test_mensaje_completo_de_supermercado() -> None:
+    assert formatter.format_deal(super_candidate()) == (
+        "🔥 <b>−30%</b> · Supermercado\n"
+        "\n"
+        "<b>Detergente Líquido Soft Floral 1,2 kg</b>\n"
+        "Tottus\n"
+        "\n"
+        "<b>$3.890</b>  ·  antes real <s>$5.550</s>\n"
+        "📦 $3.242 por KG  ·  antes real $4.625\n"
+        "🏆 El más barato en 60 días\n"
+        "\n"
+        '<a href="https://falabella.com/p/12345">Ver oferta →</a>\n'
+        "\n"
+        "<i>«antes real» = precio mediano de este producto en los últimos "
+        "60 días, medido por nosotros. No es el precio tachado que declara "
+        "la tienda.</i>"
+    )
+
+
+def test_el_pum_no_toca_el_mensaje_del_resto_del_canal() -> None:
+    """La línea nueva es aditiva: el contrato del canal general no se movió."""
+    assert "📦" not in formatter.format_deal(make())
+
+
 def test_el_precio_tachado_es_el_p50_no_el_de_la_tienda() -> None:
     """LA prueba del producto.
 

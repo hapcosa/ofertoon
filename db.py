@@ -104,8 +104,8 @@ async def insert_price_point(
         """
         INSERT INTO price_points (listing_id, observed_at, price_effective,
                                   price_normal, price_card, in_stock,
-                                  claimed_discount)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+                                  claimed_discount, pum_price, pum_label)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (listing_id, observed_at) DO NOTHING
         """,
         listing_id,
@@ -115,6 +115,11 @@ async def insert_price_point(
         product.price_card,
         product.in_stock,
         product.claimed_discount,
+        # Las dos juntas o ninguna: un precio por unidad sin su unidad es un
+        # número que nadie puede interpretar (lo hace cumplir el CHECK de la
+        # migración 34).
+        product.pum.price if product.pum else None,
+        product.pum.label if product.pum else None,
     )
     return status.endswith("1")
 

@@ -115,6 +115,47 @@ def test_in_stock_es_ciego_en_tottus(parsed):
     assert all(p.in_stock for p in products)
 
 
+def test_el_precio_por_unidad_de_medida_se_guarda_con_su_base(parsed):
+    """El dato que vuelve comparable una oferta de supermercado (§2bis del plan).
+
+    Hasta la migración 34 llegaba en el payload y se tiraba. Las seis filas del
+    fixture lo traen, y traen cuatro bases distintas — que es el punto: `100UN`
+    y `MT` no son errores, son la base que la tienda eligió para que el número
+    sea legible, así que el precio no significa nada sin su etiqueta y dos `pum`
+    de bases distintas NO se comparan entre sí.
+    """
+    products, _ = parsed
+    pums = {p.store_sku: p.pum for p in products}
+
+    assert all(pum is not None for pum in pums.values())
+    assert (pums["119445474"].label, pums["119445474"].price) == ("LT", Decimal("2095"))
+    assert (pums["110609732"].label, pums["110609732"].price) == ("100UN", Decimal("8"))
+    assert (pums["110615129"].label, pums["110615129"].price) == ("UN", Decimal("52"))
+    assert {pum.label for pum in pums.values()} == {"LT", "MT", "100UN", "UN"}
+
+
+def test_el_pum_tambien_es_dinero_y_va_en_clp_enteros(parsed):
+    """Nunca float, igual que `price_effective`. Vale para el pum de $8 también."""
+    products, _ = parsed
+    for p in products:
+        assert isinstance(p.pum.price, Decimal)
+        assert p.pum.price == p.pum.price.to_integral_value()
+        assert p.pum.price > 0
+
+
+def test_el_pum_corresponde_al_precio_efectivo_y_no_al_tachado(parsed):
+    """El del `normalPrice` tachado sería el precio por litro de un precio muerto.
+
+    En el fixture, el SKU 119445474 vale $4.190 con `normalPrice` $5.090 tachado:
+    el pum publicable es el de los $4.190 ($2.095 el litro = la mitad, o sea 2 L),
+    no uno derivado del "antes" que declara la tienda.
+    """
+    products, _ = parsed
+    soft = next(p for p in products if p.store_sku == "119445474")
+    assert soft.price_normal == Decimal("5090")
+    assert soft.pum.price * 2 == soft.price_effective
+
+
 # -----------------------------------------------------------------------------
 # Lo del adaptador
 # -----------------------------------------------------------------------------
