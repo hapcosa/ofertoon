@@ -456,6 +456,13 @@ la página 1 en el fixture y la verificación de centinelas— está en
   flush que falla se lleva la **categoría entera** a `failed` y se pierde todo lo
   ya scrapeado de esa llave. Cinco llaves × ~3.300 productos quedaron sin una
   observación por dos caracteres de más.
+  Cerrado el mismo día midiendo el catálogo **completo** de las dos tiendas: el
+  `store_sku` más largo de las diez llaves de supermercado es **108** (10.714
+  SKUs) y el de las dos de belleza **130** (4.816), contra el tope de 255; la
+  marca más larga es 28 contra los 80 de `brand_raw`. Y se ejercitó el INSERT de
+  verdad contra una base descartable —130 y 255 entran, 256 falla—, que es la
+  única forma de no repetir el error de confiar en el dry-run: un caso de control
+  que **tiene** que fallar es lo que distingue una verificación de un falso verde.
 - **`restart: unless-stopped` NO protege de un apagado manual, y eso ya costó
   dos agujeros.** Si los contenedores se detienen explícitamente (`docker compose
   stop/down`), Docker recuerda ese estado y **no los levanta** cuando el host
