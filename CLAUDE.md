@@ -85,6 +85,39 @@ cinco semanas que los temas estuvieron en NULL. Los `message_thread_id` salen de
 link de un mensaje de cada tema (`t.me/c/<chat>/<thread_id>/<message_id>`), que es
 cómo se obtuvieron para la migración 35.
 
+**Supermercado, al 2026-11-04**: la Fase 1 de PLAN_SUPERMERCADO está cerrada (el
+`pum` se persiste y sale en el copy; el tema S.Mercado tiene
+`message_thread_id = 20549` y cuota 5) y la **Fase 4 también**: Jumbo y Santa
+Isabel entraron el 2026-11-04 (migración 37) con un adaptador compartido
+(`scrapers/stores/cencosud_family.py`), 5 llaves cada una, 15.668 listings y 402
+requests por pasada. Van a `supermercado`, **se evalúan el 2026-12-04** y suman
+~+43% al volumen diario del sistema. No habilitan el "más barato que en Jumbo":
+ninguna trae GTIN.
+
+La categoría **`belleza` es "Belleza y farmacia"** y tiene **tema propio** desde
+la migración 38 (`message_thread_id = 20595`, cuota 3), el octavo del grupo. La
+creó la migración 36 con la sola llave `CATG27076/Belleza` de Tottus y el mismo
+día el dueño decidió ampliarla y meter todo: entran también
+`jumbo/belleza-y-cuidado-personal` (3.519 SKUs, 17 hijos que ya son belleza +
+farmacia) y `santaisabel/cuidado-personal-y-bebe` (1.305). θ 0.250 de partida sin
+calibrar, `min_history_days = 30`, **primeros candidatos posibles el 2026-12-04**.
+
+El rename describe lo que ya había: la `Belleza` de Tottus colgaba `Salud`,
+`Articulos-de-Botiquin`, `Multivitaminicos` e `Incontinencia-y-Panales-Adulto`.
+⚠️ Lo que entra de más es **bebé**: Santa Isabel fusiona `bebe` (220 SKUs, 17% de
+su raíz) con el cuidado personal y separarlo serían 14 llaves de nivel 2, así que
+pañales y fórmulas puntúan con el θ de belleza. La categoría queda asimétrica
+entre cadenas —el bebé de Jumbo y el `Mundo-Bebe` de Tottus siguen afuera—; si
+molesta, lo que corresponde es una categoría `bebe` propia, no recortar la llave.
+
+⚠️ **La cuota de un tema con UNA sola categoría ruteada no puede pasar de
+`MAX_PER_CATEGORY_PER_DAY = 3`**, y eso ya está mal en producción: el tema
+`supermercado` tiene `daily_quota = 5` con una sola categoría, así que **dos de
+sus cinco lugares son inalcanzables**. Es la aritmética que este archivo manda
+rehacer al mover una cuota y que quedó sin hacer al escalarlas ×2,5 el 2026-11-04.
+Por eso `belleza` quedó en 3: ahí el tope y la cuota se tocan y ninguno decide por
+el otro.
+
 Runbooks vivos: [`HANDOFF.md`](HANDOFF.md) (estado y traspaso de sesión),
 [`DEPLOY.md`](DEPLOY.md) (puesta en producción),
 [`HANDOFF_MERCADOPAGO.md`](HANDOFF_MERCADOPAGO.md).
@@ -233,6 +266,19 @@ la página 1 en el fixture y la verificación de centinelas— está en
   `dias_con_serie` (días distintos con `items_ok > 0` en `scrape_runs`) y devuelve
   `EN ESPERA` mientras ese número no alcance `MIN_DAYS`. **Un agujero de
   infraestructura corre la fecha de evaluación de toda tienda que lo atravesó.**
+- **Un listing que nunca tuvo stock tampoco pudo madurar, y sale del
+  denominador.** `compute_baseline` filtra `if in_stock`, así que un listing sin
+  una sola observación con stock no tiene baseline ni `n_days` por diseño: su
+  reloj de `MIN_DAYS` arranca el día que aparece stock. Es la **segunda** causa de
+  falso positivo del mismo indicador, distinta de la de arriba y fácil de
+  confundir con ella. El 2026-11-04 Kruuse daba **APAGAR con 14%**: de los 628
+  listings de su cohorte, **518 nunca tuvieron stock** —es un importador de
+  maquinaria y vende a pedido, 3.467 de 3.772 en `backorder`— y sobre los 110 que
+  pudieron madurar son 89, o sea **81%: MANTENER**. Sobre las 15 tiendas la
+  corrección mueve tres y no empeora ninguna: kruuse 14%→81%, prat 82%→96% (ya era
+  MANTENER) y nike, cuyos 163 sin stock no cambian su 0% porque ahí la causa es el
+  agujero de octubre. Las columnas `s/stock` y `%bruto` del reporte dejan a la
+  vista cuántos se descontaron y qué decía el número viejo.
 - **El criterio de aceptación es una consulta, no una impresión**:
   `python -m scripts.aceptacion_tienda --store <slug>`. Mide, **sobre la cohorte
   de listings que tuvieron la oportunidad de madurar**, qué fracción llega a
@@ -392,6 +438,24 @@ la página 1 en el fixture y la verificación de centinelas— está en
   mismo. Pasó el 2026-10-26 con la 34. Es `docker compose build db-migrate`
   primero, o `--build` en el `run`; y verificar la columna en la base, no el
   mensaje.
+- **`--dry-run` NO ejercita el INSERT, y ahí se esconde la clase de bug más caro
+  de un adaptador nuevo.** `persist_batch` sale antes del INSERT cuando
+  `dry_run=True`, así que una corrida de validación recorre las llaves, parsea y
+  reporta "186 observaciones nuevas" **sin tocar la base**. Pasó el 2026-11-04 con
+  Cencosud: el dry-run salió perfecto y la primera pasada real dejó las cinco
+  llaves de Jumbo en `failed` con
+  `StringDataRightTruncationError: value too long for type character varying(64)`,
+  porque su `store_sku` es el slug de la ficha y llega a **130 caracteres** contra
+  los 64 de la columna (migración 39). Es el mismo patrón que la trampa de
+  `db-migrate` sobre una imagen vieja —el mensaje de éxito y el de "no hizo nada"
+  son el mismo— y la contramedida es la misma: **verificar el efecto, no el
+  mensaje**. Para un adaptador nuevo, eso es una corrida que escriba de verdad
+  contra una base descartable, o mirar `scrape_runs.status` después de la primera
+  pasada real.
+  ⚠️ Y el daño es desproporcionado al error: con `BATCH_SIZE = 100`, el primer
+  flush que falla se lleva la **categoría entera** a `failed` y se pierde todo lo
+  ya scrapeado de esa llave. Cinco llaves × ~3.300 productos quedaron sin una
+  observación por dos caracteres de más.
 - **`restart: unless-stopped` NO protege de un apagado manual, y eso ya costó
   dos agujeros.** Si los contenedores se detienen explícitamente (`docker compose
   stop/down`), Docker recuerda ese estado y **no los levanta** cuando el host
@@ -703,6 +767,63 @@ la página 1 en el fixture y la verificación de centinelas— está en
   su propio p50 sería la implementación divergente que la regla 2 prohíbe. Y la
   etiqueta va verbatim: `10GR` y `100UN` no son errores, son la base que elige la
   tienda, y dos `pum` de bases distintas no se comparan sin normalizar.
+- **El sitemap de una tienda puede estar viejo, y entonces sus redirecciones
+  fabrican solapamiento.** Jumbo y Santa Isabel reorganizaron su taxonomía: las
+  URLs que PLAN_SUPERMERCADO §4 había medido ahora responden 301, y dos raíces
+  distintas del sitemap caen **en el mismo destino** (`desayuno` → `/despensa`,
+  `congelados` → `/lacteos-huevos-y-congelados`). Dos `store_key` que redirigen al
+  mismo lugar escriben dos `price_points` del mismo listing por pasada y lo hacen
+  pesar el doble en su propio p50 — y el adaptador no lo ve, porque para él son
+  dos llaves. **Las llaves salen de la navegación vigente de la tienda, no de su
+  sitemap.**
+  ⚠️ El caso más caro de esa trampa apareció al conectar belleza:
+  **`jumbo.cl/farmacia` ya no existe y redirige a `/bebe-y-jugueteria`**. Una
+  llave con ese nombre no falla ni avisa — ingiere **juguetes bajo belleza** con
+  HTTP 200 y un listado perfectamente válido, y construye 30 días de serie de
+  precios equivocada antes de que alguien lo note. Es el mismo modo de falla que
+  `cat2049/Audifonos` de Falabella (la página con la forma correcta y el contenido
+  equivocado), pero fabricado por una redirección en vez de por un id mal
+  adivinado: acá el tamiz no es contar nombres sino **mirar la URL efectiva**, que
+  es lo que delata que `/farmacia` terminó en otra parte. Es el mismo principio que la llave `cat2049/Audifonos` de Falabella:
+  la llave correcta la publica la tienda, no la adivina uno.
+- **Y una medición de hace dos semanas puede estar vieja igual que el sitemap.**
+  Ese mismo plan concluyó que Jumbo y Santa Isabel **no paginan** —"probadas ocho
+  variantes, las ocho devuelven los mismos 40 primeros"— y de ahí salía una
+  estrategia de elegir a mano hojas de ≤40 productos, de las que solo 6 de 14
+  entraban. Medido el 2026-11-04: **paginan con `?page=N` y sin tope de
+  profundidad** (`jumbo/despensa` 83 páginas, 82×40+19 = 3.299 = su total
+  declarado; la 84 da 404). Alcanzan los departamentos, 5 llaves por tienda. Antes
+  de construir sobre una restricción medida, volver a medirla.
+- **Jumbo y Santa Isabel son las primeras tiendas de supermercado con stock real
+  en el listado**, y lo que lo prueba no es el campo sino **dónde caen los
+  agotados**: el orden por defecto los manda al final (`jumbo/despensa` páginas
+  1-41 al 100% `InStock`, páginas 81-83 al 100% `OutOfStock`). Entre 3,2% y 9,6%
+  del catálogo de Jumbo viene agotado. ⚠️ Medido **solo sobre la página 1** da
+  0,8%, que habría hecho concluir que el campo es una constante inútil — el engaño
+  de la página 1, otra vez. **La ficha no sirve para cruzar el dato**: ocho fichas
+  abiertas a mano, tres de ellas `OutOfStock` en el listado, devolvieron las ocho
+  `schema.org/InStock`. No construir un lector de `publisher/stock.py` sobre ella.
+  Consecuencia que se cruza con la guarda de arriba: ese 3-10% permanentemente
+  agotado **no madura nunca**, y sin el descuento de `s/stock` hundiría la
+  estabilidad medida de las dos tiendas.
+- **`cencosud_family` tampoco sostiene un canario exacto, y esta vez el dato está
+  a mano.** La tienda declara el total en el HTML y la paginación llega al final,
+  así que el chequeo exacto se puede calcular. No se usa: sobre el recorrido
+  completo de las diez llaves, **siete quedan entre 1 y 10 ítems cortas** y no de
+  forma estable —`jumbo/despensa` dio 3.299 de 3.299 en un recorrido y 3.299 de
+  3.303 en el siguiente—, o sea deriva entre el servicio que cuenta y el que
+  pagina. Siete llaves en `partial` casi toda pasada es un mensaje de Telegram por
+  pasada: la alarma que suena siempre. Misma decisión que la familia Falabella y
+  misma compensación: queda `catalogo_mas_grande_que_la_ventana` y el canario
+  estadístico.
+- **El bloque patrocinado de un listado se sirve además de su posición natural.**
+  En Jumbo la página 1 de `leches` abre con 4 productos marcados "Patrocinado" que
+  reaparecen más adelante en el recorrido: 298 filas → 294 únicos; en
+  `chocolates-galletas-y-snacks`, 1.873 → 1.824. Por eso `cencosud_family`
+  deduplica en la pasada entera, como `AndesgearAdapter` — con la misma letra
+  chica: es inocuo **solo mientras las llaves que se solapan mapeen a la misma
+  categoría interna**, porque gana la primera del orden de `db.load_store_targets`
+  y `belleza` ordena antes que `supermercado`.
 - **Los θ de `categories.discount_threshold` NO están calibrados.** Son valores
   de partida del plan. El gate de F1 es el output de `pricing/backtest.py`:
   precisión ≥80% con ≥3 ofertas/día/canal.
