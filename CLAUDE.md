@@ -35,32 +35,55 @@ techo físico. ⚠️ Eso cruza el umbral que el docstring del ranker llama "un 
 que el suscriptor mutea" — se tomó con el canal sin usuarios y es el primer número
 a revisar cuando los haya.
 
-**El destino pasa a ser (chat, tema) — en el código, todavía no en producción.**
-⚠️ **Verificado el 2026-11-04 contra la Bot API: `telegram_channel_id`
-(-1003914468578, "Ofertoon Vip") es un CANAL** (`getChat` → `type=channel`,
-`is_forum=None`), **no un grupo-foro**. Los canales no soportan temas, así que el
-bloqueo real no es "leer los `message_thread_id` del link de un mensaje": es que
-**no hay grupo-foro donde leerlos**. Hay que crearlo (o identificarlo si ya
-existe) y recablear el destino. Costo medido ese día: **cero suscriptores
-activos** (1 fila en `telegram_memberships`, `expired`/`kicked`), así que mover
-el destino hoy no mueve a nadie — es el momento más barato que va a haber.
-Y ojo con el volumen: las siete `daily_quota` suman **12/día** contra los 21-25
-que el canal plano publica hoy, o sea cablear los temas **baja el volumen a la
-mitad**. Es una decisión de producto, no un paso de cableado.
+**El destino es (chat, tema), y desde el 2026-11-04 está CABLEADO EN PRODUCCIÓN**
+(migración 35). El chat es `-1003735174401` ("Ofertooncl", `type=supergroup`,
+`is_forum=true`) y los siete temas tienen su `message_thread_id`. Verificado en
+vivo: `publicado candidato … en vip/tecnologia (message_id=20572)`, y el
+round-robin rotando tecnologia → hogar → vestuario.
+
+⚠️ **El destino anterior era un CANAL, y por eso los temas estuvieron cinco
+semanas sin cablear.** `getChat(-1003914468578)` daba `type=channel`,
+`is_forum=None`: los canales **no soportan temas**, así que el bloqueo nunca fue
+"leer los `message_thread_id` del link" — era que no había grupo donde leerlos. El
+canal viejo quedó huérfano (nadie publica ahí y el gate dejó de administrarlo); no
+se borró nada. Se pudo mover porque el costo era cero: `telegram_memberships`
+tenía **una** fila, `expired` y ya `kicked`.
+
+⚠️ **El ritmo del chat se multiplicó por 6 y eso NO estaba previsto.**
+`MIN_MINUTES_BETWEEN = 30` es un espaciado **por destino**, y con un solo destino
+(el canal plano) eso daba 2 mensajes/hora. Con siete temas rotando, cada uno tiene
+su propio reloj de 30 min, así que el chat recibe **uno por vuelta del daemon = 1
+cada 5 min = hasta 12/hora** (medido el 2026-11-04: 12:23 tecnologia, 12:28 hogar,
+12:33 vestuario). Consecuencia: la cuota de 30/día se agota en ~2,5 h y el chat
+queda mudo el resto de la ventana de 15 h — que es exactamente lo que el docstring
+del ranker dice que el espaciado existe para evitar ("escupir la cuota entera y
+quedar mudo el resto del día"). **No se tocó**: arreglarlo es subir
+`MIN_MINUTES_BETWEEN`, agregar un espaciado a nivel chat, o aceptarlo, y las tres
+son decisiones de producto.
+
+Las `daily_quota` se escalaron ×2,5 en la misma migración (12 → **30**), por
+decisión del dueño del 2026-11-04. Las de la migración 26 sumaban 12 porque se
+dimensionaron cuando la cuota global era 6, y quedaron obsoletas al subirla a 30
+el 21-oct sin que nadie las recalculara —los temas no estaban activos—. Se escaló
+el vector original en vez de inventar un reparto nuevo, para preservar a la vez
+sus proporciones y el volumen decidido el 21-oct: tecnologia 8, vestuario 5,
+deporte 5, supermercado 5, hogar 3, ferreteria 3, viajes 1. **Viajes queda mudo**:
+tiene thread pero cero categorías ruteadas.
 
 Desde la migración 26 el código espera un grupo-foro con siete temas
 —Tecnología, Hogar, Vestuario, Deporte, S.Mercado, Ferretería, Viajes— y el tema
 lo elige la categoría del candidato
 (`telegram_tier_categories.topic_id`). La cuota es **de cada tema**
-(`telegram_topics.daily_quota`, **12/día** sumadas: 3+1+2+2+2+1+1 — este CLAUDE.md
-decía 11 y era un error de suma) y no del canal, porque con un
+(`telegram_topics.daily_quota`, **30/día** sumadas desde la migración 35; eran 12
+y este CLAUDE.md decía 11, que era un error de suma) y no del canal, porque con un
 techo global el tema con volumen se come los lugares de los demás: medido,
 Tecnología produce ~8,8 señales/día contra ~1,5 de Ferretería. Un tema sin
 `message_thread_id` no es un destino, y mientras ningún tema esté cableado el
-poster publica al chat plano como antes — por eso la migración se pudo aplicar con
-el publisher encendido. **Al 2026-10-01 los `message_thread_id` NO están
-cableados**: salen del grupo ya creado y hay que leerlos del link de un mensaje de
-cada tema.
+poster publica al chat plano como antes — por eso la migración 26 se pudo aplicar
+con el publisher encendido, y por eso el canal siguió publicando normalmente las
+cinco semanas que los temas estuvieron en NULL. Los `message_thread_id` salen del
+link de un mensaje de cada tema (`t.me/c/<chat>/<thread_id>/<message_id>`), que es
+cómo se obtuvieron para la migración 35.
 
 Runbooks vivos: [`HANDOFF.md`](HANDOFF.md) (estado y traspaso de sesión),
 [`DEPLOY.md`](DEPLOY.md) (puesta en producción),

@@ -272,9 +272,13 @@ La decisión del 2026-10-19 (supermercado = tema del canal) resuelve el problema
 la §1 **sin tocar el score**: en su propio tema no compite con el televisor, así
 que el piso en CLP deja de ser bloqueante. Eran dos trabajos chicos:
 
-1. **Cablear el tema.** `telegram_topics` ya tiene S.Mercado con cuota 2 desde la
-   migración 26; le falta el `message_thread_id`, que sale del link de un mensaje
-   del tema. Es el único paso que necesita acción humana — **sigue pendiente**.
+1. ✅ **Cablear el tema** — hecho el 2026-11-04, migración 35.
+   `telegram_topics.supermercado` quedó con `message_thread_id = 20549` y cuota
+   **5** (escalada de 2 junto con las otras seis). El destino del tier pasó del
+   canal viejo al grupo-foro `-1003735174401`.
+   ⚠️ Lo que bloqueaba no era leer el `message_thread_id`: el
+   `telegram_channel_id` apuntaba a un **canal** (`type=channel`), y los canales no
+   soportan temas. Había que crear el grupo-foro primero.
 2. ✅ **Guardar el precio por unidad de medida** (§2bis) — hecho el 2026-10-26,
    migración 34: `Pum` (etiqueta + precio, los dos juntos) en `RawProduct`, dos
    columnas en `price_points` con un CHECK que impide una sin la otra,
@@ -301,6 +305,9 @@ La etiqueta se muestra **tal como la manda la tienda** (`KG`, `LT`, `10GR`,
 `100UN`): traducirla a palabras obliga a decidir qué son `MR` y `MT`, las dos
 presentes en el catálogo, y una unidad mal traducida miente sobre la mitad del
 dato.
+
+Con eso **la Fase 1 queda cerrada**. Lo que falta para que el tema S.Mercado se
+llene es el reloj de Tottus, no código: ver §3.
 
 **Lo que NO se hace**: tocar `compute_score`. Su docstring tiene razón para el
 rango de ticket del canal general, y el problema que quedaba —el estuche de $1.800
