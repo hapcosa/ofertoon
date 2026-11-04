@@ -35,11 +35,25 @@ techo físico. ⚠️ Eso cruza el umbral que el docstring del ranker llama "un 
 que el suscriptor mutea" — se tomó con el canal sin usuarios y es el primer número
 a revisar cuando los haya.
 
-**El destino pasa a ser (chat, tema).** Desde la migración 26 el canal es un
-grupo-foro con siete temas —Tecnología, Hogar, Vestuario, Deporte, S.Mercado,
-Ferretería, Viajes— y el tema lo elige la categoría del candidato
+**El destino pasa a ser (chat, tema) — en el código, todavía no en producción.**
+⚠️ **Verificado el 2026-11-04 contra la Bot API: `telegram_channel_id`
+(-1003914468578, "Ofertoon Vip") es un CANAL** (`getChat` → `type=channel`,
+`is_forum=None`), **no un grupo-foro**. Los canales no soportan temas, así que el
+bloqueo real no es "leer los `message_thread_id` del link de un mensaje": es que
+**no hay grupo-foro donde leerlos**. Hay que crearlo (o identificarlo si ya
+existe) y recablear el destino. Costo medido ese día: **cero suscriptores
+activos** (1 fila en `telegram_memberships`, `expired`/`kicked`), así que mover
+el destino hoy no mueve a nadie — es el momento más barato que va a haber.
+Y ojo con el volumen: las siete `daily_quota` suman **12/día** contra los 21-25
+que el canal plano publica hoy, o sea cablear los temas **baja el volumen a la
+mitad**. Es una decisión de producto, no un paso de cableado.
+
+Desde la migración 26 el código espera un grupo-foro con siete temas
+—Tecnología, Hogar, Vestuario, Deporte, S.Mercado, Ferretería, Viajes— y el tema
+lo elige la categoría del candidato
 (`telegram_tier_categories.topic_id`). La cuota es **de cada tema**
-(`telegram_topics.daily_quota`, 11/día en total) y no del canal, porque con un
+(`telegram_topics.daily_quota`, **12/día** sumadas: 3+1+2+2+2+1+1 — este CLAUDE.md
+decía 11 y era un error de suma) y no del canal, porque con un
 techo global el tema con volumen se come los lugares de los demás: medido,
 Tecnología produce ~8,8 señales/día contra ~1,5 de Ferretería. Un tema sin
 `message_thread_id` no es un destino, y mientras ningún tema esté cableado el
@@ -185,6 +199,17 @@ la página 1 en el fixture y la verificación de centinelas— está en
 - **Anotar la fecha de conexión.** Una tienda nueva no publica nada durante 30
   días (`MIN_POINTS`/`MIN_DAYS` son un rechazo, no un default), así que se
   evalúa 30 días después de esa fecha, nunca antes.
+- **Los días que habilitan a madurar son los OBSERVADOS, no los calendario.**
+  `scripts.aceptacion_tienda` comparaba contra la antigüedad de la conexión, y el
+  2026-11-04 eso dio **APAGAR para Tottus y Nike con 0% de maduros** — teniendo
+  2.755 y 80 aceptados y 44 y 11 publicaciones. Era aritmética: conectadas el
+  1-oct, 34 días calendario menos los 5 del agujero del 14-18 de octubre son 29
+  observados, así que **ningún** listing suyo podía llegar a los 30 de `MIN_DAYS`;
+  el 0% era por construcción. Hacerle caso habría apagado dos tiendas grandes a
+  la vez — justo lo que la guarda de volumen vigila. Ahora el veredicto mira
+  `dias_con_serie` (días distintos con `items_ok > 0` en `scrape_runs`) y devuelve
+  `EN ESPERA` mientras ese número no alcance `MIN_DAYS`. **Un agujero de
+  infraestructura corre la fecha de evaluación de toda tienda que lo atravesó.**
 - **El criterio de aceptación es una consulta, no una impresión**:
   `python -m scripts.aceptacion_tienda --store <slug>`. Mide, **sobre la cohorte
   de listings que tuvieron la oportunidad de madurar**, qué fracción llega a

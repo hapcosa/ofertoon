@@ -28,6 +28,17 @@ El umbral es un criterio de producto, no una constante del detector: por debajo
 de `UMBRAL_ESTABILIDAD` la tienda rota demasiado catálogo y se desactiva con
 `UPDATE stores SET is_active = false`.
 
+⚠️ **Los días que habilitan a un listing a madurar son los días OBSERVADOS, no
+los días calendario**, y confundirlos hace que el script culpe a la tienda de un
+agujero de infraestructura. Pasó el 2026-11-04: Tottus y Nike, conectadas el
+1-oct, daban **0% de maduros y veredicto APAGAR** con 2.755 y 80 aceptados
+respectivamente. La causa era aritmética: 34 días calendario menos los 5 del
+agujero del 14-18 de octubre son 29 días observados, así que **ningún** listing
+suyo podía llegar a los 30 que exige `MIN_DAYS` — el 0% era por construcción y no
+por rotación. Hacerle caso habría apagado dos tiendas grandes a la vez, que es
+justo lo que la guarda de volumen vigila. Por eso el veredicto mira
+`dias_con_serie` (de `scrape_runs`) y no la antigüedad de la conexión.
+
 Uso:
     python -m scripts.aceptacion_tienda                  # todas las tiendas
     python -m scripts.aceptacion_tienda --store easy
@@ -88,10 +99,21 @@ CONSULTA = """
           JOIN listings AS l ON l.id = c.listing_id
          WHERE c.verdict = 'accepted'
          GROUP BY l.store_id
+    ),
+    -- Días en que la tienda DEJÓ serie. Es el techo de `n_days` de cualquiera
+    -- de sus listings, así que es lo que decide si la cohorte pudo madurar.
+    -- Sale de `scrape_runs` (26.744 filas) y no de `price_points` (millones):
+    -- `items_ok > 0` es exactamente "esta pasada escribió observaciones".
+    serie AS (
+        SELECT store_id, COUNT(DISTINCT started_at::date) AS dias
+          FROM scrape_runs
+         WHERE items_ok > 0
+         GROUP BY store_id
     )
     SELECT s.slug,
            s.is_active,
            (NOW()::date - x.desde)      AS dias_conectada,
+           COALESCE(d.dias, 0)          AS dias_con_serie,
            x.nuevos                     AS nuevos,
            COALESCE(c.n, 0)             AS cohorte,
            COALESCE(c.maduros, 0)       AS maduros,
@@ -100,19 +122,37 @@ CONSULTA = """
       JOIN conexion AS x ON x.store_id = s.id
       LEFT JOIN cohorte AS c ON c.store_id = s.id
       LEFT JOIN aceptados AS a ON a.store_id = s.id
+      LEFT JOIN serie AS d ON d.store_id = s.id
      WHERE ($3::text IS NULL OR s.slug = $3)
      ORDER BY s.slug
 """
 
 
-def veredicto(dias: int, cohorte: int, maduros: int, aceptados: int) -> str:
+def veredicto(
+    dias: int, cohorte: int, maduros: int, aceptados: int, dias_con_serie: int
+) -> str:
     """El criterio, en un solo lugar.
 
     Antes de los 30 días no hay nada que decidir: `MIN_DAYS` es un rechazo, no un
     default, y toda tienda recién conectada da 0% por construcción.
+
+    `dias_con_serie` es la guarda contra culpar a la tienda de un agujero del
+    sistema: mientras la tienda no haya sido observada `MIN_DAYS` días distintos,
+    su techo de maduración es menor que el umbral y el porcentaje no significa
+    nada. Ver el aviso del docstring del módulo (Tottus y Nike, 2026-11-04).
     """
     if dias < MIN_DAYS:
         return f"EN ESPERA — faltan {MIN_DAYS - dias} días para poder evaluarla"
+    if dias_con_serie < MIN_DAYS:
+        faltan = MIN_DAYS - dias_con_serie
+        return (
+            f"EN ESPERA — lleva {dias} días conectada pero solo {dias_con_serie} "
+            f"OBSERVADOS ({dias - dias_con_serie} perdidos en agujeros del "
+            f"sistema): ningún listing puede llegar a {MIN_DAYS} todavía, así que "
+            f"el {maduros / cohorte if cohorte else 0:.0%} de arriba no mide la "
+            f"tienda. Faltan {faltan} pasada(s) diaria(s) "
+            f"[lleva {aceptados} aceptados]"
+        )
     if cohorte == 0:
         return "EN ESPERA — ni un listing cumplió aún la ventana de la cohorte"
     ratio = maduros / cohorte
@@ -151,18 +191,19 @@ async def main() -> int:
         print("sin tiendas que reportar", file=sys.stderr)
         return 1
 
-    print(f"{'tienda':<12} {'días':>5} {'cohorte':>8} {'maduros':>8} {'%':>5} "
-          f"{'nuevos':>7} {'acept.':>7}  veredicto")
-    print("-" * 118)
+    print(f"{'tienda':<12} {'días':>5} {'serie':>6} {'cohorte':>8} {'maduros':>8} "
+          f"{'%':>5} {'nuevos':>7} {'acept.':>7}  veredicto")
+    print("-" * 132)
     for row in rows:
         cohorte = row["cohorte"]
         pct = (row["maduros"] / cohorte) if cohorte else 0.0
         estado = "" if row["is_active"] else "  [ya desactivada]"
         print(
-            f"{row['slug']:<12} {row['dias_conectada']:>5} {cohorte:>8} "
+            f"{row['slug']:<12} {row['dias_conectada']:>5} "
+            f"{row['dias_con_serie']:>6} {cohorte:>8} "
             f"{row['maduros']:>8} {pct:>5.0%} {row['nuevos']:>7} "
             f"{row['aceptados']:>7}  "
-            f"{veredicto(row['dias_conectada'], cohorte, row['maduros'], row['aceptados'])}"
+            f"{veredicto(row['dias_conectada'], cohorte, row['maduros'], row['aceptados'], row['dias_con_serie'])}"
             f"{estado}"
         )
     return 0
