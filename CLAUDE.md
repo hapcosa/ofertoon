@@ -25,6 +25,7 @@ Lo que necesitás leer depende de lo que vas a hacer. **No leas todo.**
 | tocar el publisher, cuotas o temas | §Pasos 2, §Estado y [`TRAMPAS.md`](TRAMPAS.md) **G** |
 | aplicar migraciones o desplegar | §Pasos 3 y 4, [`DEPLOY.md`](DEPLOY.md) y [`TRAMPAS.md`](TRAMPAS.md) **F** |
 | entender por qué una guarda existe | [`TRAMPAS.md`](TRAMPAS.md) **E** |
+| trabajar en paralelo con otro agente | §Trabajo multi-agente — **antes de crear el worktree**, no después |
 | expandir a verticales nuevas | [`PLAN_EXPANSION.md`](PLAN_EXPANSION.md) |
 | supermercado y belleza | [`PLAN_SUPERMERCADO.md`](PLAN_SUPERMERCADO.md) |
 | retomar una sesión | [`HANDOFF.md`](HANDOFF.md) · [`HANDOFF_MERCADOPAGO.md`](HANDOFF_MERCADOPAGO.md) |
@@ -88,6 +89,9 @@ producto que este proyecto existe para no ser.
 11. **Nunca editar una migración ya aplicada.** `migrate.py` guarda checksum y
     grita `checksum_mismatch`. Si hay que corregir, se escribe una nueva.
 12. **No commitees ni pushees salvo que te lo pidan.**
+13. **Un agente, una rama, un worktree.** Nunca dos agentes sobre el mismo
+    árbol. Ver §Trabajo multi-agente: no es una convención de orden, es que las
+    tres formas de pisarse que ya ocurrieron **no fallan ruidosamente**.
 
 ---
 
@@ -182,6 +186,93 @@ export TEST_DATABASE_URL="postgresql://ofertas:$POSTGRES_PASSWORD@localhost:5436
 
 Sin `TEST_DATABASE_URL` saltea los 54 tests de DB y **parece verde**: no vale.
 El setup hace `DROP SCHEMA public CASCADE` — nunca apuntarlo a la base real.
+
+---
+
+## Trabajo multi-agente: cómo no pisarse
+
+Varios agentes trabajan este repo a la vez. Las tres colisiones de abajo **ya
+pasaron**, y ninguna falló ruidosamente: en los tres casos el trabajo se perdió o
+se corrompió sin un solo error en pantalla.
+
+```bash
+cd ~/servicios/ofertoon
+git worktree add ../ofertoon-<tema> -b feat/<tema>
+cd ../ofertoon-<tema>
+```
+
+### 1. Antes de crear un worktree, commiteá
+
+**Un worktree nace del último COMMIT, no del árbol de trabajo.** Si hay trabajo
+sin commitear, el worktree nuevo **no lo ve** — y el agente que lo use va a
+reescribir lo que ya existe creyendo que no existe.
+
+Pasó el 4-nov: el adaptador de Cencosud y las migraciones 36-39 estaban sin
+commitear, y un worktree creado en ese momento habría numerado su primera
+migración como 36.
+
+```bash
+ls migrations/ | tail -3      # ¿están las últimas?
+git log --oneline -1          # ¿las incluye el último commit?
+```
+
+### 2. Reservá el número de migración ANTES de escribirla
+
+**Dos agentes escribieron una `40_` el mismo día** (una de Ripley/Hites, otra de
+WooCommerce) y las dos quedaron sin commitear en árboles distintos, así que
+ninguno vio la del otro. Dos migraciones con el mismo número son un
+`checksum_mismatch` en cuanto una se aplica — y arreglarlo después obliga a
+renumerar y a corregir todas las referencias cruzadas de los headers.
+
+El número libre **no es** `ls migrations/ | tail -1` de tu árbol: es el mayor de
+**todas** las ramas.
+
+```bash
+git fetch --all 2>/dev/null
+git branch -a --format='%(refname:short)' | while read r; do
+  git ls-tree --name-only "$r" migrations/ 2>/dev/null
+done | sed 's|.*/||' | grep -oE '^[0-9]+' | sort -n | tail -1
+```
+
+(El `sed` no es adorno: `git ls-tree` devuelve `migrations/46_...`, así que sin
+él el `grep` anclado en `^` no matchea nada y el comando contesta **vacío** — que
+se lee igual que "no hay migraciones" y te deja escribir la 40 otra vez.)
+
+### 3. Un cambio no se parte entre dos árboles
+
+Si el código va en una rama y su migración en otra, los tests pasan en las dos y
+el sistema está roto en las dos. Pasó en esta sesión: el código de la promoción de
+multicompra quedó en `main` y su migración 46 en el worktree.
+
+**Una unidad de trabajo —adaptador + fixture + tests + migración— vive entera en
+un solo árbol.**
+
+### 4. Los recursos compartidos no están aislados
+
+El worktree comparte **el Postgres `:5436` y el proyecto Docker** con producción,
+que está encendida.
+
+- 🔴 **Nunca `docker compose run db-migrate` desde un worktree.** Escribe en la
+  base real, y además aplica solo las migraciones que *su* `glob` encuentra: con
+  la secuencia repartida en dos árboles, **saltea las del otro en silencio** (ver
+  §Paso 3). Las migraciones se **escriben** en la rama; aplicarlas es una acción
+  del dueño, desde un checkout con la secuencia completa.
+- 🔴 **Nunca reiniciar el scraper ni el publisher desde un worktree.** Matás una
+  pasada a medias, que es el modo de falla que `runner.pasadas_flacas` vigila.
+- ⚠️ **Las bases descartables de prueba necesitan nombre propio por rama**
+  (`ofertas_test_<tema>`). Dos agentes con el mismo nombre se borran la base
+  mutuamente a mitad de una corrida, y el síntoma es un test que falla por una
+  tabla que "no existe".
+- ⚠️ **No pegarle a la misma tienda desde dos procesos.** El `RateLimiter` es por
+  proceso, así que dos agentes a 0,33 rps le pegan a 0,66 y la tienda contesta
+  429. Perdí dos corridas de Lippi así, y encima me llevó a bajar el rps
+  persiguiendo un fantasma: el 429 era por headers.
+
+### 5. Al terminar
+
+Commiteá en tu rama, mergeá a `main` y **recién entonces** borrá el worktree
+(`git worktree remove`). Un worktree abandonado con trabajo sin commitear es
+trabajo que el próximo agente no va a encontrar.
 
 ---
 
