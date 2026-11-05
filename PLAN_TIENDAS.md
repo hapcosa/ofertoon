@@ -196,8 +196,8 @@ agregue un piso absoluto de ahorro en CLP.
 
 | Tienda | Plataforma | Vía |
 |---|---|---|
-| Jumbo (`jumbo.cl`) | VTEX + front Next | API de catálogo no respondió en la ruta estándar; requiere inspección |
-| Preunic (`preunic.cl`) | Next.js | sin determinar |
+| ~~Jumbo (`jumbo.cl`)~~ | VTEX + front Next | ✅ **conectada el 2026-11-04** (migración 37), junto con Santa Isabel. Ver abajo |
+| Preunic (`preunic.cl`) | Next.js | sin determinar — la categoría `belleza` que las habilitaba ya existe (migraciones 36 y 38) |
 | Salcobrand (`salcobrand.cl`) | sin determinar | sin determinar |
 | Maicao (`maicao.cl`) | Salesforce CC | grid HTML |
 
@@ -209,15 +209,24 @@ navegador:
 
 | Tienda | robots.txt | Vía de catálogo | Veredicto |
 |---|---|---|---|
-| **Jumbo** | 200, con la firma VTEX (`Disallow: *?map=`) | `/api/catalog_system/pub/*` → **404** en las 4 rutas estándar (`products/search`, `category/tree`, graphql IO, `sessions`). Migró a `provider-jumbo.ecomm.cencosud.com`, que da **403**. `sitemap.xml` sí responde (153 KB) | ~~**L** — sin API pública~~ → 🟢 **VIABLE, corregido el 2026-10-19** |
-| **Santa Isabel** | igual que Jumbo (mismo stack Cencosud) | idéntico: 404 en todas | ~~**L**~~ → 🟢 **VIABLE, mismo caso** |
+| **Jumbo** | 200, con la firma VTEX (`Disallow: *?map=`) | `/api/catalog_system/pub/*` → **404** en las 4 rutas estándar (`products/search`, `category/tree`, graphql IO, `sessions`). Migró a `provider-jumbo.ecomm.cencosud.com`, que da **403**. `sitemap.xml` sí responde (153 KB) | ~~**L** — sin API pública~~ → ~~🟢 VIABLE (2026-10-19)~~ → ✅ **CONECTADA el 2026-11-04** (migración 37) |
+| **Santa Isabel** | igual que Jumbo (mismo stack Cencosud) | idéntico: 404 en todas | ~~**L**~~ → ✅ **CONECTADA el 2026-11-04**, mismo adaptador |
 
 ⚠️ **La fila de Jumbo y Santa Isabel estaba equivocada, y el error era de método —
 el mismo que con Tottus.** Que su API VTEX dé 404 es cierto y no importa: **el
 listado viene renderizado en el HTML**, en un JSON-LD `ItemList` de 40 productos con
 precio en el 100%, `availability` y `brand`. No hace falta ir ficha por ficha.
-Reauditado el 2026-10-19; el detalle completo, con lo que falta medir y la
-estrategia de hojas de ≤40 (no paginan), está en
+Reauditado el 2026-10-19 y **conectadas el 2026-11-04** con un adaptador
+compartido (`scrapers/stores/cencosud_family.py`): 10 llaves de supermercado +
+2 de belleza, 20.000 SKUs declarados.
+
+⚠️ **Y la estrategia de "hojas de ≤40 porque no paginan" quedó sin efecto: sí
+paginan.** Medido el 2026-11-04 con `?page=N` y recorrido completo —
+`jumbo/despensa` son 83 páginas, 82×40+19 = 3.299 = su total declarado, y la 84
+contesta 404 como Easy, sin tope de paginación profunda. Alcanzan los
+departamentos. El detalle, las tres mediciones que faltaban (orden estable,
+`rate_limit_rps`, confiabilidad de `availability`) y por qué esta familia **no**
+sostiene un canario exacto están en
 [`PLAN_SUPERMERCADO.md`](PLAN_SUPERMERCADO.md) §4.
 | **Lider** | **200, y `Disallow: /search*`** | `super.lider.cl/search?q=` responde **200 con precios en `__NEXT_DATA__`** (996 KB, contiene `priceInfo`) — o sea que técnicamente funciona | ⚠️ **DECISIÓN, ver abajo** |
 | **aCuenta** | ConnectError + `CERTIFICATE_VERIFY_FAILED` | — | **L** — el dominio no resuelve con certificado válido |

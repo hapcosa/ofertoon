@@ -156,7 +156,7 @@ De sus 19 paraguas de nivel 1, entraron 5. Quedan fuera, por razones distintas:
 |---|---|---|
 | ~~`Vinos-y-licores`~~ | 1.650 | ✅ **conectada el 2026-10-19** (migración 33) |
 | ~~`Cervezas`~~ | 180 | ✅ **conectada el 2026-10-19** |
-| `Belleza` | 1.106 | no es supermercado estricto; cabría en una categoría propia |
+| ~~`Belleza`~~ | 1.039 | ✅ **conectada el 2026-11-04** como categoría propia **`belleza` = "Belleza y farmacia"** (migraciones 36 y 38). Declara 1.039, no 1.106, y ya colgaba farmacia (`Salud`, botiquín, multivitamínicos, incontinencia) |
 | `Panaderia-y-Pasteleria` | 498 | perecedero de rotación diaria |
 | `Frutas-y-Verduras` | 167 | **precio estacional**: el p50 de 60 días de un tomate es el promedio de dos temporadas |
 | `Carnes` | 240 | idem, y además peso variable |
@@ -176,8 +176,8 @@ real y no inventar rutas**—, dos se abren:
 | cadena | estado 1-oct | estado 19-oct | veredicto |
 |---|---|---|---|
 | **Tottus** | L (403/503) | conectada | ✅ en producción |
-| **Jumbo** | L, "sin API pública" | **HTTP 200, listado en el HTML** | 🟢 **VIABLE** |
-| **Santa Isabel** | L, "idéntico a Jumbo" | **HTTP 200, listado en el HTML** | 🟢 **VIABLE** |
+| **Jumbo** | L, "sin API pública" | **HTTP 200, listado en el HTML** | ✅ conectada el 4-nov (migr. 37) |
+| **Santa Isabel** | L, "idéntico a Jumbo" | **HTTP 200, listado en el HTML** | ✅ conectada el 4-nov (migr. 37) |
 | **Lider** | tajada chica | **no está bloqueada: está vedada por robots salvo las fichas** | 🟡 permitida, pero costo por SKU |
 | **Unimarc** | 403 hasta en robots | **403 confirmado, en todo** | ❌ bloqueada de verdad |
 | **aCuenta** | certificado inválido | **`CERTIFICATE_VERIFY_FAILED`** | ❌ |
@@ -235,30 +235,90 @@ Lo bueno, medido sobre `jumbo.cl/lacteos-y-quesos/leches`:
 - `robots.txt` responde 200 y ofrece su sitemap: **816 URLs, 45 raíces y 771
   hojas**.
 
-Lo malo, y define la estrategia:
+Lo malo:
 
-- **No paginan.** Probadas ocho variantes (`?page=`, `?PageNumber=`, `?from/to=`,
-  `?_from/_to=`, `?PS=&From=`, `?O=OrderBy…`, `?sort=`, `?order=`): las ocho
-  devuelven los **mismos 40 primeros**. Es el caso del SSR de Paris.
 - **No traen GTIN.** Las claves del item son `@type, brand, image, name, offers,
   url` y nada más. Así que no resuelven el cross-store, que hoy da cero.
+- **Tampoco traen `price_normal`**: `offers` tiene un solo precio, así que no hay
+  descuento declarado que medir. Es el caso de Nike (ver §4bis).
 
-**Estrategia obligada: hojas de ≤40 productos.** Es el mismo principio que el repo
-ya aplica a VTEX ("las llaves son las subcategorías, nunca la raíz"). Muestreadas 14
-hojas al azar de las 771:
+### ⚠️ Corrección del 2026-11-04: **SÍ PAGINAN**, y eso cambió la estrategia
 
-    entran completas en 40:  6 de 14  (42%)
-    productos declarados:    2.205 en la muestra, promedio 157 por hoja
+Esta sección decía "**no paginan** — probadas ocho variantes, las ocho devuelven
+los mismos 40 primeros", y de ahí salía una estrategia de **hojas elegidas a mano
+de ≤40 productos**, de las que solo 6 de 14 muestreadas entraban completas.
 
-O sea **hay que elegir las hojas a mano**, llave por llave, verificando que cada una
-declare ≤40. Las que no entren quedan con cobertura parcial y sin canario exacto,
-igual que Zapatillas y Audífonos en Falabella.
+Medido el 2026-11-04 con `?page=N`, recorrido completo:
 
-⚠️ **Lo que NO se midió de Jumbo/Santa Isabel**, y hace falta antes de conectar:
-la estabilidad del orden entre días (la lección de Tottus: un orden inestable deja
-SKUs sin ver nunca y nada madura), el `rate_limit_rps` que su `robots.txt` admite,
-y si `availability` es confiable o es otra trampa como el `availability` del
-listado de Tottus, que habla de modos de envío.
+    jumbo/lacteos-huevos-y-congelados/leches   8 págs   7×40+18 = 298 = declarado
+    jumbo/despensa                            83 págs  82×40+19 = 3.299 = declarado
+    santaisabel/limpieza                      19 págs            724 = declarado
+
+y la página siguiente a la última contesta **HTTP 404**, igual que Easy. **No hay
+tope de paginación profunda** —a diferencia de VTEX, que corta en ~2.500—: la
+página 83 de `despensa` sirve sus 19 productos finales.
+
+O sea el plan sobreestimaba el costo y subestimaba el alcance: no hay que elegir
+771 hojas a mano, **alcanzan los departamentos** (5 llaves por tienda). Qué cambió
+entre una medición y la otra: la tienda **reorganizó su taxonomía** y las URLs de
+este plan ahora responden 301 (`/lacteos-y-quesos/leches` →
+`/lacteos-huevos-y-congelados/leches`). La redirección conserva el query string
+—verificado—, así que no es la explicación de la medición vieja.
+
+⚠️ **Y la taxonomía vieja quedó como una trampa de solapamiento**: `desayuno` y
+`congelados` ya no existen y redirigen a `/despensa` y a
+`/lacteos-huevos-y-congelados`. Dos `store_key` que caen en el mismo destino
+escriben dos `price_points` del mismo listing por pasada. Las llaves tienen que
+ser los paths **vigentes**, leídos de la navegación de la tienda y **no de su
+sitemap**, que quedó viejo.
+
+### Las tres cosas que faltaban medir: medidas (2026-11-04)
+
+1. ✅ **El orden es estable.** Tres requests idénticas a `leches` devolvieron el
+   mismo orden y el mismo conjunto de 40, y el recorrido de 8 páginas dio 298
+   filas con 4 repetidos. No hace falta buscar un orden determinista: el default
+   lo es. Los parámetros de orden de VTEX (`?O=OrderByPriceASC`, `DESC`,
+   `NameASC`) se **ignoran**.
+2. ✅ **`rate_limit_rps` = 0,5 para las dos.** Santa Isabel declara
+   `Crawl-delay: 1` (permitiría el doble) y Jumbo no declara ninguno; las dos
+   habilitan a ClaudeBot por nombre. Queda en el default conservador del repo.
+   Tampoco hace falta disfrazar el User-Agent: `DEFAULT_USER_AGENT` trae el
+   listado completo en las dos.
+3. ✅ **`availability` es señal de verdad, no la trampa de Tottus.** Lo prueba
+   dónde caen los agotados: el orden por defecto los manda al final
+   (`jumbo/despensa` páginas 1-41 al 100% InStock, páginas 81-83 al 100%
+   OutOfStock). Entre 3,2% y 9,6% del catálogo de Jumbo y 0% a 2,1% del de Santa
+   Isabel viene agotado. ⚠️ Medido **solo sobre la página 1** da 0,8%: el engaño
+   de la página 1 otra vez. **La ficha no sirve para cruzarlo** — ocho fichas
+   abiertas a mano (tres `OutOfStock` en el listado, cinco `InStock`) devolvieron
+   las ocho `schema.org/InStock`.
+
+### Lo que NO se pudo sostener: el canario exacto
+
+El total declarado está en el HTML y la paginación llega al final, así que el
+chequeo exacto **se puede calcular** — y no se usa. Sobre el recorrido completo de
+las diez llaves, **siete quedan entre 1 y 10 ítems cortas**, y no de forma estable:
+`jumbo/despensa` dio 3.299 de 3.299 en un recorrido y 3.299 de 3.303 en el
+siguiente. Es deriva entre el servicio que cuenta y el que pagina. Con el canario
+exacto encendido eso serían siete llaves en `partial` casi toda pasada, y un
+`partial` manda un mensaje de Telegram por pasada: la alarma que suena siempre.
+Es la misma decisión que la familia Falabella, con la misma compensación — queda
+el aviso `catalogo_mas_grande_que_la_ventana` y el canario estadístico. La tabla
+está en el docstring de `cencosud_family._CencosudSupermarketAdapter.completeness`.
+
+### 4bis. El `pum` de estas dos tiendas existe, y está deliberadamente afuera
+
+El payload RSC de la página trae, por producto, `listPrice`, `stock` y
+**`ppumPrice` + `ppumMeasurementUnit`**, o sea el precio por unidad de medida que
+la §2bis convirtió en el argumento central del copy de supermercado. No se lee:
+es el formato de flight de React —JSON escapado dentro de strings, con
+referencias (`$L1ce`), back-references y centinelas (`$undefined`)—, el mismo
+criterio por el que el adaptador de Kruuse eligió su feed antes que el RSC de sus
+categorías.
+
+Consecuencia concreta: **las ofertas de Jumbo y Santa Isabel salen sin la línea
+del precio por kilo**, como las 8 de 24 de Tottus que no tienen unidad de medida.
+Pagar ese parseo es una decisión de producto, no una tarea pendiente.
 
 ---
 
@@ -272,9 +332,13 @@ La decisión del 2026-10-19 (supermercado = tema del canal) resuelve el problema
 la §1 **sin tocar el score**: en su propio tema no compite con el televisor, así
 que el piso en CLP deja de ser bloqueante. Eran dos trabajos chicos:
 
-1. **Cablear el tema.** `telegram_topics` ya tiene S.Mercado con cuota 2 desde la
-   migración 26; le falta el `message_thread_id`, que sale del link de un mensaje
-   del tema. Es el único paso que necesita acción humana — **sigue pendiente**.
+1. ✅ **Cablear el tema** — hecho el 2026-11-04, migración 35.
+   `telegram_topics.supermercado` quedó con `message_thread_id = 20549` y cuota
+   **5** (escalada de 2 junto con las otras seis). El destino del tier pasó del
+   canal viejo al grupo-foro `-1003735174401`.
+   ⚠️ Lo que bloqueaba no era leer el `message_thread_id`: el
+   `telegram_channel_id` apuntaba a un **canal** (`type=channel`), y los canales no
+   soportan temas. Había que crear el grupo-foro primero.
 2. ✅ **Guardar el precio por unidad de medida** (§2bis) — hecho el 2026-10-26,
    migración 34: `Pum` (etiqueta + precio, los dos juntos) en `RawProduct`, dos
    columnas en `price_points` con un CHECK que impide una sin la otra,
@@ -302,6 +366,9 @@ La etiqueta se muestra **tal como la manda la tienda** (`KG`, `LT`, `10GR`,
 presentes en el catálogo, y una unidad mal traducida miente sobre la mitad del
 dato.
 
+Con eso **la Fase 1 queda cerrada**. Lo que falta para que el tema S.Mercado se
+llene es el reloj de Tottus, no código: ver §3.
+
 **Lo que NO se hace**: tocar `compute_score`. Su docstring tiene razón para el
 rango de ticket del canal general, y el problema que quedaba —el estuche de $1.800
 ganándole al taladro de $20.000— es un asunto del canal general, no del
@@ -324,17 +391,53 @@ Las llaves que quedaron afuera por decisión y no por técnica: alcohol (2.217 S
 Belleza (1.106), Bebidas (88). Costo ya conocido: ~30 páginas por pasada cada 1.400
 SKUs, con el adaptador que ya existe. Cero código.
 
-### Fase 4 — Jumbo + Santa Isabel, con un adaptador compartido
+### Fase 4 — Jumbo + Santa Isabel ✅ conectadas el 2026-11-04 (migración 37)
 
-Un `cencosud_family.py` que lea el `ItemList` del JSON-LD. Prerrequisitos de la
-§4: medir estabilidad de orden, `rate_limit_rps` y la confiabilidad de
-`availability`. Después, elegir las hojas de ≤40 a mano desde su sitemap.
+`scrapers/stores/cencosud_family.py` lee el `ItemList` del JSON-LD y sirve las dos
+tiendas. Los tres prerrequisitos de la §4 quedaron medidos (ver ahí), y la
+estrategia cambió: **departamentos paginados**, no hojas de ≤40 a mano.
 
-Es la fase que de verdad hace al supermercado un producto: **tres cadenas** sobre
-la misma canasta permite por primera vez decir "más barato que en Jumbo"… salvo que
-ninguna trae GTIN, así que el match tendría que ser por (marca, nombre), que la
-regla 6 del CLAUDE.md mantiene deliberadamente afuera. **Eso hay que resolverlo
-antes de prometer comparación entre cadenas.**
+Diez llaves, 15.823 productos declarados, 15.668 listings, 402 requests por
+pasada:
+
+    jumbo        despensa, limpieza, mascotas,
+                 chocolates-galletas-y-snacks, licores-bebidas-y-aguas
+    santaisabel  despensa, limpieza, mascotas,
+                 chocolates-galletas-y-snacks, botilleria
+
+Van a `supermercado` (misma canasta y mismo rango de ticket que las siete llaves
+de Tottus), no a una categoría nueva. **Se evalúan el 2026-12-04** con
+`scripts.aceptacion_tienda`; antes de eso un 0 no significa nada.
+
+A eso se le sumó, el mismo día y por la migración 38, **una llave de `belleza` por
+tienda** —`jumbo/belleza-y-cuidado-personal` (3.519) y
+`santaisabel/cuidado-personal-y-bebe` (1.305)—, así que cada tienda aporta 6
+llaves y el total sube a 21.000 SKUs y ~523 requests por pasada. Ver la §6,
+decisión 2.
+
+Queda afuera `lacteos-huevos-y-congelados` (1.697 SKUs en Jumbo, 1.000 en Santa
+Isabel) porque Cencosud fusionó lácteos, huevos y congelados en un solo
+departamento: tomar la raíz mete perecederos y tomar las cinco hojas congeladas
+son 10 llaves más y una decisión de producto sobre qué cuenta como almacenable.
+Y quedan afuera las **vitrinas** (`marcas-exclusivas`, `prime`,
+`experiencias-jumbo`, `libres-de`, `productos-importados`,
+`exclusivo-en-santa-isabel`, `jumbo-ofertas`), que re-listan el catálogo y por lo
+tanto solapan por definición — el caso Prat del 2026-09-25.
+
+⚠️ **El tamiz barato de PLAN_TIENDAS §5.2 no transfiere a esta plataforma**, y
+conviene no aplicarlo acá a ciegas: ese checklist dice que "la colección que trae
+~100% con stock está filtrada por disponibilidad y es catálogo; una muy por debajo
+es una vitrina". Los departamentos de Cencosud traen **90-97%** con stock, o sea
+ni el 100% de un catálogo filtrado de Shopify ni el 54% de la vitrina de Prat: era
+una observación de esa plataforma. Lo que acá identifica al catálogo es
+estructural —son los nodos de la navegación propia de la tienda— más el hecho de
+que los agotados estén **segregados a la cola** del orden por defecto, que es
+justo lo que no haría una selección curada a mano.
+
+⚠️ **Lo que esta fase NO hace, contra lo que decía este plan**: no habilita el
+"más barato que en Jumbo". Ninguna de las dos trae GTIN, así que el match tendría
+que ser por (marca, nombre), que la regla 6 del CLAUDE.md mantiene deliberadamente
+afuera. **Eso hay que resolverlo antes de prometer comparación entre cadenas.**
 
 ### Fase 5 — Lider, solo si hace falta
 
@@ -352,8 +455,17 @@ Tomadas el 2026-10-19 (ver §2):
 1. ✅ **Supermercado es un tema del canal**, no un formato propio. No se construye
    resumen de canasta; va al tema S.Mercado.
 2. ✅ **Belleza va aparte**, como categoría propia con su propio θ — no entra en
-   `supermercado`. Son 1.106 SKUs de Tottus y habilita después Preunic, Salcobrand y
-   Maicao, que PLAN_TIENDAS §2.6 ya tenía listadas sin auditar.
+   `supermercado`. Ejecutado el 2026-11-04 (migración 36) y **ampliado el mismo
+   día por decisión del dueño** (migración 38): la categoría es **"Belleza y
+   farmacia"** y entra todo, o sea las tres cadenas —Tottus 1.039, Jumbo 3.519,
+   Santa Isabel 1.305 = **5.863 SKUs**— con **tema propio** en el grupo
+   (`message_thread_id = 20595`, cuota 3, el octavo). Habilita después Preunic,
+   Salcobrand y Maicao, que PLAN_TIENDAS §2.6 ya tenía listadas sin auditar.
+   ⚠️ Dos cosas que vinieron con el "todo": **bebé** entra por Santa Isabel (220
+   SKUs, 17% de su raíz, inseparable sin partir la llave en 14), y las dos llaves
+   `farmacia` que parecen obvias están vedadas — `jumbo.cl/farmacia` redirige a
+   `/bebe-y-jugueteria` (ingeriría juguetes bajo belleza, con 200 y sin error) y
+   `santaisabel.cl/farmacia` es un hijo de su propia raíz.
 3. ✅ **El ahorro de $670 vale**, porque se compran varias unidades de algo que se
    puede guardar. De ahí salen las tres consecuencias de diseño de la §2.
 
