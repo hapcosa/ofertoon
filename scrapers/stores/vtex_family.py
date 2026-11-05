@@ -343,3 +343,54 @@ class NikeAdapter(_VtexFamilyAdapter):
     #: Su `robots.txt` no declara `Crawl-delay`. Se usa el default conservador: el
     #: catálogo entero son ~51 requests por pasada, la velocidad no hace falta.
     rate_limit_rps = 0.5
+
+
+class CollokyAdapter(_VtexFamilyAdapter):
+    """Colloky. `store_key` = el path de ids de VTEX (`1`, `2/9`).
+
+    **La tienda mejor medida de la Fase 0 de expansión**, y entra sin una línea
+    específica de adaptador más que esta clase.
+
+    **Su árbol es una partición de verdad.** Enumerado el catálogo completo (120
+    requests): las cuatro raíces de catálogo tienen **cero solape entre sí** y
+    suman **3.530**, que es exactamente la unión. No hace falta
+    `dedupe_across_categories`.
+
+    🔴 **`5` Outlet no se conecta.** Sus 2.368 SKUs están **100% contenidos** en
+    las otras cuatro —cero exclusivos—, así que sería hacer pesar el doble al 67%
+    del catálogo en su propio p50. Es la vitrina de libro.
+
+    **Orden estable, probado directo**: dos recorridos completos de `Calzado`
+    separados por 30 s dieron **Jaccard = 1,0000** (1.331 filas → 1.331 únicos en
+    los dos, cero duplicados internos, cero exclusivos). Es el mejor resultado de
+    estabilidad de toda la tanda.
+
+    🟢 **Sostiene el canario exacto**: el total del header `Resources` coincidió
+    exacto en las cuatro raíces, y **sigue la deriva** — el catálogo creció de
+    1.273 a 1.331 en un día y el declarado lo acompañó. Eso es justo lo que
+    descalifica al canario exacto en `cencosud_family` y en la familia Falabella,
+    donde el total declarado y el grid derivan entre sí.
+
+    **`MAX_OFFSET` no aplica**: ningún nodo del árbol pasa los 2.500 de VTEX (el
+    mayor era Outlet con 2.370, y queda afuera), así que las llaves pueden ser
+    las raíces y no hace falta bajar a subcategorías como en Nike.
+
+    ⚠️ **GTIN al 99,8%** (3.174 de 3.180 productos), la cobertura más alta del
+    sistema — y **no esperes que desbloquee el copy cross-store**: está medido que
+    el cuello no es la cobertura sino el solapamiento, y acá es ropa y calzado
+    **infantil**, que las grandes con GTIN no venden.
+
+    ⚠️ **`in_stock` es una constante, no una señal**: `AvailableQuantity > 0` en el
+    100% de los 3.180 productos. La API no devuelve agotados — desaparecen del
+    listado. Benigno para la serie (queda un hueco), pero la guarda de stock del
+    detector no protege nada acá.
+
+    ⚠️ **Ticket máximo $49.990.** `compute_score` no mira el precio absoluto a
+    propósito, así que un 30% acá son ~$7.800 de ahorro puntuando igual que un 30%
+    sobre un notebook. Es el choque de rango de ticket del supermercado al revés,
+    y la respuesta por precedente no es tocar el score.
+    """
+
+    slug = "colloky"
+    base_url = "https://www.colloky.cl"
+    rate_limit_rps = 0.5

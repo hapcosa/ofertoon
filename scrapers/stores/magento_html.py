@@ -97,6 +97,31 @@ _SKU_PREFIX = re.compile(r"^\s*SKU\s*:\s*", re.I)
 #: el typo incluido). De ahí que sea un atributo por tienda.
 BRAND_SELECTOR = "span.product-item-brand"
 
+#: De dónde salen el nombre y la URL de la ficha. El default es el enlace que
+#: pone el tema `Luma` de Magento y que usan Kupfer, Construmart, Andesgear,
+#: Sparta y New Balance.
+#:
+#: **Pero no todos los temas lo ponen**, y cuando falta el producto se descarta
+#: entero aunque su precio y su SKU estén a la vista: medido el 2026-11-05,
+#: `speedo.cl` y `trekbikeschile.com` enumeran 33 y 36 filas del grid y emiten
+#: **cero**, porque ahí el nombre vive en el elemento que lleva
+#: `data-product-sku` y la URL en el enlace de la foto
+#: (`a.product-item-photo`). Es la misma clase de variación que
+#: `BRAND_SELECTOR`: la elige el tema, no Magento.
+NAME_SELECTOR = "a.product-item-link"
+URL_SELECTOR = "a.product-item-link"
+
+#: Dónde vive el SKU de la tienda. `form[data-product-sku]` es el del botón
+#: "añadir al carrito" y es el default; `span.product-item-sku` se mira siempre
+#: porque es el que se imprime en la ficha.
+#:
+#: Speedo y Trek cuelgan el atributo de un elemento que **no es un `form`**, así
+#: que el selector tiene que poder aflojarse a `[data-product-sku]`. Y hay temas
+#: que no lo traen en ninguna parte (`weplay.cl`): ahí no hay SKU que leer del
+#: grid y la tienda **no entra** por esta vía — inventarle uno del `id` interno
+#: rompería la serie en la primera reindexación del catálogo.
+SKU_SELECTOR = "form[data-product-sku]"
+
 #: Cuántas páginas declara el paginador. Es de Amasty, no de Magento, pero las
 #: dos tiendas de la familia lo traen. Sirve para NO probar una página pasada del
 #: final: se piden exactamente las que la tienda dice tener.
@@ -152,7 +177,7 @@ def _price_of(item: Any, price_type: str) -> Decimal | None:
     return parse_price(node.attributes.get("data-price-amount"))
 
 
-def _sku_of(item: Any) -> str | None:
+def _sku_of(item: Any, selector: str = SKU_SELECTOR) -> str | None:
     """SKU propio de la tienda, el mismo que imprime la boleta.
 
     No se usa el `id` interno de `product-item-info_16211`: el SKU es el código
@@ -163,8 +188,8 @@ def _sku_of(item: Any) -> str | None:
         sku = clean_text(_SKU_PREFIX.sub("", shown))
         if sku:
             return sku
-    form = item.css_first("form[data-product-sku]")
-    return clean_text(form.attributes.get("data-product-sku")) if form else None
+    nodo = item.css_first(selector)
+    return clean_text(nodo.attributes.get("data-product-sku")) if nodo else None
 
 
 def _in_stock(item: Any) -> bool:
@@ -253,8 +278,17 @@ def parse_listing(
     category: CategoryRef,
     scraped_at: datetime,
     brand_selector: str = BRAND_SELECTOR,
+    name_selector: str = NAME_SELECTOR,
+    url_selector: str = URL_SELECTOR,
+    sku_selector: str = SKU_SELECTOR,
 ) -> ParsedPage:
-    """Convierte el grid en productos."""
+    """Convierte el grid en productos.
+
+    Los cuatro selectores son por tienda porque los elige el **tema** de
+    Magento, no Magento: ver los docstrings de `BRAND_SELECTOR` y
+    `NAME_SELECTOR`. Los defaults son los del tema `Luma`, que es el de las
+    tiendas ya conectadas.
+    """
     tree = HTMLParser(html)
     grid = tree.css_first(_GRID)
     if grid is None:
@@ -274,10 +308,11 @@ def parse_listing(
     items = grid.css(_ITEM)
     products: list[RawProduct] = []
     for item in items:
-        link = item.css_first("a.product-item-link")
-        sku = _sku_of(item)
-        name = clean_text(link.text(strip=True)) if link is not None else None
-        url = link.attributes.get("href") if link is not None else None
+        sku = _sku_of(item, sku_selector)
+        nombre_nodo = item.css_first(name_selector)
+        name = clean_text(nombre_nodo.text(strip=True)) if nombre_nodo is not None else None
+        url_nodo = item.css_first(url_selector)
+        url = url_nodo.attributes.get("href") if url_nodo is not None else None
         if not (sku and name and url):
             logger.debug("item_incompleto store=%s sku=%r", store_slug, sku)
             continue
@@ -354,6 +389,10 @@ class _MagentoHtmlAdapter:
     #: es el total que declara el paginador.
     max_pages: int = 30
     brand_selector: str = BRAND_SELECTOR
+    #: Los tres que dependen del tema de la tienda. Ver `NAME_SELECTOR`.
+    name_selector: str = NAME_SELECTOR
+    url_selector: str = URL_SELECTOR
+    sku_selector: str = SKU_SELECTOR
 
     def __init__(self, http: HttpClient, categories: Sequence[CategoryRef]) -> None:
         self._http = http
@@ -405,6 +444,9 @@ class _MagentoHtmlAdapter:
                 category=category,
                 scraped_at=scraped_at,
                 brand_selector=self.brand_selector,
+                name_selector=self.name_selector,
+                url_selector=self.url_selector,
+                sku_selector=self.sku_selector,
             )
             enumerated += parsed.enumerated
 
@@ -547,3 +589,304 @@ class AndesgearAdapter(_MagentoHtmlAdapter):
     #: productos, que igual no se conecta). 30 deja margen sin ser un cheque en
     #: blanco.
     max_pages = 30
+
+
+# ---------------------------------------------------------------------------
+# LA PLANTILLA DE ROBOTS DE SPARTA: cuatro tiendas, ninguna pagina
+# ---------------------------------------------------------------------------
+#
+# Sparta, Speedo, Trek Chile y New Balance Chile sirven un `robots.txt`
+# **idéntico**: 87 `Disallow`, `Crawl-delay: 1`, y entre ellos `/*?`, `/?`,
+# `/*?*`, `/*&*`, `/*product_list_limit=` y `/*?limit=*`. O sea **ninguna query
+# string está permitida**, lo que deja a las cuatro en la configuración de Kupfer:
+# una request por llave y el techo de cobertura que eso implica.
+#
+# Que el robots sea el mismo carácter por carácter sugiere un mismo operador
+# detrás, y vale como aviso: si una de las cuatro cambia de política, conviene
+# revisar las otras tres.
+
+
+class SpartaAdapter(_MagentoHtmlAdapter):
+    """Sparta. `store_key` = el path de la categoría, con `.html`.
+
+    **No pagina**, y no por elección nuestra: su `robots.txt` prohíbe toda query
+    string (ver el comentario de arriba). Eso le pone techo a la cobertura:
+    medido el 2026-11-04 sobre **545 hojas de catálogo**, lo alcanzable son
+    **3.615 SKUs de los 13.448 que declara su sitemap, o sea el 24%**. De las 485
+    hojas con total declarado, 375 entran completas (declaran ≤36) y 110 declaran
+    10.996 y aportan 36 cada una.
+
+    **Orden estable**, que es lo que hace viable no paginar: con la página 1 como
+    única ventana, un orden rotatorio dejaría a todo el catálogo sin llegar nunca
+    a `MIN_DAYS`. Medido con ~15 min de separación real sobre 9 hojas (6 de ellas
+    con más de 300 productos declarados): **8 de 9 con Jaccard 1,000**, y la
+    novena perdió 1 producto de 36 sin ganar ninguno — deriva de catálogo, no
+    reordenamiento.
+
+    **Cross-lista fuerte y por eso deduplica.** Expone el mismo catálogo por tres
+    ejes: la taxonomía de producto, un árbol paralelo `deportes/` (189 hojas que
+    solapan 49-91% con todos los demás) y los ejes de género más las vitrinas.
+    El conjunto recomendado son las 9 raíces de taxonomía: 340 hojas, 3.157 SKUs
+    (87,3% de lo alcanzable), **1,72× residual**.
+
+    ⚠️ **Y ese 1,72× tiene una letra chica que el precedente de Andesgear NO
+    cubre.** Acá los solapamientos cruzan **categorías internas distintas**:
+    `vestuario-deportivo` × `deportes-individuales` solapan 30% y
+    `entrenamiento-funcional` × `deportes-individuales` 36%, y esos ejes mapean a
+    `deporte-vestuario` contra `deporte-equipamiento`. Con el dedupe puesto gana
+    la primera llave del orden de `db.load_store_targets`, así que una polera
+    podría quedar puntuando con el θ de equipamiento. **Hay que ordenar los
+    `store_key` a propósito**, o renunciar a los ejes que se cruzan.
+
+    `price_normal` en **41,6%** de 9.083 filas ⇒ θ se puede fijar midiendo. Es el
+    primer Magento del sistema que lo trae.
+
+    **Oculta los agotados en vez de marcarlos** (medido sobre 3 categorías / 108
+    productos: cero vocabulario de stock, botón `tocart` en todas las filas), así
+    que el `in_stock` ciego no cuesta nada estructural: un producto que se agota
+    desaparece y su serie queda con un hueco. ⚠️ Pero su grid muestra "Desde" en
+    6-15 filas por categoría: para un producto configurable el precio es **el
+    mínimo entre sus talles**, no "el precio".
+    """
+
+    slug = "sparta"
+    base_url = "https://sparta.cl"
+    #: `Crawl-delay: 1`.
+    rate_limit_rps = 1.0
+    #: Su robots prohíbe `/*product_list_limit=`.
+    page_size = None
+    #: Su robots prohíbe `/*?` y `/*?*`.
+    paginates = False
+    dedupe_across_categories = True
+
+
+class SpeedoAdapter(_MagentoHtmlAdapter):
+    """Speedo Chile. `store_key` = el path de la categoría, con `.html`.
+
+    **Su tema no pone `a.product-item-link`**, y eso la dejaba emitiendo cero con
+    los selectores por defecto de la familia — con el agravante de que el fallo
+    era invisible: el parser encontraba el grid, enumeraba las 33 filas y leía el
+    total declarado y el número de páginas, así que `canary_verdict` cerraba sano.
+    Un `enumerated` correcto con `emit=0` no lo ve ninguna guarda.
+
+    Acá el nombre vive en el elemento que lleva `data-product-sku` y la URL en el
+    enlace de la foto. Con eso: **33 de 33 filas emitidas**.
+
+    Llaves medidas el 2026-11-05 sobre **107 hojas**: 425 SKUs alcanzables, y el
+    conjunto de catálogo (`equipamiento`, `lentes`, `hombre`, `mujer`, `ninos`)
+    son **70 hojas, 383 SKUs (90,1%) y 1,15× residual**. Las tres vitrinas
+    descartadas (`destacado`, `cyber`, `sale`) aportarían 42 SKUs exclusivos, y
+    que son vitrinas lo dice la medición: `destacado` solapa 36-55% con **todos**
+    los demás ejes.
+
+    `price_normal` en **41,5%** de 2.000 filas ⇒ θ medible. `sin_stock = 0`: sin
+    señal de stock en el grid. Precio máximo $599.990.
+    """
+
+    slug = "speedo"
+    base_url = "https://speedo.cl"
+    rate_limit_rps = 1.0
+    page_size = None
+    paginates = False
+    dedupe_across_categories = True
+    #: Ver el docstring: su tema no trae el enlace que la familia espera.
+    name_selector = "[data-product-sku]"
+    url_selector = "a.product-item-photo"
+    sku_selector = "[data-product-sku]"
+
+
+class TrekChileAdapter(_MagentoHtmlAdapter):
+    """Trek Chile. `store_key` = el path de la categoría, con `.html`.
+
+    Mismo tema que Speedo —sin `a.product-item-link`— y los mismos selectores.
+    Con ellos: **36 de 36 filas emitidas**.
+
+    Llaves medidas sobre **140 hojas**: 527 SKUs, y el conjunto de catálogo
+    (`equipamiento`, `montana`, `ruta`, `gravel`, `urbana`,
+    `bicicletas-electricas`, `accesorios-ciclismo`, `ninos`) son **93 hojas, 513
+    SKUs (97,3%) y 1,05× residual** — el mejor número de toda la tanda. Las
+    vitrinas descartadas aportarían 14 SKUs exclusivos, y su contención es
+    flagrante: `destacado × ninos` y `cyber × accesorios-ciclismo` dan **100%**.
+
+    `price_normal` en **42,4%** ⇒ θ medible. `sin_stock = 0`.
+
+    ⚠️ **Su rango de ticket llega a $10.990.000** (una bicicleta de ruta), contra
+    los $599.990 de Speedo. `compute_score` es `discount_real*100 +
+    below_floor*50` y **no mira el precio absoluto** a propósito, así que un 30%
+    sobre esa bici son **$3,3M de ahorro puntuando igual** que un 30% sobre unos
+    anteojos de natación de $39.990. Es el mismo choque de rango que trajo el
+    supermercado, y la respuesta por precedente es la misma: **destino propio, no
+    tocar el score**.
+    """
+
+    slug = "trekbikeschile"
+    base_url = "https://trekbikeschile.com"
+    rate_limit_rps = 1.0
+    page_size = None
+    paginates = False
+    dedupe_across_categories = True
+    name_selector = "[data-product-sku]"
+    url_selector = "a.product-item-photo"
+    sku_selector = "[data-product-sku]"
+
+
+class NewBalanceChileAdapter(_MagentoHtmlAdapter):
+    """New Balance Chile. `store_key` = el path de la categoría, con `.html`.
+
+    Esta **sí** trae `a.product-item-link`, así que usa los selectores por
+    defecto: 36 de 36 filas emitidas.
+
+    Llaves medidas sobre **258 hojas**: 1.408 SKUs alcanzables. El conjunto de
+    catálogo (`deportes`, `hombre`, `mujer`, `ninos`, `ropa`, `running`,
+    `zapatillas`) son **81 hojas, 909 SKUs (64,6%) y 1,87× residual**.
+
+    ⚠️ **Se excluyen las vitrinas por decisión del dueño (2026-11-05), y eso
+    cuesta el 35% del catálogo**: `cyber`, `destacados`, `grey-days`,
+    `mas-vendidas`, `recien-llegados` y `sale` tienen **499 SKUs exclusivos de
+    1.408**. Los que no entran **no son un faltante de cobertura**: es la decisión
+    de no construir series sobre una vitrina que el comerciante puede reeditar,
+    que es lo que le pasó a Prat con `herramientas-electricas` (240 listings
+    muertos de golpe, y el canario callado a las 4 corridas). Y acá sería peor:
+    con `paginates = False` esa vitrina es el **único** lugar donde esos SKUs
+    aparecen.
+
+    ⚠️ **Es la única tienda de la tanda conectable por dos familias**: su home
+    trae a la vez la firma estricta de Magento y la de Demandware. Entra por
+    Magento porque está verificado parseando y la familia ya existe; si alguna vez
+    se escribe `salesforce_family`, **no conectarla dos veces**.
+
+    `price_normal` en **39,5%** ⇒ θ medible. `sin_stock = 0`. Precio máximo
+    $249.990.
+    """
+
+    slug = "newbalance"
+    base_url = "https://newbalance.cl"
+    rate_limit_rps = 1.0
+    page_size = None
+    paginates = False
+    dedupe_across_categories = True
+
+
+# ---------------------------------------------------------------------------
+# LA PLANTILLA DE ROBOTS DE ANDESGEAR: cuatro tiendas outdoor que SÍ paginan
+# ---------------------------------------------------------------------------
+#
+# The North Face, Kliper, Mammut y Marmot sirven un `robots.txt` idéntico: 17
+# `Disallow`, `Crawl-delay: 3`, y nada que prohíba `?p=` ni el `limit`. O sea la
+# configuración de Andesgear.
+#
+# ⚠️ **Y las cuatro son el mismo operador.** `kliper.cl` es el multimarca: su
+# propio menú enlaza `/marcas/the-north-face`, `/marcas/marmot`, `/marcas/mammut`
+# y **`/marcas/andesgear`** — o sea vende las marcas de las otras tres **y de una
+# tienda ya conectada**. Dos consecuencias que no se arreglan en el adaptador:
+#
+# 1. El mismo producto va a existir como listing en Kliper y en la tienda de su
+#    marca. Para la serie no es problema (son `store_id` distintos, cada uno con
+#    su p50), pero el **canal** puede publicar la misma oferta dos veces con dos
+#    precios. Eso lo acota `MAX_PER_STORE_PER_DAY`, no el detector.
+# 2. Conectar las cuatro es contar el mismo catálogo cuatro veces en el
+#    presupuesto de pasada. Si hay que elegir, Kliper sola cubre más.
+#
+# ⚠️ **Sus URLs de categoría van SIN `.html`**, a diferencia de las cuatro de
+# arriba. Y la ruta más enlazada de su home no es una categoría (`/tiendas`,
+# `/ayuda`): la llave sale del menú de catálogo, no del conteo de enlaces.
+
+
+class _OutdoorKliperFamilia(_MagentoHtmlAdapter):
+    """Base de las cuatro: `Crawl-delay: 3`, paginan, selectores por defecto."""
+
+    #: `Crawl-delay: 3` en su robots.txt.
+    rate_limit_rps = 0.33
+    #: No publican un limiter, así que pedir un `product_list_limit` sería
+    #: adivinar — y un valor que no ofrecen cae a su default sin avisar.
+    page_size = None
+    paginates = True
+    dedupe_across_categories = True
+    #: Sirven 24 por página. 30 páginas son 720 productos por llave: suficiente
+    #: para todas las llaves medidas salvo las de Kliper, que hay que dimensionar
+    #: aparte (declara 13.769 productos en `/marcas`).
+    max_pages = 30
+
+
+class TheNorthFaceAdapter(_OutdoorKliperFamilia):
+    """The North Face Chile. `store_key` = el path, **sin** `.html`.
+
+    Sirve **48 por página**, a diferencia de las otras tres de su familia.
+
+    Llaves medidas sobre **196 hojas** (186 ok; las 10 `NotAListingPage` son
+    rutas de su nav que no son catálogo): el conjunto de catálogo
+    (`equipamiento`, `hombre`, `mujer`, `ni-os`, `zapatos`) son **113 hojas,
+    1.211 de 1.269 SKUs de página 1 (95,4%) y 1,40× residual**. Sus vitrinas
+    aportarían apenas 58 SKUs exclusivos.
+
+    `price_normal` en **36,5%** de 4.586 filas ⇒ θ medible. `sin_stock = 0`.
+
+    ⚠️ **Precio máximo observado $6.999.990**, muy por encima del resto del
+    outdoor ($1,0M a $1,8M). Antes de conectarla hay que mirar qué es: o es
+    equipamiento de expedición legítimo, o es un centinela — y la diferencia
+    importa porque un valor así **envenena la baseline de ese SKU de forma
+    permanente**.
+    """
+
+    slug = "thenorthface"
+    base_url = "https://www.thenorthface.cl"
+
+
+class KliperAdapter(_OutdoorKliperFamilia):
+    """Kliper. `store_key` = el path, **sin** `.html`. El multimarca del grupo.
+
+    Llaves medidas sobre **270 hojas** (269 ok): el conjunto de catálogo
+    (`accesorios`, `hombre`, `mujer`, `ni-os`, `zapatos-zapatillas`) son **111
+    hojas, 1.576 de 2.462 SKUs de página 1 (64,0%) y 1,26× residual**.
+
+    ⚠️ **Y acá la decisión es más dura que en New Balance.** Sus vitrinas tienen
+    **886 SKUs exclusivos de 2.462 (36%)**, y el grueso está en el eje **`marcas`
+    (670 SKUs)** — que **no es una vitrina de promoción sino el eje de marca**, o
+    sea la forma natural de navegar un multimarca. Descartarlo pierde más de un
+    tercio; incluirlo lo pone a solapar con `hombre` (684) y `mujer` (732). Queda
+    como decisión abierta.
+
+    ⚠️ **Y es la tienda a dimensionar antes de conectar**: declara **13.769
+    productos** en `/marcas` y 6.366 y 5.485 en `hombre` y `mujer`. A 24 por
+    página, sus 111 hojas de catálogo son del orden de **cientos de requests por
+    pasada** — hay que compararlo contra la hora de presupuesto que deja
+    `db.PASS_WINDOW` antes de meterla.
+
+    `price_normal` en **51,3%** ⇒ θ medible. `sin_stock = 0`. Precio máximo
+    $1.799.990.
+    """
+
+    slug = "kliper"
+    base_url = "https://www.kliper.cl"
+
+
+class MammutAdapter(_OutdoorKliperFamilia):
+    """Mammut Chile. `store_key` = el path, **sin** `.html`.
+
+    La más limpia del grupo: **193 de 193 hojas barridas sin un solo error**. El
+    conjunto de catálogo (`accesorios`, `calzado`, `equipamiento-mammut`,
+    `hombre`, `mujer`) son **97 hojas, 465 de 475 SKUs (97,9%) y 1,27×
+    residual**, y sus vitrinas aportarían **10** SKUs exclusivos — o sea
+    descartarlas no cuesta nada.
+
+    `price_normal` en **55,3%** ⇒ θ medible. `sin_stock = 0`. Precio máximo
+    $1.039.990.
+    """
+
+    slug = "mammut"
+    base_url = "https://www.mammut.cl"
+
+
+class MarmotAdapter(_OutdoorKliperFamilia):
+    """Marmot Chile. `store_key` = el path, **sin** `.html`.
+
+    **144 de 144 hojas sin error.** El conjunto de catálogo (`accesorios`,
+    `calzado`, `equipamiento`, `hombre`, `mujer`, `ni-os`) son **77 hojas, 296 de
+    319 SKUs (92,8%) y 1,24× residual**; sus vitrinas aportarían 23 exclusivos.
+
+    `price_normal` en **64,8%**, el más alto de toda la tanda ⇒ θ medible con
+    buena muestra. `sin_stock = 0`. Precio máximo $1.000.000.
+    """
+
+    slug = "marmot"
+    base_url = "https://www.marmot.cl"

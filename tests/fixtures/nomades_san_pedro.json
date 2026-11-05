@@ -1,0 +1,112 @@
+{
+ "props": {
+  "pageProps": {
+   "schema": {
+    "@graph": [
+     {
+      "@type": "ItemList",
+      "numberOfItems": 34,
+      "itemListElement": [
+       {
+        "@type": "ListItem",
+        "position": 1,
+        "item": {
+         "@type": "Product",
+         "sku": 3,
+         "name": "Transfer entre Aeropuerto de Calama (El Loa) y San Pedro de Atacama",
+         "url": "https://www.nomades.com/san-pedro-de-atacama/transfer-aeropuerto-calama-id3",
+         "image": [
+          "https://denomades.imgix.net/destinos/san-pedro-de-atacama/3/transfer-volcanes-de-fondo.jpg"
+         ],
+         "brand": {
+          "@type": "Brand",
+          "name": "Nomades"
+         },
+         "offers": {
+          "@type": "Offer",
+          "price": 17000,
+          "priceCurrency": "CLP",
+          "availability": "https://schema.org/InStock",
+          "url": "https://www.nomades.com/san-pedro-de-atacama/transfer-aeropuerto-calama-id3"
+         }
+        }
+       },
+       {
+        "@type": "ListItem",
+        "position": 2,
+        "item": {
+         "@type": "Product",
+         "sku": 528,
+         "name": "Traslado Directo a Uyuni",
+         "url": "https://www.nomades.com/san-pedro-de-atacama/traslado-uyuni-id528",
+         "image": [
+          "https://denomades.imgix.net/destinos/san-pedro-de-atacama/528/traslado-uyuni-id528-1.jpg"
+         ],
+         "brand": {
+          "@type": "Brand",
+          "name": "Nomades"
+         },
+         "offers": {
+          "@type": "Offer",
+          "price": 169,
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock",
+          "url": "https://www.nomades.com/san-pedro-de-atacama/traslado-uyuni-id528"
+         }
+        }
+       },
+       {
+        "@type": "ListItem",
+        "position": 3,
+        "item": {
+         "@type": "Product",
+         "sku": 1536,
+         "name": "Free Tour por los Monumentos de Roma",
+         "url": "https://www.nomades.com/roma/free-tour-monumentos-id1536",
+         "image": [
+          "https://denomades.imgix.net/destinos/roma/1536/templo-de-hercules.jpg"
+         ],
+         "brand": {
+          "@type": "Brand",
+          "name": "Nomades"
+         },
+         "offers": {
+          "@type": "Offer",
+          "price": 0,
+          "priceCurrency": "CLP",
+          "availability": "https://schema.org/InStock",
+          "url": "https://www.nomades.com/roma/free-tour-monumentos-id1536"
+         }
+        }
+       },
+       {
+        "@type": "ListItem",
+        "position": 4,
+        "item": {
+         "@type": "Product",
+         "sku": 2111,
+         "name": "Excursión a Zaanse Schans, Marken y Volendam",
+         "url": "https://www.nomades.com/amsterdam/zaanse-schans-marken-volendam-id2111",
+         "image": [
+          "https://denomades.imgix.net/destinos/amsterdam/2111/tulipanes-zaanse-schans.jpg"
+         ],
+         "brand": {
+          "@type": "Brand",
+          "name": "Nomades"
+         },
+         "offers": {
+          "@type": "Offer",
+          "price": 37.5,
+          "priceCurrency": "EUR",
+          "availability": "https://schema.org/InStock",
+          "url": "https://www.nomades.com/amsterdam/zaanse-schans-marken-volendam-id2111"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ }
+}
