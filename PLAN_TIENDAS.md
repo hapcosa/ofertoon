@@ -1,5 +1,12 @@
 # Plan de expansión de tiendas — Ofertoon
 
+> **Revisión 2026-11-05:** Unimarc entrega catálogo público paginado (719/719
+> SKU verificados); Imperial entregó precios pero luego respondió 520; Nice One,
+> `pcexpress.cl` da 403 pero su tienda `tienda.pc-express.cl` entrega catálogo;
+> MTS sigue bloqueada en las rutas probadas. Los diagnósticos
+> históricos de abajo no representan necesariamente su estado actual.
+> Ver [investigación y evidencia](research/2026-11-05/INVESTIGACION.md).
+
 Estado del documento: **2026-09-23**. Verificado con `curl` contra los sitios
 reales ese día, no con memoria ni con documentación de terceros.
 

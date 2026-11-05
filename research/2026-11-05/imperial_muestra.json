@@ -1,0 +1,672 @@
+{
+  "source": "https://www.imperial.cl/herramientas-de-banco/category/14341",
+  "captured_date": "2026-11-05",
+  "state_path": "searchRepository.pages.<ruta>.results",
+  "total": 11,
+  "records": [
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-155853..155853"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-155853..155853"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "224991.000000"
+            ],
+            "sku.listPrice": [
+              "249990.000000"
+            ],
+            "sku.salePrice": [
+              "224991.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "155853"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/ingleteadoras/ingleteadora-telescopica-el%C3%A9ctrica-10-1900w/product/155853"
+        ],
+        "sku.maxActivePrice": [
+          "224991.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v696935388519226465/products/155853-1.jpg"
+        ],
+        "sku.listingId": [
+          "155853"
+        ],
+        "sku.repositoryId": [
+          "155853"
+        ],
+        "product.displayName": [
+          "Ingleteadora telescopica eléctrica 10\" | 1.900w"
+        ],
+        "product.primaryImageAltText": [
+          "Ingleteadora telescopica eléctrica 10\" | 1.900w"
+        ],
+        "sku.minActivePrice": [
+          "224991.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-155853..155853"
+        ]
+      }
+    },
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-137236..137236"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-137236..137236"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "283104.000000"
+            ],
+            "sku.listPrice": [
+              "314560.000000"
+            ],
+            "sku.salePrice": [
+              "283104.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "137236"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/ingleteadoras/ingleteadora-10-1500w-mls100/product/137236"
+        ],
+        "sku.maxActivePrice": [
+          "283104.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v5053224204098134820/products/137236-1.jpg"
+        ],
+        "sku.listingId": [
+          "137236"
+        ],
+        "sku.repositoryId": [
+          "137236"
+        ],
+        "product.displayName": [
+          "Ingleteadora 10\" 1500W MLS100"
+        ],
+        "product.primaryImageAltText": [
+          "Ingleteadora 10\" 1500W MLS100"
+        ],
+        "sku.minActivePrice": [
+          "283104.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-137236..137236"
+        ]
+      }
+    },
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-145865..145865"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-145865..145865"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "457292.000000"
+            ],
+            "sku.listPrice": [
+              "537990.000000"
+            ],
+            "sku.salePrice": [
+              "457292.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "145865"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/cepillos/cepillo-de-banco-1800w-dw733-b2c/product/145865"
+        ],
+        "sku.maxActivePrice": [
+          "457292.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v3107776300932977850/products/145865-1.jpg"
+        ],
+        "sku.listingId": [
+          "145865"
+        ],
+        "sku.repositoryId": [
+          "145865"
+        ],
+        "product.displayName": [
+          "Cepillo de banco 1800W DW733-B2C"
+        ],
+        "product.primaryImageAltText": [
+          "Cepillo de banco 1800W DW733-B2C"
+        ],
+        "sku.minActivePrice": [
+          "457292.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-145865..145865"
+        ]
+      }
+    },
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-155855..155855"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-155855..155855"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "269991.000000"
+            ],
+            "sku.listPrice": [
+              "299990.000000"
+            ],
+            "sku.salePrice": [
+              "269991.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "155855"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/sierras/sierra-de-banco-10-lijadora-banda-te-ts-254t-te-bs/product/155855"
+        ],
+        "sku.maxActivePrice": [
+          "269991.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v5507272322323330196/products/155855-1.jpg"
+        ],
+        "sku.listingId": [
+          "155855"
+        ],
+        "sku.repositoryId": [
+          "155855"
+        ],
+        "product.displayName": [
+          "Sierra de banco 10\" + lijadora banda te-ts 254t+te-bs"
+        ],
+        "product.primaryImageAltText": [
+          "Sierra de banco 10\" + lijadora banda te-ts 254t+te-bs"
+        ],
+        "sku.minActivePrice": [
+          "269991.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-155855..155855"
+        ]
+      }
+    },
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-146877..146877"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-146877..146877"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "322493.000000"
+            ],
+            "sku.listPrice": [
+              "429990.000000"
+            ],
+            "sku.salePrice": [
+              "322493.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "146877"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/sierras/sierra-de-banco-10-1800w-gts-254/product/146877"
+        ],
+        "sku.maxActivePrice": [
+          "322493.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v5774192091705100093/products/146877-1.jpg"
+        ],
+        "sku.listingId": [
+          "146877"
+        ],
+        "sku.repositoryId": [
+          "146877"
+        ],
+        "product.displayName": [
+          "Sierra de banco 10\" 1800W GTS 254"
+        ],
+        "product.primaryImageAltText": [
+          "Sierra de banco 10\" 1800W GTS 254"
+        ],
+        "sku.minActivePrice": [
+          "322493.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-146877..146877"
+        ]
+      }
+    },
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-103684..103684"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-103684..103684"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "534743.000000"
+            ],
+            "sku.listPrice": [
+              "712990.000000"
+            ],
+            "sku.salePrice": [
+              "534743.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "103684"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/sierras/sierra-de-banco-10-1500w-mlt100/product/103684"
+        ],
+        "sku.maxActivePrice": [
+          "534743.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v3309002076514872956/products/103684-1.jpg"
+        ],
+        "sku.listingId": [
+          "103684"
+        ],
+        "sku.repositoryId": [
+          "103684"
+        ],
+        "product.displayName": [
+          "Sierra de banco 10\" 1500W MLT100"
+        ],
+        "product.primaryImageAltText": [
+          "Sierra de banco 10\" 1500W MLT100"
+        ],
+        "sku.minActivePrice": [
+          "534743.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-103684..103684"
+        ]
+      }
+    },
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-152408..152408"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-152408..152408"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "319992.000000"
+            ],
+            "sku.listPrice": [
+              "399990.000000"
+            ],
+            "sku.salePrice": [
+              "319992.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "152408"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/cepillos/cepillo-de-banco-1500w-ttkp15001/product/152408"
+        ],
+        "sku.maxActivePrice": [
+          "319992.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v8933920689698769084/products/152408-1.jpg"
+        ],
+        "sku.listingId": [
+          "152408"
+        ],
+        "sku.repositoryId": [
+          "152408"
+        ],
+        "product.displayName": [
+          "Cepillo de banco 1500w ttkp15001"
+        ],
+        "product.primaryImageAltText": [
+          "Cepillo de banco 1500w ttkp15001"
+        ],
+        "sku.minActivePrice": [
+          "319992.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-152408..152408"
+        ]
+      }
+    },
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-142684..142684"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-142684..142684"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "719092.000000"
+            ],
+            "sku.listPrice": [
+              "845990.000000"
+            ],
+            "sku.salePrice": [
+              "719092.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "142684"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/ingleteadoras/ingleteadora-telesc%C3%B3pica-12-1800w-ls1219/product/142684"
+        ],
+        "sku.maxActivePrice": [
+          "719092.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v6366951659689819256/products/142684-1.jpg"
+        ],
+        "sku.listingId": [
+          "142684"
+        ],
+        "sku.repositoryId": [
+          "142684"
+        ],
+        "product.displayName": [
+          "Ingleteadora telescópica 12\" 1800W LS1219"
+        ],
+        "product.primaryImageAltText": [
+          "Ingleteadora telescópica 12\" 1800W LS1219"
+        ],
+        "sku.minActivePrice": [
+          "719092.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-142684..142684"
+        ]
+      }
+    },
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-146285..146285"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-146285..146285"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "103493.000000"
+            ],
+            "sku.listPrice": [
+              "137990.000000"
+            ],
+            "sku.salePrice": [
+              "103493.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "146285"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/cepillos-el%C3%A9ctricos/cepillo-el%C3%A9ctrico-580w-82-mm-m1902b/product/146285"
+        ],
+        "sku.maxActivePrice": [
+          "103493.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v6645568825903398398/products/146285-1.jpg"
+        ],
+        "sku.listingId": [
+          "146285"
+        ],
+        "sku.repositoryId": [
+          "146285"
+        ],
+        "product.displayName": [
+          "Cepillo eléctrico 580W 82 mm M1902B"
+        ],
+        "product.primaryImageAltText": [
+          "Cepillo eléctrico 580W 82 mm M1902B"
+        ],
+        "sku.minActivePrice": [
+          "103493.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-146285..146285"
+        ]
+      }
+    },
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-114628..114628"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-114628..114628"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "503243.000000"
+            ],
+            "sku.listPrice": [
+              "670990.000000"
+            ],
+            "sku.salePrice": [
+              "503243.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "114628"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/ingleteadoras/ingleteadora-telesc%C3%B3pica-10-1430w-ls1018l/product/114628"
+        ],
+        "sku.maxActivePrice": [
+          "503243.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v1134800011896298904/products/114628-1.jpg"
+        ],
+        "sku.listingId": [
+          "114628"
+        ],
+        "sku.repositoryId": [
+          "114628"
+        ],
+        "product.displayName": [
+          "Ingleteadora telescópica 10\" 1430W LS1018L"
+        ],
+        "product.primaryImageAltText": [
+          "Ingleteadora telescópica 10\" 1430W LS1018L"
+        ],
+        "sku.minActivePrice": [
+          "503243.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-114628..114628"
+        ]
+      }
+    },
+    {
+      "detailsAction": {
+        "recordState": "/_/A-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-151232..151232"
+      },
+      "records": [
+        {
+          "detailsAction": {
+            "recordState": "/_/R-urn%3A%2Fcloud%2Fdata%2Fcatalog%2Fsku-151232..151232"
+          },
+          "numRecords": 0,
+          "attributes": {
+            "sku.activePrice": [
+              "543992.000000"
+            ],
+            "sku.listPrice": [
+              "679990.000000"
+            ],
+            "sku.salePrice": [
+              "543992.000000"
+            ]
+          }
+        }
+      ],
+      "numRecords": 1,
+      "attributes": {
+        "product.repositoryId": [
+          "151232"
+        ],
+        "DGraph.RankLabel.blend": [
+          "1000"
+        ],
+        "product.route": [
+          "/ingleteadoras/ingleteadora-10-1600w-dws713-bs/product/151232"
+        ],
+        "sku.maxActivePrice": [
+          "543992.000000"
+        ],
+        "product.primaryFullImageURL": [
+          "/ccstore/v1/images/?source=/file/v272465675702954035/products/151232-1.jpg"
+        ],
+        "sku.listingId": [
+          "151232"
+        ],
+        "sku.repositoryId": [
+          "151232"
+        ],
+        "product.displayName": [
+          "Ingleteadora 10\" 1600w dws713-bs"
+        ],
+        "product.primaryImageAltText": [
+          "Ingleteadora 10\" 1600w dws713-bs"
+        ],
+        "sku.minActivePrice": [
+          "543992.000000"
+        ],
+        "record.id": [
+          "urn:/cloud/data/catalog/sku-151232..151232"
+        ]
+      }
+    }
+  ],
+  "pagingActionTemplate": {
+    "link": "/herramientas-de-banco/_/N-3394376065?No=%7Boffset%7D&Nrpp=%7BrecordsPerPage%7D"
+  },
+  "warning": "La repetición posterior de la misma URL devolvió HTTP 520. Stock y sucursal sin verificar."
+}

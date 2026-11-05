@@ -108,7 +108,15 @@ punto de partida — y su lección principal es que **se equivocó tres veces**.
 cada tienda que ahí figure como bloqueada, la Fase 0 tiene que decir si el
 veredicto sigue en pie, con fecha y con el método de la pregunta 1.
 
-⚠️ Las dos excepciones donde el "no" es firme y **no hay que volver a intentar**:
+**Actualización 2026-11-05, por nueva investigación solicitada por el dueño:**
+Unimarc sí entrega precios mediante páginas públicas Next.js: 719/719 SKU
+únicos verificados, sin evasión. Imperial entregó un listado con 11 precios,
+pero después dio HTTP 520 incluso en esa misma URL: acceso inestable, sin
+integración confirmada. Nice One y MTS siguen con 403 en las rutas probadas.
+Ver [evidencia y condiciones](research/2026-11-05/INVESTIGACION.md).
+
+Los siguientes son **diagnósticos históricos**, sustituidos por esa revisión
+para las tiendas nuevamente probadas:
 
 - **Unimarc** — once accesos probados, 403 en todo, hasta en `smu.cl`. Lo único que
   queda es evasión.
