@@ -1,0 +1,110 @@
+{
+ "products": [
+  {
+   "id": 8206448886081,
+   "handle": "polera-hombre-liquen-celeste-geography",
+   "title": "Polera Hombre Liquen Celeste Geography",
+   "vendor": "Geography",
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/0719/4928/7745/files/p-16cbe55f-3ae1-4e45-81d2-65c8d9059ce2-1-ddc942bb-6414-48bc-ba24-d8dc8f6a0a58_75e39774-8fda-4ef1-93fa-ae0093779a27.jpg?v=1733204899"
+    }
+   ],
+   "variants": [
+    {
+     "id": 44840444526913,
+     "title": "S",
+     "price": "4990",
+     "compare_at_price": "14990",
+     "available": true,
+     "featured_image": null
+    },
+    {
+     "id": 44840444559681,
+     "title": "M",
+     "price": "4990",
+     "compare_at_price": "14990",
+     "available": false,
+     "featured_image": null
+    },
+    {
+     "id": 44840444592449,
+     "title": "L",
+     "price": "9990",
+     "compare_at_price": "14990",
+     "available": false,
+     "featured_image": null
+    },
+    {
+     "id": 44840444625217,
+     "title": "XL",
+     "price": "9990",
+     "compare_at_price": "14990",
+     "available": false,
+     "featured_image": null
+    },
+    {
+     "id": 44840444657985,
+     "title": "XXL",
+     "price": "9990",
+     "compare_at_price": "14990",
+     "available": false,
+     "featured_image": null
+    }
+   ]
+  },
+  {
+   "id": 10042817773889,
+   "handle": "polera-hombre-adventure-page-t-shirt-rosa-oscuro-lippi",
+   "title": "Polera Hombre Adventure Page T-Shirt Rosa Oscuro Lippi",
+   "vendor": "Lippi",
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/0719/4928/7745/files/d11242-90a3fd7f-10c3-44a3-903b-8eaf0e1b5576.jpg?v=1765158760"
+    }
+   ],
+   "variants": [
+    {
+     "id": 50937031852353,
+     "title": "S",
+     "price": "22990",
+     "compare_at_price": "22990",
+     "available": true,
+     "featured_image": null
+    },
+    {
+     "id": 50937031885121,
+     "title": "M",
+     "price": "22990",
+     "compare_at_price": "22990",
+     "available": true,
+     "featured_image": null
+    },
+    {
+     "id": 50937031917889,
+     "title": "L",
+     "price": "22990",
+     "compare_at_price": "22990",
+     "available": false,
+     "featured_image": null
+    },
+    {
+     "id": 50937031950657,
+     "title": "XL",
+     "price": "22990",
+     "compare_at_price": "22990",
+     "available": true,
+     "featured_image": null
+    },
+    {
+     "id": 50937031983425,
+     "title": "XXL",
+     "price": "22990",
+     "compare_at_price": "22990",
+     "available": true,
+     "featured_image": null
+    }
+   ]
+  }
+ ]
+}

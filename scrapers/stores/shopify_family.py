@@ -14,11 +14,38 @@ guarda de stock del detector no las protege; acá sí. En la primera muestra de
 Ferretería Prat, 113 de 250 variantes de `herramientas-electricas` estaban
 agotadas — o sea que el 45% de ese catálogo no debería producir una oferta.
 
-Lo que NO trae: **`products.json` no expone `barcode`** (verificado contra Prat y
-consistente con Doite). La identidad de producto sale solo de `vendor`, así que
-estas tiendas aportan señal de precio pero casi nada de comparación cross-store.
-Por la regla de identidad del sistema (GTIN → marca+modelo → nada), eso es
-aceptable: degrada el copy, nunca la señal.
+Lo que NO trae: **`products.json` no expone `barcode`** (verificado contra Prat,
+Doite y Lippi: 0 de 9.773 variantes). La identidad de producto sale solo de
+`vendor`, así que estas tiendas aportan señal de precio pero casi nada de
+comparación cross-store. Por la regla de identidad del sistema (GTIN →
+marca+modelo → nada), eso es aceptable: degrada el copy, nunca la señal.
+
+UNA FILA POR VARIANTE O UNA POR PRODUCTO: ES POR TIENDA
+-------------------------------------------------------
+
+Qué es una variante depende del rubro, y de eso depende cuántos listings genera
+la tienda:
+
+- En **ferretería** (Prat) la variante es un SKU distinto de verdad —otro
+  tamaño de broca, otro litraje— con su propio precio y su propio stock. Ahí
+  corresponde **una fila por variante**.
+- En **vestuario** (Lippi) la variante es el **talle**. Medido el 2026-11-04
+  sobre 1.830 productos de 5 colecciones: **5,34 variantes por producto**, y de
+  los 1.713 productos con más de una variante **solo 11 (0,6%)** tienen precios
+  distintos entre ellas. Emitir por variante crearía ~5,3 series **idénticas**
+  por producto y haría pesar al mismo producto cinco veces en cualquier agregado.
+
+Por eso la granularidad es un atributo de la tienda (`emitir_por_producto`) y no
+una decisión de la familia. Es la misma pregunta que `vtex_family` ya resolvió
+—ahí los `items` son los talles y se emite uno por producto— y la regla de qué
+variante representa al producto se porta de ahí: **la disponible más barata**
+(ver `_elegir_variante`).
+
+⚠️ **El default es `False`, y tiene que seguir siéndolo.** Cambiar la
+granularidad de una tienda ya conectada le cambia el `store_sku` a todos sus
+listings, o sea reinicia su reloj de `MIN_DAYS` y tira su histórico de precios.
+Prat está en producción: el flag se prende en tiendas nuevas, nunca se le cambia
+a una que ya tiene serie.
 """
 from __future__ import annotations
 
@@ -92,6 +119,26 @@ def _image(product: dict[str, Any], variant: dict[str, Any]) -> str | None:
     return None
 
 
+def _elegir_variante(variants: Sequence[dict[str, Any]]) -> dict[str, Any] | None:
+    """Qué variante representa al producto, con `emitir_por_producto`.
+
+    Gana la **disponible más barata**, y si ninguna está disponible, la más
+    barata. Es la regla de `vtex_family._elegir_item` y el motivo es el mismo:
+    el detector rechaza por stock, así que tomar el precio de un talle agotado
+    publicaría un precio que nadie puede pagar.
+
+    Devuelve `None` si ninguna variante tiene un precio usable — un producto sin
+    precio no es una observación, es un hueco en la serie.
+    """
+    con_precio = [(v, parse_price(v.get("price"))) for v in variants if isinstance(v, dict)]
+    con_precio = [(v, p) for v, p in con_precio if p is not None and v.get("id") is not None]
+    if not con_precio:
+        return None
+    disponibles = [(v, p) for v, p in con_precio if v.get("available")]
+    pool = disponibles or con_precio
+    return min(pool, key=lambda par: par[1])[0]
+
+
 def parse_listing(
     payload: dict[str, Any],
     *,
@@ -100,11 +147,17 @@ def parse_listing(
     category: CategoryRef,
     scraped_at: datetime,
     non_brand_vendors: frozenset[str] = frozenset(),
+    emitir_por_producto: bool = False,
 ) -> list[RawProduct]:
     """Convierte una página de `/products.json` en productos.
 
-    Emite **una fila por variante**, no por producto: cada variante tiene su
-    propio precio y su propio stock, y son las que la tienda vende.
+    Por defecto emite **una fila por variante**: en ferretería cada variante
+    tiene su propio precio y su propio stock, y son las que la tienda vende.
+
+    Con `emitir_por_producto=True` emite **una fila por producto**, con la
+    variante que elige `_elegir_variante`. Es lo que corresponde cuando la
+    variante es el talle. Ver el docstring del módulo: la decisión es por tienda
+    y no se le cambia a una tienda ya conectada.
     """
     products_raw = payload.get("products")
     if not isinstance(products_raw, list):
@@ -118,7 +171,11 @@ def parse_listing(
             continue
         handle = entry.get("handle")
         title = clean_text(entry.get("title"))
+        entry_id = entry.get("id")
         if not (handle and title):
+            continue
+        if emitir_por_producto and entry_id is None:
+            logger.debug("producto_sin_id store=%s handle=%s", store_slug, handle)
             continue
 
         vendor = clean_text(entry.get("vendor")) or ""
@@ -128,9 +185,24 @@ def parse_listing(
             else normalize_brand(vendor)
         )
 
-        for variant in entry.get("variants") or []:
-            if not isinstance(variant, dict):
+        todas = [v for v in (entry.get("variants") or []) if isinstance(v, dict)]
+        if emitir_por_producto:
+            elegida = _elegir_variante(todas)
+            if elegida is None:
+                logger.debug(
+                    "sin_variante_con_precio store=%s handle=%s", store_slug, handle
+                )
                 continue
+            variantes = [elegida]
+            # El producto es comprable si **alguna** talla lo está, aunque la que
+            # da el precio no sea esa: `_elegir_variante` cae a la más barata
+            # cuando ninguna está disponible, y en ese caso esto es False.
+            producto_en_stock = any(v.get("available") for v in todas)
+        else:
+            variantes = todas
+            producto_en_stock = None
+
+        for variant in variantes:
             variant_id = variant.get("id")
             if variant_id is None:
                 continue
@@ -161,25 +233,41 @@ def parse_listing(
                 claimed_normal = None
 
             # El nombre de la variante se agrega solo cuando distingue algo: la
-            # variante única de un producto simple se llama "Default Title".
+            # variante única de un producto simple se llama "Default Title". Con
+            # `emitir_por_producto` no se agrega nunca: la fila representa al
+            # producto entero, así que colgarle el talle de la variante que dio el
+            # precio ("Polera Ulmo M") nombraría mal lo que se publica.
             variant_title = clean_text(variant.get("title"))
             name = (
-                f"{title} {variant_title}"
-                if variant_title and variant_title.casefold() != "default title"
-                else title
+                title
+                if emitir_por_producto
+                else (
+                    f"{title} {variant_title}"
+                    if variant_title and variant_title.casefold() != "default title"
+                    else title
+                )
             )
 
             products.append(
                 RawProduct(
                     store_slug=store_slug,
-                    # La variante, no el `sku`: el id es el identificador que
-                    # Shopify garantiza único y estable, mientras que el `sku` es
-                    # texto libre del comerciante. Dos variantes con el mismo sku
+                    # El id, no el `sku`: el id es el identificador que Shopify
+                    # garantiza único y estable, mientras que el `sku` es texto
+                    # libre del comerciante. Dos variantes con el mismo sku
                     # fundirían dos productos distintos en una sola serie de
                     # precios, que es el peor error posible acá; un id que cambia
                     # solo cuesta volver a esperar los 30 días de baseline.
-                    store_sku=str(variant_id),
-                    url=f"{base_url}/products/{handle}?variant={variant_id}",
+                    #
+                    # Con `emitir_por_producto` la llave es el id del PRODUCTO.
+                    # No hay riesgo de colisión con ids de variante porque el
+                    # flag es por tienda: dentro de una tienda todos los
+                    # `store_sku` salen del mismo espacio de ids.
+                    store_sku=str(entry_id) if emitir_por_producto else str(variant_id),
+                    url=(
+                        f"{base_url}/products/{handle}"
+                        if emitir_por_producto
+                        else f"{base_url}/products/{handle}?variant={variant_id}"
+                    ),
                     name=name,
                     price_effective=price,
                     price_normal=claimed_normal,
@@ -194,7 +282,11 @@ def parse_listing(
                     # La tienda no declara un porcentaje; el "antes" queda en
                     # `price_normal`, que es donde se puede auditar.
                     claimed_discount=None,
-                    in_stock=bool(variant.get("available")),
+                    in_stock=(
+                        bool(producto_en_stock)
+                        if producto_en_stock is not None
+                        else bool(variant.get("available"))
+                    ),
                     scraped_at=scraped_at,
                     raw_payload=variant,
                 )
@@ -221,10 +313,27 @@ class _ShopifyFamilyAdapter:
     #: `(+ofertascl-bot)` en el User-Agent. Una tienda que bloquea por ese token
     #: lo sobreescribe con `BROWSER_USER_AGENT` (ver `PratAdapter`).
     _headers: dict[str, str] | None = None
+    #: ¿Una fila por producto en vez de una por variante? Se prende cuando la
+    #: variante de esta tienda es el **talle** (ver el docstring del módulo).
+    #: ⚠️ No se le cambia a una tienda ya conectada: le cambia el `store_sku` a
+    #: todos sus listings y reinicia su reloj de `MIN_DAYS`.
+    emitir_por_producto: bool = False
+    #: ¿La tienda cross-lista el mismo producto en varias colecciones? Con esto
+    #: en `True` el `seen` vive en la **pasada** y no en la colección: el producto
+    #: se emite una vez y gana la primera llave del orden de
+    #: `db.load_store_targets`. Es la misma mecánica que
+    #: `magento_html.dedupe_across_categories`, con la misma letra chica: es
+    #: inocuo **solo mientras los solapamientos caigan dentro de la misma
+    #: categoría interna**, porque cuál llave gana decide contra qué θ se mide el
+    #: producto. Ver `LippiAdapter`.
+    dedupe_across_categories: bool = False
 
     def __init__(self, http: HttpClient, categories: Sequence[CategoryRef]) -> None:
         self._http = http
         self._categories = tuple(categories)
+        #: Solo se usa con `dedupe_across_categories`. La instancia vive una
+        #: pasada, así que el conjunto se vacía solo entre pasadas.
+        self._visto_en_la_pasada: set[str] = set()
 
     def categories(self) -> Sequence[CategoryRef]:
         return self._categories
@@ -236,7 +345,15 @@ class _ShopifyFamilyAdapter:
         )
 
     async def discover(self, category: CategoryRef) -> AsyncIterator[RawProduct]:
-        seen: set[str] = set()
+        seen = (
+            self._visto_en_la_pasada if self.dedupe_across_categories else set()
+        )
+        #: Distinto de `seen`: detecta que la tienda sirvió otra vez la misma
+        #: página. Confundirlos cortaría la paginación en la primera página cuyos
+        #: productos ya hubieran entrado por OTRA colección — el bug que
+        #: `magento_html` documenta y que en Andesgear dejó tres categorías a
+        #: medias.
+        locales: set[str] = set()
         page = 1
 
         while page <= self.max_pages:
@@ -254,6 +371,7 @@ class _ShopifyFamilyAdapter:
                 category=category,
                 scraped_at=scraped_at,
                 non_brand_vendors=self.non_brand_vendors,
+                emitir_por_producto=self.emitir_por_producto,
             )
 
             if not payload.get("products"):
@@ -272,14 +390,17 @@ class _ShopifyFamilyAdapter:
 
             fresh = 0
             for product in products:
+                if product.store_sku in locales:
+                    continue
+                locales.add(product.store_sku)
+                fresh += 1
                 if product.store_sku in seen:
                     continue
                 seen.add(product.store_sku)
-                fresh += 1
                 yield product
 
-            # Sin variantes nuevas no hay nada que ganar en la página siguiente:
-            # o la tienda dejó de respetar `page`, o el resto son duplicados.
+            # Sin filas nuevas no hay nada que ganar en la página siguiente: o
+            # la tienda dejó de respetar `page`, o el resto son duplicados.
             if fresh == 0:
                 break
             page += 1
@@ -332,3 +453,81 @@ class PratAdapter(_ShopifyFamilyAdapter):
     base_url = "https://ferreteriaprat.cl"
     #: `pratcl` es la propia tienda y `NO DEFINIDO` su placeholder.
     non_brand_vendors = frozenset({"pratcl", "prat", "no definido"})
+
+
+class LippiAdapter(_ShopifyFamilyAdapter):
+    """Lippi Outdoor. `store_key` = handle de colección, p. ej. `poleras-hombre`.
+
+    **Es la primera tienda de la familia que emite una fila por producto**, y la
+    razón está medida (2026-11-04, 1.830 productos de 5 colecciones, 9 páginas):
+    **5,34 variantes por producto**, y de los 1.713 productos con más de una
+    variante **solo 11 (0,6%)** tienen precios distintos entre ellas. Las
+    variantes acá son talles. Ver el docstring del módulo.
+
+    `robots.txt` es permisivo —`Allow: /` y 41 `Disallow`, todos de carrito,
+    checkout, cuenta y filtros `sort_by`; nada que toque
+    `/collections/*/products.json`— y **no declara `Crawl-delay`**, así que rige
+    el default conservador de la familia.
+
+    **El 429 de esta tienda es por HEADERS, no por tasa — y es el INVERSO exacto
+    de Prat.** Verificado el 2026-11-05 aislando la variable, 4 intentos de cada
+    juego contra la misma URL:
+
+        DEFAULT_USER_AGENT      200, 200, 200, 200
+        BROWSER_USER_AGENT      200, 200, 429, 200
+        BROWSER_HEADERS         403, 403, 403, 403
+        BROWSER_HEADERS_JSON    429, 429, 429, 429
+        sin User-Agent          200, 200, 200, 200
+
+    O sea **el UA identificable con el sufijo `(+ofertascl-bot)` es el que pasa**,
+    y lo que bloquea es parecerse a un navegador. Por eso esta clase **no define
+    `_headers`**: hereda el `None` de la familia, que usa el `DEFAULT_USER_AGENT`
+    del `HttpClient`. No copiar el `_headers` de `PratAdapter` acá — en Prat es
+    justo al revés y copiarlo trae el 429 de vuelta.
+
+    ⚠️ **Cómo me costó esto, para que no se repita**: persiguiendo el 429 bajé el
+    rps de 0,5 a 0,33 y después a 0,08 y el 429 siguió apareciendo (44 veces en
+    una corrida), porque mis barridos mandaban `BROWSER_USER_AGENT`. La regla que
+    `CLAUDE.md` ya tiene escrita —**ante un 429 persistente probar el UA ANTES de
+    tocar el rps**— aplica en las dos direcciones, y yo la apliqué en ninguna.
+    Con el UA correcto el `rate_limit_rps = 0.5` de la familia alcanza.
+
+    **`compare_at_price` no es el margen fijo de Prat.** 9.745 de 9.773 variantes
+    traen el campo, pero solo **1.136 (11,6%)** tienen `compare_at > price`, y su
+    distribución es un abanico de tramos redondos —0,6 (32%), 0,7 (16%), 0,8
+    (11%), 0,9 (9%)—, o sea 40/30/20/10% off. Son promociones reales, no un 10%
+    aplicado al catálogo entero. Igual **no se usa para el descuento**: queda en
+    `price_normal` como evidencia, como en toda la familia.
+
+    **`barcode` vacío en las 9.773 variantes medidas**, consistente con Prat y
+    Doite: no aporta identidad cross-store.
+
+    **Stock real**: 7.306 de 9.773 variantes disponibles (74,8%), o sea ~25% del
+    catálogo agotado. Con `emitir_por_producto`, `in_stock` del producto es
+    "alguna talla disponible" y el precio sale de la **talla disponible más
+    barata**.
+
+    `non_brand_vendors` queda **vacío a propósito**: los `vendor` de esta tienda
+    son marcas de verdad —`Lippi` (la propia, que también es marca), `Haka Honu`,
+    `Vulcano`, `Geography`— y no placeholders como el `pratcl` / `NO DEFINIDO` de
+    Prat. Descartarlos perdería identidad sin ganar nada.
+
+    **Cross-lista fuerte, y por eso deduplica por pasada.** Medido sobre sus 76
+    hojas de tipo de producto: 4.481 filas → **3.418 productos únicos (1,311×)**.
+    Lo que hace seguro el dedupe acá es dónde cae ese solapamiento: de las 1.191
+    coincidencias, **las 1.191 caen dentro de la misma categoría interna y CERO
+    cruzan categorías**. O sea cuál llave gana no cambia el θ contra el que se
+    mide el producto — la condición exacta que el precedente de Andesgear exige.
+    Si alguna vez se conecta una llave que cruce dos categorías internas, esto
+    deja de ser inocuo.
+
+    **Los ejes que NO entran**: el de actividad (`trekking-hiking-*`, `nieve-*`,
+    `trail-running-*`, `escalada-y-montana-*`, `lifestyle-*`) está **97,1%
+    contenido** en las hojas de tipo —aporta 82 productos exclusivos y duplicaría
+    2.725 series— y los paraguas (`hombre`, `top-*`, `calzado-*`) **95,4%**.
+    """
+
+    slug = "lippi"
+    base_url = "https://www.lippioutdoor.com"
+    emitir_por_producto = True
+    dedupe_across_categories = True
