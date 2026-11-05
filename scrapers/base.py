@@ -28,6 +28,11 @@ MAX_PLAUSIBLE_CLP = Decimal("100000000")
 #: no vale la pena arriesgar un error de inserción por él.
 PUM_LABEL_MAX_CHARS = 16
 
+#: Largo máximo de `promo_label`. La promo más larga medida en Unimarc es
+#: `"4 x $2.360"` (10 caracteres); 48 deja margen para `"3 x $1.000 Club Unimarc"`
+#: sin ser un cheque en blanco.
+PROMO_LABEL_MAX_CHARS = 48
+
 
 @dataclass(frozen=True)
 class Pum:
@@ -83,6 +88,60 @@ class ListingRef:
 
 
 @dataclass(frozen=True)
+class PromoCantidad:
+    """Promoción de multicompra: "4 x $1.000". Los tres campos juntos o ninguno.
+
+    **El ahorro es por cantidad y NO es una rebaja unitaria**, y esa distinción es
+    todo el punto de esta clase. Medido el 2026-11-05 sobre las 107 promociones de
+    multicompra de una raíz de Unimarc: en **las 107** el precio unitario
+    publicado es **igual** al de lista. O sea no hay descuento si compras una; el
+    13-20% de ahorro existe solo si compras N.
+
+    Consecuencia de dominio: si el copy dijera "−17%" sin la condición, el canal
+    estaría publicando una rebaja que no existe para quien compra una unidad —
+    exactamente el tipo de oferta falsa que este proyecto existe para no ser. Por
+    eso `label` va **verbatim** y el formatter lo imprime siempre.
+
+    `unitario` es **derivado y no es un precio que alguien pague**: nadie paga
+    $287,5. Es la misma naturaleza que el `pum` —una normalización a una base para
+    poder comparar— y por eso no se persiste ni se le aplica
+    `MAX_PLAUSIBLE_CLP`. Lo que se guarda son `qty` y `total`, los dos enteros,
+    así la regla de CLP entero se cumple en la capa de datos y el decimal vive
+    solo en el cálculo.
+    """
+
+    #: Unidades que exige la promoción (2, 3, 4…).
+    qty: int
+    #: Lo que se paga por esas `qty` unidades, en CLP entero.
+    total: Decimal
+    #: El texto tal como lo publica la tienda: `"4 x $1.000"`. Va verbatim porque
+    #: es la condición que el suscriptor tiene que leer, no un número a reformatear.
+    label: str
+
+    def __post_init__(self) -> None:
+        if self.qty < 2:
+            raise ValueError(
+                f"promo_qty tiene que ser >= 2 (una promo de 1 unidad no es "
+                f"multicompra, es el precio), llegó {self.qty!r}"
+            )
+        if not 0 < self.total <= MAX_PLAUSIBLE_CLP:
+            raise ValueError(f"promo_total fuera de rango: {self.total!r}")
+        if not self.label or len(self.label) > PROMO_LABEL_MAX_CHARS:
+            raise ValueError(f"promo_label inválido: {self.label!r}")
+
+    @property
+    def unitario(self) -> Decimal:
+        """Precio por unidad **bajo la condición**. Derivado, no almacenado.
+
+        No se redondea a entero: `4 x $1.150` da 287,5 y redondearlo arriba o
+        abajo cambiaría el descuento que se publica. Se mantiene la precisión en
+        el cálculo y el entero queda donde tiene que estar — en `total`, que es lo
+        que de verdad se paga.
+        """
+        return self.total / Decimal(self.qty)
+
+
+@dataclass(frozen=True)
 class RawProduct:
     """Producto normalizado, listo para persistir.
 
@@ -120,6 +179,12 @@ class RawProduct:
     #: detector —la señal sigue siendo `1 − price_today / p50_60d` y nada más—:
     #: existe para el copy.
     pum: Pum | None = None
+    #: Promoción de multicompra, cuando la tienda la declara. **No alimenta la
+    #: serie**: `price_effective` sigue siendo el precio unitario sin condición,
+    #: así que el p50 se construye con precios comparables entre sí. Lo que sí
+    #: hace es cambiar el numerador del descuento y obligar al copy a declarar la
+    #: condición — ver `PromoCantidad` y `pricing.detector.evaluate`.
+    promo: PromoCantidad | None = None
     raw_payload: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:

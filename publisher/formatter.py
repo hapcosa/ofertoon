@@ -143,6 +143,59 @@ def pum_line(candidate: Candidate) -> str | None:
     return linea
 
 
+def price_line(candidate: Candidate) -> str:
+    """La línea del precio. Con promo de multicompra muestra la promo.
+
+    Sin promo: `$12.990 · antes real $18.990`.
+
+    Con promo el precio unitario **no bajó** —en las 107 promociones medidas el
+    unitario es igual al de lista— así que mostrar `$300 · antes real $300` al
+    lado de un encabezado que dice −17% deja al suscriptor sin entender de dónde
+    sale el porcentaje hasta la línea siguiente. La línea muestra entonces lo que
+    el porcentaje de verdad compara: **el precio unitario bajo la condición**.
+
+    El total de la promo va primero porque es lo que se paga en la caja; el
+    unitario entre paréntesis porque es el número que explica el encabezado. El
+    unitario se redondea **solo para mostrar** (`4 x $1.150` son $287,5): el
+    cálculo del descuento usa la precisión completa.
+    """
+    if candidate.promo_total is None or not candidate.promo_qty:
+        return (
+            f"<b>{format_clp(candidate.price)}</b>  ·  "
+            f"antes real <s>{format_clp(candidate.p50)}</s>"
+        )
+    unitario = candidate.promo_total / Decimal(candidate.promo_qty)
+    return (
+        f"<b>{format_clp(candidate.promo_total)} por {candidate.promo_qty}</b>"
+        f"  ·  {format_clp(unitario)} cada una"
+        f"  ·  antes real <s>{format_clp(candidate.p50)}</s> por unidad"
+    )
+
+
+def promo_line(candidate: Candidate) -> str | None:
+    """La condición de la promoción de multicompra. Obligatoria cuando existe.
+
+    **Sin esta línea el mensaje miente.** Medido el 2026-11-05 sobre las 107
+    promociones de multicompra de una raíz de Unimarc: en **las 107** el precio
+    unitario publicado es igual al de lista, o sea **no hay descuento comprando
+    una unidad**. El porcentaje del encabezado se midió contra el precio unitario
+    *bajo la condición*, así que publicarlo sin decir "4 x $1.000" sería anunciar
+    una rebaja que no existe para quien compra de a una — exactamente el tipo de
+    oferta falsa que este proyecto existe para no ser.
+
+    Por eso no es opcional ni depende de la categoría, a diferencia de
+    `pum_line`: si el candidato trae promo, la línea sale. La etiqueta va
+    **verbatim** como la publica la tienda.
+    """
+    if not candidate.promo_label or not candidate.promo_qty:
+        return None
+    etiqueta = html.escape(candidate.promo_label)
+    return (
+        f"⚠️ <b>Ahorro por cantidad</b>: {etiqueta}. "
+        f"El precio de una unidad no baja."
+    )
+
+
 def deal_url(candidate: Candidate) -> str:
     """La URL a publicar. Único punto a tocar el día que haya afiliados."""
     return candidate.url
@@ -157,9 +210,14 @@ def format_deal(candidate: Candidate) -> str:
         f"<b>{html.escape(truncate(candidate.name))}</b>",
         html.escape(candidate.store_name),
         "",
-        f"<b>{format_clp(candidate.price)}</b>  ·  "
-        f"antes real <s>{format_clp(candidate.p50)}</s>",
+        price_line(candidate),
     ]
+    # La condición de multicompra va INMEDIATAMENTE después del precio y antes
+    # del resto: es la que califica el porcentaje del encabezado, y una condición
+    # que se lee al final ya se leyó tarde.
+    por_cantidad = promo_line(candidate)
+    if por_cantidad is not None:
+        parts.append(por_cantidad)
     unitario = pum_line(candidate)
     if unitario is not None:
         parts.append(unitario)

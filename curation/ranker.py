@@ -148,6 +148,14 @@ class Candidate:
     #: que falte no puede frenar una oferta.
     pum_price: Decimal | None = None
     pum_label: str | None = None
+    #: Promoción de multicompra de ESA observación. Los tres juntos o ninguno (lo
+    #: hace cumplir el CHECK de la migración 46). ⚠️ Cuando vienen, el
+    #: `discount_real` del candidato se midió contra el precio unitario **bajo la
+    #: condición**, así que el copy **tiene** que declararla: ver
+    #: `pricing.detector.evaluate` y `publisher.formatter.promo_line`.
+    promo_qty: int | None = None
+    promo_total: Decimal | None = None
+    promo_label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -265,6 +273,12 @@ _CANDIDATES_SQL = """
            b.p10_60d       AS p10,
            pum.pum_price,
            pum.pum_label,
+           -- La promo de multicompra sale del MISMO join que el pum: es la misma
+           -- fila de `price_points` (la observación que se publica), así que no
+           -- hace falta otro join. Ver la migración 46.
+           pum.promo_qty,
+           pum.promo_total,
+           pum.promo_label,
            (SELECT MIN(pp.price_effective)
               FROM price_points AS pp
              WHERE pp.listing_id = l.id

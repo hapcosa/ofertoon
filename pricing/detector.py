@@ -30,6 +30,7 @@ import asyncpg
 
 from catalog.normalize import es_hardware_servidor, es_segunda_mano
 from pricing.baselines import Baseline
+from scrapers.base import PromoCantidad
 
 logger = logging.getLogger("pricing.detector")
 
@@ -63,6 +64,12 @@ class Decision:
     discount_real: Decimal
     score: Decimal | None = None
     reject_reason: str | None = None
+    #: `True` cuando el `discount_real` se midió contra el precio unitario de una
+    #: promoción de multicompra en vez del precio de una unidad. **El copy TIENE
+    #: que declararlo**: el ahorro existe solo comprando N, y publicar ese
+    #: porcentaje sin la condición sería anunciar una rebaja que no existe para
+    #: quien compra una. Ver `evaluate`.
+    por_cantidad: bool = False
 
     @property
     def accepted(self) -> bool:
@@ -104,20 +111,56 @@ def evaluate(
     now: datetime | None = None,
     name: str | None = None,
     min_history_days: int | None = None,
+    promo: PromoCantidad | None = None,
 ) -> Decision:
     """Aplica las guardas en orden y devuelve el veredicto.
 
     El orden importa para el dataset, no para el resultado: cuando varias
     guardas fallan se registra la primera, así que van de la más fundamental
     (no hay serie confiable) a la más de política (ya lo publicamos hace poco).
+
+    PROMOCIONES DE MULTICOMPRA
+    --------------------------
+
+    `price` es siempre el precio **unitario sin condición** —el que paga
+    cualquiera por una— y es el que alimenta la serie, así que el `p50` se
+    construye con precios comparables entre sí. Eso no cambia.
+
+    Con `promo`, lo que cambia es el **numerador**: se compara `promo.unitario`
+    contra el mismo `p50`, y el resultado significa "cuánto ahorrás por unidad
+    **si compras N** contra lo que esa unidad costó de verdad los últimos 60
+    días".
+
+    Por qué hace falta, medido el 2026-11-05 sobre las 107 promociones de
+    multicompra de una raíz de Unimarc: **en las 107 el precio unitario publicado
+    es igual al de lista**. O sea con el numerador sin condición
+    `discount_real ≈ 0` y **ninguna** llegaría nunca a ser candidato — llevar la
+    condición solo como texto del mensaje no las haría publicables, porque el
+    mensaje no se genera.
+
+    ⚠️ **La contrapartida hay que tenerla a la vista**: el numerador es
+    condicionado y el denominador no, así que este `discount_real` **no es la
+    misma métrica** que el del resto del canal. Decisión del dueño del
+    2026-11-05: entra al mismo pool y compite con el mismo θ, **y el copy declara
+    la condición**. Eso último no es cosmético — es lo que separa "4 x $1.000" de
+    anunciar un −17% que no existe comprando una unidad. `Decision.por_cantidad`
+    lo transporta hasta el formatter.
     """
     now = now or datetime.now(timezone.utc)
+    # El precio que se COMPARA. La serie sigue guardando el unitario sin
+    # condición (ver el docstring); acá se elige contra qué se mide el descuento
+    # y, coherentemente, qué precio ven las guardas de piso y de cooldown: si el
+    # ahorro se anuncia por unidad bajo promo, el piso y el cooldown tienen que
+    # juzgar ese mismo número y no otro.
+    precio_comparado = promo.unitario if promo is not None else price
     discount_real = Decimal(0)
     if baseline.p50 > 0:
-        discount_real = ((baseline.p50 - price) / baseline.p50).quantize(Decimal("0.0001"))
+        discount_real = (
+            (baseline.p50 - precio_comparado) / baseline.p50
+        ).quantize(Decimal("0.0001"))
 
     def reject(reason: str) -> Decision:
-        return Decision("rejected", discount_real, None, reason)
+        return Decision("rejected", discount_real, None, reason, promo is not None)
 
     # 1. Stock. Publicar lo que no se puede comprar quema la credibilidad del
     #    canal más rápido que cualquier falso positivo de precio.
@@ -165,15 +208,21 @@ def evaluate(
 
     # 6. Cercanía al piso: si está por encima del p10, este precio ya se vio
     #    varias veces en dos meses. No es noticia.
-    if price > baseline.p10:
+    if precio_comparado > baseline.p10:
         return reject(REJECT_ABOVE_FLOOR)
 
     # 7. Cooldown: no repetir el mismo producto salvo que haya bajado de verdad.
     if prior_post is not None and now - prior_post.posted_at < timedelta(days=COOLDOWN_DAYS):
-        if price > prior_post.price * COOLDOWN_OVERRIDE_RATIO:
+        if precio_comparado > prior_post.price * COOLDOWN_OVERRIDE_RATIO:
             return reject(REJECT_COOLDOWN)
 
-    return Decision("accepted", discount_real, compute_score(discount_real, price, baseline))
+    return Decision(
+        "accepted",
+        discount_real,
+        compute_score(discount_real, precio_comparado, baseline),
+        None,
+        promo is not None,
+    )
 
 
 # -----------------------------------------------------------------------------
