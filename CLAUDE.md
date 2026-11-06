@@ -400,6 +400,17 @@ detector con el piso viejo. La primera corrida con 20 es la que hay que mirar.
 - **El tema `supermercado` tiene cuota 5 y una sola categoría ruteada**, así que
   `MAX_PER_CATEGORY_PER_DAY = 3` le deja **dos lugares inalcanzables**. Ya se
   materializó: el 5-nov publicó 3 de 5.
+  ⚠️ Y medido el 6-nov simulando la curación entera, **no es un caso aislado: se
+  publican 25 de los 33 de cuota**. Los 8 que faltan son 3 de `belleza` (su primer
+  candidato posible es el 2026-12-04), 2 de `supermercado`, 2 de `ropa` por el
+  mismo tope de 3, y 1 de `viajes-tours`. No los limita el detector: los limitan
+  los topes finos y las categorías sin candidatos maduros. Ver
+  `research/2026-11-06/BACKTEST_theta.md`.
+- **El piso de 20 días no agrega ofertas publicadas: desplaza un tercio del
+  canal.** Con 20 y con 30 se publican 25, pero con 20 **ocho de esas 25** se
+  miden contra un p50 de 20 a 29 días, y el reparto entre categorías cambia
+  (`tecno-notebooks` pierde sus tres lugares, `tecno-audio` los gana). Es un
+  efecto de composición y no se ve mirando el total publicado.
 - **El ritmo del chat**: `MIN_MINUTES_BETWEEN = 30` es por destino, así que con 8
   temas el chat puede recibir hasta 13 mensajes/hora y agotar la cuota en ~2,5 h.
 - **`UMBRAL_ESTABILIDAD = 0.40` manda apagar Falabella (8%) y Paris (15%)**, que
