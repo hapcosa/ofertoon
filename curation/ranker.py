@@ -156,6 +156,11 @@ class Candidate:
     promo_qty: int | None = None
     promo_total: Decimal | None = None
     promo_label: str | None = None
+    #: Condición del precio de ESA observación, verbatim de la tienda
+    #: ("Club Unimarc"). Es independiente de la promo de multicompra: califica el
+    #: precio unitario, no el total por N. Cuando viene, el copy la declara — un
+    #: descuento con letra chica escondida es una oferta falsa (migración 47).
+    price_condition: str | None = None
 
 
 @dataclass(frozen=True)
@@ -279,6 +284,7 @@ _CANDIDATES_SQL = """
            pum.promo_qty,
            pum.promo_total,
            pum.promo_label,
+           pum.price_condition,
            (SELECT MIN(pp.price_effective)
               FROM price_points AS pp
              WHERE pp.listing_id = l.id

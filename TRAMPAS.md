@@ -14,13 +14,13 @@ todas existen porque alguien ya probó el camino obvio.
 
 ## Índice
 
-**A.** Llegar al catálogo: robots, User-Agent y bloqueos — 7 trampas. Todo lo que hace que una tienda parezca inaccesible sin estarlo — y al revés.
-**B.** Elegir las llaves: catálogo o vitrina, y solapamiento — 8 trampas. Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
-**C.** Paginación y completitud — 10 trampas. Cómo se enumera un catálogo entero, y cuándo el canario exacto es sostenible.
-**D.** Precio, stock e identidad del producto — 15 trampas. Qué número se guarda como `price_effective`, y qué cosa es un listing.
-**E.** Las guardas: canario, agujero y volumen — 7 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
-**F.** Infraestructura, Docker y verificación — 7 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
-**G.** Detector, θ, backtest y publicación — 9 trampas. Lo que decide si una señal es una oferta de verdad, y cómo se mide.
+**A.** Llegar al catálogo: robots, User-Agent y bloqueos — 9 trampas. Todo lo que hace que una tienda parezca inaccesible sin estarlo — y al revés.
+**B.** Elegir las llaves: catálogo o vitrina, y solapamiento — 9 trampas. Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
+**C.** Paginación y completitud — 11 trampas. Cómo se enumera un catálogo entero, y cuándo el canario exacto es sostenible.
+**D.** Precio, stock e identidad del producto — 18 trampas. Qué número se guarda como `price_effective`, y qué cosa es un listing.
+**E.** Las guardas: canario, agujero y volumen — 11 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
+**F.** Infraestructura, Docker y verificación — 13 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
+**G.** Detector, θ, backtest y publicación — 10 trampas. Lo que decide si una señal es una oferta de verdad, y cómo se mide.
 
 
 ---
@@ -46,6 +46,19 @@ Todo lo que hace que una tienda parezca inaccesible sin estarlo — y al revés.
   agotados 3 reintentos`) sin una sola observación de la tienda, justo cuando su
   reloj de `MIN_DAYS` había arrancado de cero con la migración 22. Regla general:
   **ante un 429 persistente, probar `BROWSER_USER_AGENT` ANTES de tocar el rps.**
+
+- **Y el caso inverso existe: Unimarc rechaza el UA de NAVEGADOR y acepta el
+  identificable.** Medido el 2026-11-06 aislando la variable, 4 intentos de cada
+  juego contra la misma URL: `DEFAULT_USER_AGENT` **200 las 4 veces**,
+  `BROWSER_USER_AGENT` **403 las 4 veces**, `BROWSER_HEADERS` **200 las 4 veces**.
+  Lo que su borde rechaza no es el token `(+ofertascl-bot)` sino un UA de
+  navegador **sin el resto de los headers que un navegador manda** — o sea
+  exactamente el atajo que funciona en Prat, Easy y Ferretek. Por eso
+  `UnimarcAdapter` no pasa `BROWSER_HEADERS` ni fuerza `BROWSER_USER_AGENT`, que
+  la rompería, y se queda con el default de `HttpClient`. Verificado además sobre
+  una paginación completa (5 págs, 241/241, cinco 200), no solo sobre requests
+  sueltas. **Moraleja: los tres juegos se prueban aislando la variable, no se
+  copia el del adaptador de al lado.**
 
 - **Ferretek bloquea por User-Agent.** El Varnish que tiene adelante responde
   `403 Empty UA blocked` a cualquier cosa que no parezca un navegador —el
@@ -175,6 +188,18 @@ Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
   `db.load_store_targets` —que por eso ordena también por `store_key`—. Es inocuo
   **solo porque los solapamientos medidos caen dentro de la misma categoría
   interna**; una llave que cruce dos categorías internas rompe el supuesto.
+
+- **El `categorySlug` de un producto NO sirve para verificar que una llave trae
+  lo que dice.** Mide la categoría **principal** que la tienda le asignó, y esa
+  puede ser una vitrina estacional. En Unimarc, `bebidas-y-licores` medido con ese
+  campo da **34%** de coincidencia y se ve igual que el caso `cat2049/Audifonos`
+  de Falabella (forma correcta, contenido equivocado) — y no lo es: el contenido
+  es Coca-Colas, cervezas y vinos, pero 32 de las 50 entradas de la página 1
+  tienen `categorySlug` = `fiestas-patrias/bebestibles/*`. El tamiz de la
+  fracción de coincidencia hay que hacerlo sobre el **nombre** del producto o
+  sobre `categories[]`, nunca sobre el slug de categoría. Y de paso: esa vitrina
+  transversal existe y **no debe ser una llave**, porque cross-lista catálogo que
+  ya entra por su departamento.
 
 - **No se conectan categorías de precio estacional.** `Frutas-y-Verduras` y
   `Carnes` de Tottus quedaron afuera a propósito, y no por tamaño: el p50 de 60
@@ -348,6 +373,32 @@ Qué número se guarda como `price_effective`, y qué cosa es un listing.
   es el **disponible más barato** —tomar el de un talle agotado publica un precio
   que nadie puede pagar—. `in_stock` mira todos los talles: el producto es
   comprable si alguno lo está.
+
+- **Unimarc cotiza por canal de venta, y el canal del anónimo es un número que
+  hay que fijar.** Es el segundo caso Construmart. Su `salesChannel` sale de la
+  dirección que el cliente eligió (el front lo escribe en la cookie `co_sc`) y un
+  visitante anónimo recibe el **39**. Medido el 2026-11-06 pidiendo la MISMA URL y
+  cambiando solo la cookie: `co_sc=39` da idéntico a no mandar cookie (0 de 33
+  precios distintos, o sea el default confirmado), `co_sc=1` cambia 1 precio,
+  `co_sc=2` cambia 2, y **`co_sc=40` cambia el SURTIDO** (35 entradas en vez de
+  33). Por eso el adaptador manda el 39 explícito en toda request en vez de
+  confiar en el default del servidor: **cambiar ese número invalida el histórico
+  entero de la tienda**. Lo que no se pudo resolver es qué sucursal física es el
+  39 — el endpoint que traduce coordenadas a canal exige sesión —, así que lo
+  afirmable es "la serie es la del canal 39", no "cobertura nacional".
+
+- **Una etiqueta promocional NO es un campo de condiciones**, y tratarla como tal
+  publica letra chica inventada. `promotionalTag.text` de Unimarc es el espacio de
+  marketing del tile: de las cuatro etiquetas que aparecen en las 8.213 entradas
+  medidas el 2026-11-06, solo dos condicionan un precio — `Club Unimarc` (2.615) y
+  `Exclusivo .cl` (220) — mientras `Diamante` (5) es un sello de vino sobre un
+  precio **igual** al de lista y `Pronto disponible` (15) es un estado de **stock**
+  (son los 15 agotados, 14 de ellos con precio 0). Publicar "Requiere Diamante"
+  sobre un vino que cuesta lo de siempre es el error simétrico de callar el Club.
+  El filtro que los separa no es una lista de nombres sino una regla de dominio:
+  **la condición se emite solo si acompaña un precio condicionado** (precio menor
+  al de lista, o una promo de multicompra), y eso clasifica bien las 8.213 — de
+  las Club y las Exclusivo, cero tienen precio igual al de lista sin promo.
 
 - **Construmart cotiza por sucursal.** Cada sucursal es un `customer_group_id`;
   para un anónimo el HTML del listado no trae un solo `$` y todas las filas salen
@@ -718,6 +769,19 @@ Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son 
   servicio no es un problema de red, es que el contenedor de la base no está**.
 
 
+- **Dos `pytest` contra la misma base descartable se pisan, y el síntoma es una
+  tabla que "no existe".** CLAUDE.md §Trabajo multi-agente lo documenta para dos
+  agentes con el mismo nombre de base; pasa igual con **un** agente que lanza una
+  suite en background y corre un subconjunto en paralelo, porque el setup de
+  sesión del conftest hace `DROP SCHEMA public CASCADE` y lo recrea. Medido el
+  2026-11-06: una suite que había dado **944 passed / 0 fallos** dio
+  **934 passed / 14 errors** con `UndefinedTableError` en `test_paypal_webhook`,
+  `test_onboarding_bot_payments` y `test_tottus`, solo por haber corrido
+  `pytest tests/test_paypal_webhook.py` mientras la suite estaba a mitad de
+  camino. Los 13 de paypal pasan aislados. **Un pytest a la vez por base**, o una
+  base por corrida — y ante un `UndefinedTableError` en tests que no tocaste,
+  sospechar esto antes de buscar la regresión.
+
 - **`migrate.py` no verifica que la secuencia esté completa: aplica lo que el
   checkout tenga delante.** `discover()` es `sorted(MIGRATIONS_DIR.glob("*.sql"))`
   y se aplica todo lo que no esté en `schema_migrations`. No hay chequeo de
@@ -732,6 +796,91 @@ Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son 
   silencio**, dejando un hueco que nada reporta.
   La regla práctica: **aplicar siempre desde un checkout que tenga la secuencia
   completa**, y mirar `schema_migrations` contra `ls migrations/`, no el mensaje.
+  Caso vivo del 2026-11-06: la base tenía **47 migraciones, 01-46 y 48 — con la
+  47 pendiente**, porque la 47 y la 48 se escribieron en ramas distintas y la 48
+  se aplicó primero. Desde `main`, que no tiene ninguno de los dos archivos,
+  `migrate.py --status` contesta "sin pendientes" **y es falso**. Un hueco en el
+  medio de la secuencia no es hipotético y no lo reporta nada: el único lugar
+  donde se ve es `SELECT filename FROM schema_migrations`.
+
+- **Hay filas que no las puede verificar ningún test, y las
+  `store_categories` son el caso.** El `_truncate_state` del conftest preserva
+  solo `categories`, `stores` y `schema_migrations`, y trunca el resto entre
+  tests — así que las llaves que inserta una migración existen al aplicarla y ya
+  no están cuando corre el primer test. Una suite en verde **no dice nada** sobre
+  si las llaves de una tienda nueva quedaron bien mapeadas. Verificado el
+  2026-11-06 con la 47: en la base de test `stores` tenía `unimarc` y
+  `store_categories` estaba vacía.
+  La forma de verificarlas antes de desplegar es aplicar la secuencia **completa**
+  sobre una base descartable propia y mirarla —`CREATE DATABASE` + `migrate.py`
+  con `DATABASE_URL` apuntado ahí a mano, nunca `docker compose run db-migrate`,
+  que escribe en la real—. Así salieron las 8 llaves de Unimarc (7 a
+  `supermercado`, `perfumeria` a `belleza`) y el `publish_enabled=false` de su
+  fila.
+
+- **Dos ramas pueden quedar interdependientes A TRAVÉS DE LA BASE, y entonces
+  ninguna de las dos se puede desplegar sola.** No es un conflicto de git: los
+  archivos no se tocan. Pasó el 2026-11-06 entre `feat/unimarc` y el trabajo de
+  PC Express: aplicar la 47 sin el código deja las 8 llaves de Unimarc en
+  `failed` cada pasada (`resolve_adapter` no encuentra el módulo), y desplegar el
+  código de Unimarc solo rompe `pc-express`, que **ya está en la base** apuntando
+  a un `scrapers/stores/pc_express.py` que esa rama no tiene. El síntoma no
+  aparece en ningún test: los dos árboles pasan en verde.
+  La única salida es integrar primero y desplegar una sola vez — merge, **una**
+  build, **una** aplicación—, y el merge se **verifica**, no se asume. Se puede
+  verificar sin tocar el árbol del otro agente, incluso con su trabajo sin
+  commitear:
+
+  ```bash
+  GIT_INDEX_FILE=/tmp/idx git add -A                 # índice temporal, no el suyo
+  T=$(GIT_INDEX_FILE=/tmp/idx git write-tree)
+  S=$(git commit-tree "$T" -p <base> -m simulacro)   # commit sintético
+  git merge-tree --write-tree --name-only "$S" <mi-rama>
+  ```
+
+  Devuelve el árbol mergeado y la lista de conflictos sin escribir una sola
+  referencia. Y sobre ese árbol se puede correr la suite de verdad
+  (`git archive <tree> | tar -x -C <dir>` y `pytest` ahí): el 6-nov dio
+  **954 passed** con un único conflicto, dos filas de `TIENDAS.md`.
+
+- **Reiniciar el scraper le cuesta al canal hasta un DÍA de publicación, y el
+  costo no es el que advierte la regla.** CLAUDE.md prohíbe reiniciarlo desde un
+  worktree por la pasada que se mata a medias; el 2026-11-06 se midió el otro
+  costo, que es mayor y silencioso: **el canal publicó CERO**, contra 21-34 por
+  día la semana anterior, sin un solo error y con el `publisher` en `Up`, su
+  proceso vivo y su último log siendo el de arranque.
+  La cadena, y cada eslabón es correcto por separado:
+  **(1)** se reinicia el scraper a las 03:37 para que la imagen traiga un
+  adaptador nuevo (lo manda §Pasos 1.7);
+  **(2)** `espera_hasta_proxima` loguea `última pasada hace poco; la próxima en
+  12.0 h` y duerme — correcto, existe para que cada despliegue no meta una pasada
+  extra (su docstring cuenta las 562 corridas del crash-loop del 18-sep);
+  **(3)** sin pasada no corre `run_pricing`, que vive **dentro** del loop después
+  de `run_once`, así que no hay baselines ni detector;
+  **(4)** los últimos candidatos vencen 13 h después de detectarse
+  (`ranker.MAX_AGE_HOURS`) — también correcto, un precio de hace más de un ciclo
+  no está verificado;
+  **(5)** la ventana de publicación abre a las 08:00 de Santiago, y al abrir ya
+  estaban todos vencidos hacía tres horas.
+  ⇒ Después de **cualquier** despliegue que reinicie el scraper, hay que disparar
+  la pasada a mano. El propio runner lo documenta: `--once` es una orden directa
+  del operador y no espera la cadencia.
+
+  ```bash
+  docker compose exec scraper python -m scrapers.runner --once
+  ```
+
+  No desarma nada: `espera_hasta_proxima` sigue cubriendo el reinicio **no**
+  supervisado, que es el caso que le importa. Detalle completo y la aritmética en
+  `research/2026-11-06/INCIDENTE_canal_mudo.md`.
+
+- **Un día con CERO publicaciones no lo reporta ninguna guarda.**
+  `runner.pasadas_flacas` mira pasadas con pocas observaciones y el canario mira
+  llaves que traen menos de lo suyo: las dos viven del lado de la ingesta.
+  **Ninguna mira el canal.** El 6-nov el sistema pasó un día entero sin publicar
+  con todos sus componentes sanos y no disparó nada — ni log, ni alerta. Es una
+  guarda que falta, y es de una tercera altura: no "entró poco" ni "esta llave
+  trae menos", sino "el producto no salió".
 
 ---
 
@@ -851,3 +1000,17 @@ Lo que decide si una señal es una oferta de verdad, y cómo se mide.
   silencio sería peor), pero el comando avisa si el rango los toca. Los días
   excluidos **siguen alimentando la baseline**: borrarles puntos sería la segunda
   implementación divergente que la regla de no-look-ahead prohíbe.
+
+- **Una tienda nueva nace PUBLICANDO, y con el piso de historia en 20 días eso
+  la pone en el canal antes de su propia evaluación de aceptación.** El default de
+  `stores.publish_enabled` es `TRUE` —tiene que serlo, para no apagar las que ya
+  estaban cuando la migración 40 agregó la columna—, así que una fila nueva
+  publica salvo que diga lo contrario. Y la cuenta no cierra: una tienda conectada
+  el 6-nov acumula los 20 días de `min_history_days` el **26-nov**, diez días
+  antes del **6-dic** en que recién se la evalúa. La fecha anotada en el header de
+  la migración **no se hace cumplir sola**: la hace cumplir
+  `publish_enabled = FALSE` en el INSERT, como en `ripley`, `pc-express` y
+  `unimarc`. Abrirla es un `UPDATE` del dueño después de correr
+  `scripts.aceptacion_tienda`.
+  Y conviene dejar la columna **afuera del `ON CONFLICT DO UPDATE`**: si el dueño
+  ya la abrió, una reaplicación de la migración se la cerraría en silencio.

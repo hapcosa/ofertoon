@@ -75,7 +75,20 @@ cobertura que eso implica (~24% del catálogo). Ver
 Las dos las descubrió otro agente el 5-nov y las **re-verifiqué yo** con los
 headers del repo, porque la regla es verificar y no heredar. Las dos dan 200.
 
-### Unimarc — 🟢 viable
+### Unimarc — ✅ conectada (adaptador probado el 2026-11-06)
+
+> **Cerrada.** Ya no pertenece a este documento: tiene adaptador, fixtures, 33
+> tests y la migración 47 escrita. La investigación completa —las doce preguntas,
+> las ocho llaves verificadas disjuntas sobre SKUs reales y el canal de venta,
+> que era el riesgo real— está en
+> [`research/2026-11-06/INVESTIGACION_unimarc.md`](research/2026-11-06/INVESTIGACION_unimarc.md).
+> Lo de abajo se conserva como el registro de por qué el veredicto viejo era
+> falso, que es la parte que no hay que perder.
+>
+> Dos cosas de abajo quedaron **precisadas** por esa medición: el precio **sí
+> depende de la sucursal** (del `salesChannel`, y el del anónimo es el 39), y de
+> los dos UAs que acá figuran como equivalentes, `BROWSER_USER_AGENT` **a secas
+> da 403 las 4 veces** — pasan el identificable y `BROWSER_HEADERS` completos.
 
 **El bloqueo histórico ya no describe la fuente.** `www.unimarc.cl/` responde
 **200 con 1,86 MB y `__NEXT_DATA__`, con los dos UAs** (`DEFAULT_USER_AGENT` y
@@ -175,3 +188,19 @@ confunde fácil con un bloqueo:
   `PLAN_EXPANSION.md` §1. Son `rate_limit_rps = 0.2`, el mismo presupuesto que SP
   Digital, que está conectada. El plan la daba como posible descarte por costo de
   fetches: con 5 ese argumento se cae a la mitad.
+
+---
+
+## Revisión del 2026-11-06 — dominio y ruta correctos
+
+Evidencia y comandos por tienda en [`research/2026-11-07/`](research/2026-11-07/README.md).
+Los estados son los cinco de `CLAUDE.md`; un 403/520 de hoy no es una prohibición
+atemporal.
+
+| Tienda | Estado y medición nueva | Consecuencia |
+|---|---|---|
+| **Rockford** | **Adaptador probado.** `rockford.cl` sigue con TLS defectuoso, pero la tienda oficial `rkflife.com` da Shopify 200 con TLS válido y `DEFAULT_USER_AGENT` (4/4). Cuatro raíces completas: 2.933 productos únicos, 16.962 variantes, cero solape entre categorías. | **Corrige el descarte por TLS**: migración 50 escrita sin aplicar, `publish_enabled=false` para acumular historia al desplegar. No se desactiva TLS. |
+| **Spacestore** | **Investigada.** El ápex entrega 200 en `/collections/all/products.json`, 250 productos y precios en la primera página; el `/products.json` de raíz y el `www` no describían esa vía. | Falta elegir llaves de catálogo activas y recorrerlo entero antes de conectar. |
+| **Imperial** | **Investigada.** Home 200 con `BROWSER_HEADERS`, firma OCC; `/ccstore/v1/collections`, `/products` y una categoría devolvieron 520 de origen Cloudflare. | Re-medir cuando el origen esté estable; no llamar a esto 403 duro ni construir sobre una API caída. |
+| **La Polar** | **Investigada.** Ápex con TLS expirado; `www` tiene TLS válido pero redirige a `abc.cl`. | No hay catálogo La Polar independiente en ese host; ABC merece investigación propia. |
+| **Decathlon**, **Nice One**, **MTS**, **Adidas** | **Investigadas.** Una sonda con `BROWSER_HEADERS` cada una: 403 (Cloudflare challenge en las dos primeras, Attention Required en MTS, Akamai en Adidas). | Mantener en 🔴 por esta medición; pedir feed o API acordada, sin escalada técnica. |

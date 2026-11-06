@@ -11,8 +11,9 @@ tras aplicar las migraciones 40–46. Se inició la primera ingesta dirigida de
 `marmot`. Los recuentos y errores de la primera pasada están en el bloque nuevo
 de [`HANDOFF.md`](HANDOFF.md). `ripley` y `pc-express` acumulan puntos con
 `publish_enabled = false`; las otras doce tienen publicación habilitada, sujeta
-a los 30 días observados de historia y a la detección/curación habitual. Unimarc
-sigue en un worktree separado, sin ingesta en producción. Imperial sigue sin
+a la historia mínima observada y a la detección/curación habitual — ⚠️ que desde
+la migración 48 (6-nov) son **20 días, no 30**. Unimarc tiene su migración 47
+escrita y sin aplicar, y nace con `publish_enabled = false`. Imperial sigue sin
 fuente estable (403). Las tablas siguientes son la **fotografía del 5-nov**, no
 el estado actual de las tiendas ya conectadas.
 
@@ -141,7 +142,7 @@ al canal con dos precios.
 | **cocha**, **travelsecurity** | 🔴 nuevo | Falta la ruta de catálogo de su sección de paquetes |
 | **imperial** | 🔴 `occ_family` (Oracle Commerce Cloud) | [Revalidación 6-nov](research/2026-11-06/IMPERIAL.md): 403 «Access Denied» en 6/6 intentos; el 5-nov hubo 11 precios en una respuesta y luego 520. Sin fuente estable |
 | **myshop**, **winpy**, **maconline**, **mercadodigital**, **bip**, **pchardware** | 🔴 nuevo | Plataforma sin determinar. Winpy declara `generator: Winpy.cl` (hecho en casa); su `Crawl-delay` real es **5, no 10** |
-| **unimarc** | 🔴 nuevo (Next.js, `__NEXT_DATA__`) | 🟢 Acceso, paginación y EAN ya medidos (719/719). Falta: fijar y **verificar la sucursal** (riesgo Construmart), y decidir cómo trata el detector las **107 promociones de multicompra** y las **243 Club** |
+| ~~**unimarc**~~ | ✅ **adaptador probado** — `scrapers.stores.unimarc` | Las doce preguntas contestadas el 2026-11-06 (`research/2026-11-06/INVESTIGACION_unimarc.md`). 8 llaves, 8.213 entradas, 169 requests/pasada. El canal de venta quedó fijado en `co_sc=39` (el precio **sí** dependía de él) y la condición del precio viaja hasta el copy (`price_condition`, migración 47 **sin aplicar**). Nace con `publish_enabled = FALSE`: ingesta desde el día uno, canal recién tras la aceptación del **2026-12-06**. Lo que sigue abierto: qué sucursal física es el canal 39 — el endpoint que lo traduce exige sesión |
 | **pc-express** | 🟢 conectado el 6-nov; publicación pausada | [8 llaves públicas, 458/458 SKU y 458 puntos iniciales en producción](research/2026-11-06/PC_EXPRESS.md). Precio principal: transferencia. Falta control negativo de stock antes de publicar |
 | **latamairlines** | 🔴 nuevo | Pasa con `BROWSER_HEADERS`; su `sitemapindex` da timeout |
 

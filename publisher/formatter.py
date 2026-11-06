@@ -196,6 +196,26 @@ def promo_line(candidate: Candidate) -> str | None:
     )
 
 
+def condition_line(candidate: Candidate) -> str | None:
+    """La condición del precio. Obligatoria cuando existe, por el mismo motivo
+    que `promo_line`: un descuento con letra chica escondida es una oferta falsa.
+
+    El caso que la motiva es el precio Club de Unimarc. El dueño decidió el
+    2026-11-05 que cuenta como oferta —ser Club es solo dar el RUT, cualquiera
+    puede— y por eso ese precio es `price_effective` y no `price_card`. Lo que no
+    se puede es publicar el porcentaje **sin** decir que hay que ser Club: el
+    suscriptor que llega a la caja sin RUT paga el precio de lista.
+
+    La etiqueta va **verbatim** como la publica la tienda, igual que `promo_label`
+    y por la misma razón: es la condición que hay que leer, no un número a
+    reformatear. Que Unimarc llame a la suya "Club Unimarc" y a otra
+    "Exclusivo .cl" es información, no inconsistencia a normalizar.
+    """
+    if not candidate.price_condition:
+        return None
+    return f"🪪 Requiere <b>{html.escape(candidate.price_condition)}</b>"
+
+
 def deal_url(candidate: Candidate) -> str:
     """La URL a publicar. Único punto a tocar el día que haya afiliados."""
     return candidate.url
@@ -218,6 +238,9 @@ def format_deal(candidate: Candidate) -> str:
     por_cantidad = promo_line(candidate)
     if por_cantidad is not None:
         parts.append(por_cantidad)
+    condicion = condition_line(candidate)
+    if condicion is not None:
+        parts.append(condicion)
     unitario = pum_line(candidate)
     if unitario is not None:
         parts.append(unitario)
