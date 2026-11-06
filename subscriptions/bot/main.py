@@ -27,6 +27,12 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from ..email import send_email
+from ..mercadopago.client import (
+    MercadoPagoAPIError,
+    MercadoPagoClient,
+    MercadoPagoConfigurationError,
+    MercadoPagoUnavailable,
+)
 from ..paypal.client import (
     PayPalAPIError,
     PayPalClient,
@@ -52,13 +58,20 @@ from .metrics import (
 )
 from .payments import (
     PaymentConfigurationError,
+    PaymentProvider,
     PlanChoice,
     PlanChoiceMode,
+    ProviderChoice,
     build_custom_id,
+    build_mp_idempotency_key,
     build_request_id,
     format_pay_prompt,
+    format_pay_prompt_mercadopago,
     format_plan_button,
+    format_provider_button,
+    resolve_mercadopago_back_url,
     resolve_redirect_urls,
+    select_payment_providers,
     select_plan_options,
 )
 from .trial import (
@@ -139,6 +152,7 @@ _ADMIN_IDS = parse_admin_ids(os.environ.get("ONBOARDING_ADMIN_IDS"))
 
 _pool: asyncpg.Pool | None = None
 _paypal_client: PayPalClient | None = None
+_mercadopago_client: MercadoPagoClient | None = None
 
 
 async def _ensure_pool() -> asyncpg.Pool:
@@ -240,6 +254,30 @@ def _plan_choice_markup(tier_id: int, choice: PlanChoice) -> InlineKeyboardMarku
     )
 
 
+_PROVIDER_CALLBACK_PREFIX = {
+    PaymentProvider.PAYPAL: "pay_pp",
+    PaymentProvider.MERCADOPAGO: "pay_mp",
+}
+
+
+def _provider_choice_markup(
+    tier_id: int, plan_id: int, choice: ProviderChoice
+) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=format_provider_button(provider),
+                    callback_data=(
+                        f"{_PROVIDER_CALLBACK_PREFIX[provider]}:{tier_id}:{plan_id}"
+                    ),
+                )
+            ]
+            for provider in choice.providers
+        ]
+    )
+
+
 def _paypal_approval_markup(approval_url: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -253,6 +291,19 @@ def _paypal_approval_markup(approval_url: str) -> InlineKeyboardMarkup:
     )
 
 
+def _mercadopago_approval_markup(init_point: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🏦 Pagar en MercadoPago",
+                    url=init_point,
+                )
+            ]
+        ]
+    )
+
+
 def _get_paypal_client() -> PayPalClient:
     global _paypal_client
     if _paypal_client is None:
@@ -260,11 +311,31 @@ def _get_paypal_client() -> PayPalClient:
     return _paypal_client
 
 
+def _get_mercadopago_client() -> MercadoPagoClient:
+    global _mercadopago_client
+    if _mercadopago_client is None:
+        _mercadopago_client = MercadoPagoClient.from_env()
+    return _mercadopago_client
+
+
 def _paypal_redirect_urls() -> tuple[str, str]:
     return resolve_redirect_urls(
         bot_username=os.environ.get("ONBOARDING_BOT_USERNAME", ""),
         return_url=os.environ.get("ONBOARDING_PAYPAL_RETURN_URL"),
         cancel_url=os.environ.get("ONBOARDING_PAYPAL_CANCEL_URL"),
+    )
+
+
+def _mercadopago_back_url() -> str:
+    # Sin ONBOARDING_MERCADOPAGO_RETURN_URL propio, cae al return_url de
+    # PayPal si existe: ambos terminan en el mismo lugar (el bot), así que no
+    # tiene sentido pedirle al dueño dos variables idénticas.
+    return resolve_mercadopago_back_url(
+        bot_username=os.environ.get("ONBOARDING_BOT_USERNAME", ""),
+        back_url=(
+            os.environ.get("ONBOARDING_MERCADOPAGO_RETURN_URL")
+            or os.environ.get("ONBOARDING_PAYPAL_RETURN_URL")
+        ),
     )
 
 
@@ -315,6 +386,90 @@ async def _send_paypal_checkout(
         format_pay_prompt(tier, plan),
         reply_markup=_paypal_approval_markup(subscription.approval_url),
     )
+
+
+async def _send_mercadopago_checkout(
+    callback: CallbackQuery,
+    tier: Any,
+    plan: Any,
+    email: str | None,
+) -> None:
+    """Crea la preapproval sin mutar la membresía y entrega el init_point."""
+    if not isinstance(callback.message, Message):
+        return  # pragma: no cover - los handlers validan el mensaje primero.
+    try:
+        preapproval = await _get_mercadopago_client().create_preapproval(
+            plan_id=str(plan["mercadopago_plan_id"]),
+            external_reference=build_custom_id(callback.from_user.id, int(tier["id"])),
+            idempotency_key=build_mp_idempotency_key(
+                callback.id,
+                callback.from_user.id,
+                int(tier["id"]),
+                int(plan["id"]),
+            ),
+            back_url=_mercadopago_back_url(),
+            payer_email=email,
+        )
+    except (PaymentConfigurationError, MercadoPagoConfigurationError) as exc:
+        logger.error("mercadopago_onboarding_configuration_error reason=%s", exc)
+        await callback.message.answer(
+            "Los pagos no están configurados en este momento. Intentá más tarde."
+        )
+        return
+    except MercadoPagoAPIError as exc:
+        logger.warning("mercadopago_onboarding_request_rejected reason=%s", exc)
+        await callback.message.answer(
+            "MercadoPago rechazó el inicio del pago. Intentá nuevamente."
+        )
+        return
+    except MercadoPagoUnavailable as exc:
+        logger.warning("mercadopago_onboarding_unavailable reason=%s", exc)
+        await callback.message.answer(
+            "MercadoPago no está disponible temporalmente. Intentá nuevamente en unos minutos."
+        )
+        return
+
+    await callback.message.answer(
+        format_pay_prompt_mercadopago(tier, plan),
+        reply_markup=_mercadopago_approval_markup(preapproval.init_point),
+    )
+
+
+async def _offer_payment_provider(
+    callback: CallbackQuery,
+    tier: Any,
+    plan: Any,
+    email: str | None,
+) -> None:
+    """Resuelve el proveedor de pago del plan y salta o muestra la elección.
+
+    Mismo patrón de tres salidas que `on_payment` ya aplica para el período
+    (`PlanChoiceMode.UNAVAILABLE/DIRECT/MENU`), un nivel más abajo.
+    """
+    if not isinstance(callback.message, Message):
+        return  # pragma: no cover - los handlers validan el mensaje primero.
+    choice = select_payment_providers(plan)
+    if choice.mode is PlanChoiceMode.UNAVAILABLE:
+        await callback.answer(
+            "Este plan no tiene un método de pago disponible.",
+            show_alert=True,
+        )
+        return
+    if choice.mode is PlanChoiceMode.MENU:
+        await callback.answer()
+        await callback.message.answer(
+            "¿Cómo querés pagar?",
+            reply_markup=_provider_choice_markup(
+                int(tier["id"]), int(plan["id"]), choice
+            ),
+        )
+        return
+
+    await callback.answer("Preparando tu enlace de pago…")
+    if choice.direct_provider is PaymentProvider.PAYPAL:
+        await _send_paypal_checkout(callback, tier, plan, email)
+    else:
+        await _send_mercadopago_checkout(callback, tier, plan, email)
 
 
 class TrialFlow(StatesGroup):
@@ -699,7 +854,7 @@ async def on_payment(callback: CallbackQuery) -> None:
     choice = select_plan_options(plans)
     if choice.mode is PlanChoiceMode.UNAVAILABLE:
         await callback.answer(
-            "Este canal no tiene un plan de PayPal disponible.",
+            "Este canal no tiene un método de pago disponible.",
             show_alert=True,
         )
         return
@@ -711,8 +866,7 @@ async def on_payment(callback: CallbackQuery) -> None:
         )
         return
 
-    await callback.answer("Preparando tu enlace de pago…")
-    await _send_paypal_checkout(
+    await _offer_payment_provider(
         callback,
         tier,
         choice.direct_plan,
@@ -722,7 +876,7 @@ async def on_payment(callback: CallbackQuery) -> None:
 
 @dp.callback_query(F.data.startswith("pay_plan:"))
 async def on_payment_plan(callback: CallbackQuery) -> None:
-    """Valida nuevamente tier/plan antes de crear la suscripción PayPal."""
+    """Valida nuevamente tier/plan antes de resolver el proveedor de pago."""
     try:
         _prefix, raw_tier_id, raw_plan_id = (callback.data or "").split(":", 2)
         tier_id = int(raw_tier_id)
@@ -744,8 +898,65 @@ async def on_payment_plan(callback: CallbackQuery) -> None:
         await callback.answer("Ese plan ya no está disponible.", show_alert=True)
         return
 
+    await _offer_payment_provider(callback, tier, plan, identity["email"])
+
+
+async def _resolve_tier_and_plan(
+    callback: CallbackQuery, callback_data: str
+) -> tuple[Any, Any, str | None] | None:
+    """Repite la validación de `on_payment_plan` para los callbacks de
+    proveedor (`pay_pp:`/`pay_mp:`): tier y plan tienen que seguir activos, y
+    el plan tiene que seguir teniendo ESE proveedor configurado — alguien pudo
+    apagarlo entre que se mostró el botón y que se lo apretó."""
+    try:
+        _prefix, raw_tier_id, raw_plan_id = callback_data.split(":", 2)
+        tier_id = int(raw_tier_id)
+        plan_id = int(raw_plan_id)
+    except (ValueError, TypeError):
+        await callback.answer("Ese plan no es válido.", show_alert=True)
+        return None
+    if not isinstance(callback.message, Message):
+        await callback.answer("Enviá /start para actualizar el menú.", show_alert=True)
+        return None
+
+    pool = await _ensure_pool()
+    async with pool.acquire() as conn:
+        identity = await db.fetch_identity(conn, callback.from_user.id)
+        tier = await db.fetch_active_tier(conn, tier_id)
+        plans = await db.fetch_active_plans(conn, tier_id) if tier else []
+    plan = next((row for row in plans if int(row["id"]) == plan_id), None)
+    if identity is None or tier is None or plan is None:
+        await callback.answer("Ese plan ya no está disponible.", show_alert=True)
+        return None
+    return tier, plan, identity["email"]
+
+
+@dp.callback_query(F.data.startswith("pay_pp:"))
+async def on_payment_paypal(callback: CallbackQuery) -> None:
+    resolved = await _resolve_tier_and_plan(callback, callback.data or "")
+    if resolved is None:
+        return
+    tier, plan, email = resolved
+    if not plan["paypal_plan_id"]:
+        await callback.answer("PayPal ya no está disponible para este plan.", show_alert=True)
+        return
     await callback.answer("Preparando tu enlace de pago…")
-    await _send_paypal_checkout(callback, tier, plan, identity["email"])
+    await _send_paypal_checkout(callback, tier, plan, email)
+
+
+@dp.callback_query(F.data.startswith("pay_mp:"))
+async def on_payment_mercadopago(callback: CallbackQuery) -> None:
+    resolved = await _resolve_tier_and_plan(callback, callback.data or "")
+    if resolved is None:
+        return
+    tier, plan, email = resolved
+    if not plan["mercadopago_plan_id"]:
+        await callback.answer(
+            "MercadoPago ya no está disponible para este plan.", show_alert=True
+        )
+        return
+    await callback.answer("Preparando tu enlace de pago…")
+    await _send_mercadopago_checkout(callback, tier, plan, email)
 
 
 async def _delivery_loop(bot: Bot) -> None:
