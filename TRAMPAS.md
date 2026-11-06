@@ -19,7 +19,7 @@ todas existen porque alguien ya probó el camino obvio.
 **C.** Paginación y completitud — 11 trampas. Cómo se enumera un catálogo entero, y cuándo el canario exacto es sostenible.
 **D.** Precio, stock e identidad del producto — 18 trampas. Qué número se guarda como `price_effective`, y qué cosa es un listing.
 **E.** Las guardas: canario, agujero y volumen — 11 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
-**F.** Infraestructura, Docker y verificación — 11 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
+**F.** Infraestructura, Docker y verificación — 13 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
 **G.** Detector, θ, backtest y publicación — 10 trampas. Lo que decide si una señal es una oferta de verdad, y cómo se mide.
 
 
@@ -842,6 +842,45 @@ Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son 
   referencia. Y sobre ese árbol se puede correr la suite de verdad
   (`git archive <tree> | tar -x -C <dir>` y `pytest` ahí): el 6-nov dio
   **954 passed** con un único conflicto, dos filas de `TIENDAS.md`.
+
+- **Reiniciar el scraper le cuesta al canal hasta un DÍA de publicación, y el
+  costo no es el que advierte la regla.** CLAUDE.md prohíbe reiniciarlo desde un
+  worktree por la pasada que se mata a medias; el 2026-11-06 se midió el otro
+  costo, que es mayor y silencioso: **el canal publicó CERO**, contra 21-34 por
+  día la semana anterior, sin un solo error y con el `publisher` en `Up`, su
+  proceso vivo y su último log siendo el de arranque.
+  La cadena, y cada eslabón es correcto por separado:
+  **(1)** se reinicia el scraper a las 03:37 para que la imagen traiga un
+  adaptador nuevo (lo manda §Pasos 1.7);
+  **(2)** `espera_hasta_proxima` loguea `última pasada hace poco; la próxima en
+  12.0 h` y duerme — correcto, existe para que cada despliegue no meta una pasada
+  extra (su docstring cuenta las 562 corridas del crash-loop del 18-sep);
+  **(3)** sin pasada no corre `run_pricing`, que vive **dentro** del loop después
+  de `run_once`, así que no hay baselines ni detector;
+  **(4)** los últimos candidatos vencen 13 h después de detectarse
+  (`ranker.MAX_AGE_HOURS`) — también correcto, un precio de hace más de un ciclo
+  no está verificado;
+  **(5)** la ventana de publicación abre a las 08:00 de Santiago, y al abrir ya
+  estaban todos vencidos hacía tres horas.
+  ⇒ Después de **cualquier** despliegue que reinicie el scraper, hay que disparar
+  la pasada a mano. El propio runner lo documenta: `--once` es una orden directa
+  del operador y no espera la cadencia.
+
+  ```bash
+  docker compose exec scraper python -m scrapers.runner --once
+  ```
+
+  No desarma nada: `espera_hasta_proxima` sigue cubriendo el reinicio **no**
+  supervisado, que es el caso que le importa. Detalle completo y la aritmética en
+  `research/2026-11-06/INCIDENTE_canal_mudo.md`.
+
+- **Un día con CERO publicaciones no lo reporta ninguna guarda.**
+  `runner.pasadas_flacas` mira pasadas con pocas observaciones y el canario mira
+  llaves que traen menos de lo suyo: las dos viven del lado de la ingesta.
+  **Ninguna mira el canal.** El 6-nov el sistema pasó un día entero sin publicar
+  con todos sus componentes sanos y no disparó nada — ni log, ni alerta. Es una
+  guarda que falta, y es de una tercera altura: no "entró poco" ni "esta llave
+  trae menos", sino "el producto no salió".
 
 ---
 

@@ -31,7 +31,7 @@ Lo que necesitás leer depende de lo que vas a hacer. **No leas todo.**
 | retomar una sesión | [`HANDOFF.md`](HANDOFF.md) · [`HANDOFF_MERCADOPAGO.md`](HANDOFF_MERCADOPAGO.md) |
 | saber qué está LOCKED | `~/.claude/plans/aprovechancho-el-sistema-de-toasty-squid.md` — **fuera del repo** |
 
-[`TRAMPAS.md`](TRAMPAS.md) son **79 trampas verificadas contra producción**,
+[`TRAMPAS.md`](TRAMPAS.md) son **81 trampas verificadas contra producción**,
 agrupadas por situación. Cada una existe porque alguien ya probó el camino obvio
 y perdió tiempo. Buscá tu sección, no leas el archivo.
 
@@ -191,6 +191,12 @@ el de "no hizo nada" son idénticos.
   `ps -eo etime,cmd | grep -E 'scrapers\.|publisher\.'` desde el host.
 - **Una prueba sin caso de control es un falso verde.** Si verificás un límite,
   incluí el caso que *tiene* que fallar.
+- 🔴 **Después de un despliegue que reinicie el scraper, disparar la pasada a
+  mano**: `docker compose exec scraper python -m scrapers.runner --once`. Sin eso
+  el runner duerme hasta que toque el ciclo de 12 h, el pipeline no corre —viaja
+  dentro del loop—, los candidatos vencen a las 13 h y **el canal publica cero
+  sin un solo error**. Medido el 2026-11-06: 0 publicaciones contra 21-34 diarias.
+  Ver [`TRAMPAS.md`](TRAMPAS.md) **F**.
 - **Hay filas que ningún test puede ver.** El `_truncate_state` del conftest
   preserva solo `categories`, `stores` y `schema_migrations`, así que las
   `store_categories` que inserta una migración **no están** cuando corre el
