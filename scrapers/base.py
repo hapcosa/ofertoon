@@ -28,6 +28,13 @@ MAX_PLAUSIBLE_CLP = Decimal("100000000")
 #: no vale la pena arriesgar un error de inserción por él.
 PUM_LABEL_MAX_CHARS = 16
 
+#: Largo máximo de `price_condition`. Es el ancho de
+#: `price_points.price_condition` (VARCHAR(48)): las etiquetas observadas son
+#: `"Club Unimarc"` y `"Exclusivo .cl"`, así que algo más largo que esto no es
+#: una condición, es un párrafo de marketing — y se descarta en vez de truncarse,
+#: porque media condición puede decir lo contrario de la condición.
+PRICE_CONDITION_MAX_CHARS = 48
+
 #: Largo máximo de `promo_label`. La promo más larga medida en Unimarc es
 #: `"4 x $2.360"` (10 caracteres); 48 deja margen para `"3 x $1.000 Club Unimarc"`
 #: sin ser un cheque en blanco.
@@ -173,6 +180,18 @@ class RawProduct:
     #: Descuento que la tienda declara ("-22%"). Se guarda solo como evidencia
     #: para contrastarlo contra el descuento real; nunca alimenta el detector.
     claimed_discount: str | None = None
+    #: Condición que hay que cumplir para pagar `price_effective`, verbatim de la
+    #: tienda ("Club Unimarc"). `None` cuando no hay ninguna, que es el caso de
+    #: casi todo el catálogo del sistema.
+    #:
+    #: No es `price_card`: la distinción es si el precio exige un **medio de pago**
+    #: —eso es `price_card`, se muestra y no se compara— o solo un trámite que
+    #: cualquiera puede hacer. Ser Club Unimarc es dar el RUT, así que ese precio
+    #: lo paga cualquiera y es `price_effective`; pero publicar "−12%" sin decir
+    #: "Club Unimarc" sería anunciar un precio con letra chica escondida, que es
+    #: la clase de oferta que este proyecto existe para no ser. Decisión del dueño
+    #: del 2026-11-05; el copy la imprime (migración 47).
+    price_condition: str | None = None
     #: Precio por unidad de medida (`$3.242 el KG`), cuando la tienda lo declara.
     #: Opcional de verdad: lo trae el 95% del catálogo de supermercado de Tottus y
     #: ~nadie más, y **que falte no puede frenar una oferta**. No alimenta al
@@ -192,6 +211,13 @@ class RawProduct:
             raise ValueError(
                 f"{self.store_slug}/{self.store_sku}: price_effective fuera del rango "
                 f"(0, {MAX_PLAUSIBLE_CLP}], llegó {self.price_effective!r}"
+            )
+        if self.price_condition is not None and (
+            not self.price_condition or len(self.price_condition) > PRICE_CONDITION_MAX_CHARS
+        ):
+            raise ValueError(
+                f"{self.store_slug}/{self.store_sku}: price_condition inválida: "
+                f"{self.price_condition!r}"
             )
 
 

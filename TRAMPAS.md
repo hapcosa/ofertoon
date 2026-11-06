@@ -47,6 +47,19 @@ Todo lo que hace que una tienda parezca inaccesible sin estarlo — y al revés.
   reloj de `MIN_DAYS` había arrancado de cero con la migración 22. Regla general:
   **ante un 429 persistente, probar `BROWSER_USER_AGENT` ANTES de tocar el rps.**
 
+- **Y el caso inverso existe: Unimarc rechaza el UA de NAVEGADOR y acepta el
+  identificable.** Medido el 2026-11-06 aislando la variable, 4 intentos de cada
+  juego contra la misma URL: `DEFAULT_USER_AGENT` **200 las 4 veces**,
+  `BROWSER_USER_AGENT` **403 las 4 veces**, `BROWSER_HEADERS` **200 las 4 veces**.
+  Lo que su borde rechaza no es el token `(+ofertascl-bot)` sino un UA de
+  navegador **sin el resto de los headers que un navegador manda** — o sea
+  exactamente el atajo que funciona en Prat, Easy y Ferretek. Por eso
+  `UnimarcAdapter` no pasa `BROWSER_HEADERS` ni fuerza `BROWSER_USER_AGENT`, que
+  la rompería, y se queda con el default de `HttpClient`. Verificado además sobre
+  una paginación completa (5 págs, 241/241, cinco 200), no solo sobre requests
+  sueltas. **Moraleja: los tres juegos se prueban aislando la variable, no se
+  copia el del adaptador de al lado.**
+
 - **Ferretek bloquea por User-Agent.** El Varnish que tiene adelante responde
   `403 Empty UA blocked` a cualquier cosa que no parezca un navegador —el
   `robots.txt` incluido—, así que su adaptador manda `BROWSER_USER_AGENT`. Es el
@@ -175,6 +188,18 @@ Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
   `db.load_store_targets` —que por eso ordena también por `store_key`—. Es inocuo
   **solo porque los solapamientos medidos caen dentro de la misma categoría
   interna**; una llave que cruce dos categorías internas rompe el supuesto.
+
+- **El `categorySlug` de un producto NO sirve para verificar que una llave trae
+  lo que dice.** Mide la categoría **principal** que la tienda le asignó, y esa
+  puede ser una vitrina estacional. En Unimarc, `bebidas-y-licores` medido con ese
+  campo da **34%** de coincidencia y se ve igual que el caso `cat2049/Audifonos`
+  de Falabella (forma correcta, contenido equivocado) — y no lo es: el contenido
+  es Coca-Colas, cervezas y vinos, pero 32 de las 50 entradas de la página 1
+  tienen `categorySlug` = `fiestas-patrias/bebestibles/*`. El tamiz de la
+  fracción de coincidencia hay que hacerlo sobre el **nombre** del producto o
+  sobre `categories[]`, nunca sobre el slug de categoría. Y de paso: esa vitrina
+  transversal existe y **no debe ser una llave**, porque cross-lista catálogo que
+  ya entra por su departamento.
 
 - **No se conectan categorías de precio estacional.** `Frutas-y-Verduras` y
   `Carnes` de Tottus quedaron afuera a propósito, y no por tamaño: el p50 de 60
@@ -348,6 +373,32 @@ Qué número se guarda como `price_effective`, y qué cosa es un listing.
   es el **disponible más barato** —tomar el de un talle agotado publica un precio
   que nadie puede pagar—. `in_stock` mira todos los talles: el producto es
   comprable si alguno lo está.
+
+- **Unimarc cotiza por canal de venta, y el canal del anónimo es un número que
+  hay que fijar.** Es el segundo caso Construmart. Su `salesChannel` sale de la
+  dirección que el cliente eligió (el front lo escribe en la cookie `co_sc`) y un
+  visitante anónimo recibe el **39**. Medido el 2026-11-06 pidiendo la MISMA URL y
+  cambiando solo la cookie: `co_sc=39` da idéntico a no mandar cookie (0 de 33
+  precios distintos, o sea el default confirmado), `co_sc=1` cambia 1 precio,
+  `co_sc=2` cambia 2, y **`co_sc=40` cambia el SURTIDO** (35 entradas en vez de
+  33). Por eso el adaptador manda el 39 explícito en toda request en vez de
+  confiar en el default del servidor: **cambiar ese número invalida el histórico
+  entero de la tienda**. Lo que no se pudo resolver es qué sucursal física es el
+  39 — el endpoint que traduce coordenadas a canal exige sesión —, así que lo
+  afirmable es "la serie es la del canal 39", no "cobertura nacional".
+
+- **Una etiqueta promocional NO es un campo de condiciones**, y tratarla como tal
+  publica letra chica inventada. `promotionalTag.text` de Unimarc es el espacio de
+  marketing del tile: de las cuatro etiquetas que aparecen en las 8.213 entradas
+  medidas el 2026-11-06, solo dos condicionan un precio — `Club Unimarc` (2.615) y
+  `Exclusivo .cl` (220) — mientras `Diamante` (5) es un sello de vino sobre un
+  precio **igual** al de lista y `Pronto disponible` (15) es un estado de **stock**
+  (son los 15 agotados, 14 de ellos con precio 0). Publicar "Requiere Diamante"
+  sobre un vino que cuesta lo de siempre es el error simétrico de callar el Club.
+  El filtro que los separa no es una lista de nombres sino una regla de dominio:
+  **la condición se emite solo si acompaña un precio condicionado** (precio menor
+  al de lista, o una promo de multicompra), y eso clasifica bien las 8.213 — de
+  las Club y las Exclusivo, cero tienen precio igual al de lista sin promo.
 
 - **Construmart cotiza por sucursal.** Cada sucursal es un `customer_group_id`;
   para un anónimo el HTML del listado no trae un solo `$` y todas las filas salen
@@ -717,6 +768,19 @@ Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son 
   O sea el diagnóstico correcto fue de abajo hacia arriba — **el `gaierror` de un
   servicio no es un problema de red, es que el contenedor de la base no está**.
 
+
+- **Dos `pytest` contra la misma base descartable se pisan, y el síntoma es una
+  tabla que "no existe".** CLAUDE.md §Trabajo multi-agente lo documenta para dos
+  agentes con el mismo nombre de base; pasa igual con **un** agente que lanza una
+  suite en background y corre un subconjunto en paralelo, porque el setup de
+  sesión del conftest hace `DROP SCHEMA public CASCADE` y lo recrea. Medido el
+  2026-11-06: una suite que había dado **944 passed / 0 fallos** dio
+  **934 passed / 14 errors** con `UndefinedTableError` en `test_paypal_webhook`,
+  `test_onboarding_bot_payments` y `test_tottus`, solo por haber corrido
+  `pytest tests/test_paypal_webhook.py` mientras la suite estaba a mitad de
+  camino. Los 13 de paypal pasan aislados. **Un pytest a la vez por base**, o una
+  base por corrida — y ante un `UndefinedTableError` en tests que no tocaste,
+  sospechar esto antes de buscar la regresión.
 
 - **`migrate.py` no verifica que la secuencia esté completa: aplica lo que el
   checkout tenga delante.** `discover()` es `sorted(MIGRATIONS_DIR.glob("*.sql"))`
