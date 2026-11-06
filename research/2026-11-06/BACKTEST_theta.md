@@ -161,3 +161,60 @@ Límites, otra vez: no modela el cooldown (hay 545 `deal_posts`, así que alguno
 ganadores serían desplazados), es una foto de un solo momento del pipeline, y los
 scores salen del mismo set de observaciones. La conclusión que aguanta estos
 límites es la de composición, no los nombres exactos de las categorías.
+
+---
+
+## Verificación de despliegue del 2026-11-06 — dos bloqueos encontrados
+
+Medido comparando el `sha256[:32]` de cada `migrations/*.sql` de cada árbol
+contra `schema_migrations.checksum` de producción, que es exactamente lo que hace
+`migrate.py`. Es la verificación que nadie había hecho y que decide si el deploy
+puede correr.
+
+    árbol                archivos  mismatch  pendientes
+    ofertoon (main)            46         0  --
+    ofertoon-unimarc           48         0  47
+    ofertoon-bloqueadas        48         1  50, 51      ← 40_ripley_hites.sql
+    ofertoon-mercadopago       47         0  51          ← la MISMA 51
+
+### 1. `feat/tiendas-bloqueadas` tiene la 40 vieja — `migrate.py` no aplicaría nada
+
+Su worktree nació de `a2d8c06`, y la reescritura de `40_ripley_hites.sql` (la que
+agrega `stores.publish_enabled` y conecta `pc-express`) se hizo en el árbol de
+trabajo de `main` y se commiteó después, en `326057d`. Así que ese árbol tiene la
+versión **anterior**: md5 `6dd670…` contra `e5dbca…` de `main` y de
+`feat/unimarc`.
+
+Un checksum distinto en un archivo **ya aplicado** es `checksum_mismatch`, y
+`migrate.py` entonces **no aplica nada** — ni la 50, ni la 51, ni la 47 de otra
+rama. Desde ese árbol el deploy entero está bloqueado y el síntoma no aparece
+hasta que se intenta.
+
+🟢 **No contamina `main` al mergear**, y eso está verificado, no supuesto: la rama
+**nunca tocó** ese archivo (`git log a2d8c06..HEAD -- migrations/40_…` vacío), así
+que git ve "main lo cambió, la rama no" y conserva el de `main`. El árbol
+mergeado (`827c75e`) trae el `e5dbca…` correcto. El bloqueo es solo del worktree,
+no del merge — pero basta para que ese agente no pueda probar una aplicación
+desde su propio árbol, que es justo lo que CLAUDE.md §Paso 3 manda no hacer.
+
+### 2. Dos migraciones con el número 51, en dos árboles que no se ven
+
+    ofertoon-bloqueadas/migrations/51_sparta_tajada_disjunta.sql
+    ofertoon-mercadopago/migrations/51_mercadopago_suscripciones.sql
+
+Las dos sin commitear, cada una en su worktree, ninguna ve a la otra. Es la
+colisión de CLAUDE.md §Trabajo multi-agente §2 **ocurriendo por segunda vez en
+dos días**, y la primera vez obligó a renumerar la tanda 40-44 entera.
+
+Se detectó antes de aplicar, así que se arregla renumerando una sola: la de
+Sparta a **52**, porque MercadoPago ya confirmó por escrito que se queda con la
+51. Renumerar es renombrar el archivo y corregir las referencias cruzadas de su
+header — ninguna de las dos está aplicada, así que no hay checksum que preservar.
+
+### Lo que esto dice del método, y es lo que vale guardar
+
+El reparto de números por escrito **no alcanza**: se escribió, se comunicó, y la
+colisión pasó igual, porque el canal de aviso no llegó a tiempo al tercer agente.
+Lo único que la cazó fue **medir los archivos contra la base**. Que es la misma
+lección de todo este repo: el efecto, nunca el mensaje — ni siquiera cuando el
+mensaje es un acuerdo entre agentes.
