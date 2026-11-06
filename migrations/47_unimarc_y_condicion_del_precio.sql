@@ -149,6 +149,27 @@
 --
 -- θ de partida: los de `supermercado` (0.250) y `belleza` (0.250) que ya existen.
 -- Ninguna categoría nueva, así que no hay θ sin calibrar que declarar acá.
+--
+-- -----------------------------------------------------------------------------
+-- 6. UNIMARC NACE SIN PUBLICAR
+-- -----------------------------------------------------------------------------
+-- `stores.publish_enabled` es de la migración 40 y no existía cuando se escribió
+-- el resto de este header. Entra acá porque la fecha de §5 sola no alcanza para
+-- hacerla cumplir: con el piso de historia mínima en 20 días (migración 48), una
+-- tienda conectada hoy puede emitir su primer candidato el **2026-11-26**, diez
+-- días ANTES de su evaluación de aceptación. Sin esta guarda, la fecha del
+-- 2026-12-06 sería una intención y el canal publicaría igual.
+--
+-- Así que ingesta y publicación se separan, igual que en `ripley` y
+-- `pc-express`: los `price_points` se acumulan desde el día uno —que es lo que
+-- construye la baseline— y el canal no ve nada hasta que el dueño la abra a
+-- mano, después de correr la aceptación:
+--
+--     UPDATE stores SET publish_enabled = TRUE WHERE slug = 'unimarc';
+--
+-- El `ON CONFLICT` de abajo **no** incluye `publish_enabled` a propósito: si el
+-- dueño ya la abrió, una reaplicación de esta migración no se la vuelve a cerrar
+-- en silencio. El valor FALSE es solo el de nacimiento.
 -- =============================================================================
 
 BEGIN;
@@ -178,9 +199,12 @@ ALTER TABLE price_points
 -- -----------------------------------------------------------------------------
 -- La tienda
 -- -----------------------------------------------------------------------------
-INSERT INTO stores (slug, name, base_url, adapter, rate_limit_rps, is_active) VALUES
+-- `publish_enabled = FALSE`: ingesta sí, canal no, hasta la aceptación del
+-- 2026-12-06. Ver §6 — ahí está por qué la fecha sola no bastaba.
+INSERT INTO stores (slug, name, base_url, adapter, rate_limit_rps, is_active,
+                    publish_enabled) VALUES
     ('unimarc', 'Unimarc', 'https://www.unimarc.cl',
-     'scrapers.stores.unimarc:UnimarcAdapter', 0.4, TRUE)
+     'scrapers.stores.unimarc:UnimarcAdapter', 0.4, TRUE, FALSE)
 ON CONFLICT (slug) DO UPDATE
     SET name     = EXCLUDED.name,
         base_url = EXCLUDED.base_url,

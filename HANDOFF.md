@@ -1953,3 +1953,67 @@ for c in scraper bot gate publisher paypal-webhook; do
     && echo "$c: OK" || echo "$c: DESFASADO"
 done
 ```
+
+---
+
+## 2026-11-06 — rama `feat/unimarc`: la 47 arreglada y el merge verificado
+
+Estado de la base **medido** (`schema_migrations`, no el árbol): **47
+migraciones aplicadas, 01-46 y 48 — falta la 47**. 31 tiendas, `ripley` y
+`pc-express` con `publish_enabled = false`, las 17 categorías en
+`min_history_days = 20`, y `price_points.price_condition` **todavía no existe**.
+⚠️ `main` y los otros worktrees no tienen los archivos 47-48, así que ahí
+`migrate.py --status` contesta "sin pendientes" **falsamente**: verificar siempre
+contra la base.
+
+### Unimarc nace sin publicar
+
+La 47 creaba Unimarc publicando. Con el piso de historia en 20 días podría
+emitir su primer candidato el **2026-11-26**, diez días antes de su evaluación de
+aceptación del 2026-12-06 — la fecha sola no se hacía cumplir. Como la 47 no
+está aplicada, se corrigió **en el lugar**: `publish_enabled = FALSE` en el
+INSERT y una §6 nueva en el header. El `ON CONFLICT` **no** incluye la columna,
+así que una reaplicación no vuelve a cerrar una tienda que el dueño ya abrió.
+
+Verificado aplicando la secuencia 01-48 completa sobre una base descartable
+(`ofertas_test_unimarc_keys`, ya borrada), porque las `store_categories` no las
+puede ver ningún test —el `_truncate_state` del conftest las trunca entre
+tests— y porque `migrate.py` dice "0 aplicadas" igual en una corrida sana y en
+una imagen vieja:
+
+    unimarc  publish_enabled=false  is_active=true
+    8 llaves: 7 a supermercado + perfumeria -> belleza
+    price_condition  character varying(48)
+    control: hites sigue en publish_enabled=true (29 de 32 publican)
+    control del CHECK: 'Club Unimarc' entra; '' y '   ' son rechazados
+
+### El merge de las dos ramas está verificado, no supuesto
+
+Simulado con `git merge-tree` contra un commit sintético del árbol de trabajo de
+`main` (sin tocar su índice ni sus archivos). **Un solo conflicto**: dos filas
+adyacentes de `TIENDAS.md` (`unimarc` y `pc-express`) que las dos ramas
+reescribieron. Se resuelve quedándose con la fila de `unimarc` de esta rama y la
+de `pc-express` de la otra — las dos describen su propio trabajo.
+
+`curation/ranker.py` **mergea solo y bien**: conviven el `AND s.publish_enabled`
+del WHERE y el `pum.price_condition` del SELECT. La suite sobre el árbol
+mergeado da **954 passed** (948 de esta rama + los de `pc_express`).
+
+El orden del despliegue, que no es intercambiable: **primero** que el trabajo de
+`main` entre a un commit, **después** mergear esta rama, **una** build y **una**
+sola aplicación desde el checkout de despliegue. Las dos ramas son
+interdependientes a través de la base — aplicar la 47 sin este código deja las 8
+llaves de Unimarc en `failed` cada pasada, y desplegar este código solo rompe
+`pc-express`, que ya está en la base apuntando a un módulo que esta rama no
+tiene.
+
+### Lo que espera decisión del dueño
+
+- **Los θ**: tabla medida en `research/2026-11-06/BACKTEST_theta.md`. El
+  limitante es el **volumen**, no la precisión: 7 categorías medibles, casi todas
+  entre 90% y 100% contra el 80% del gate, y 5 por debajo de las 3 ofertas/día.
+- **Abrir Unimarc al canal** después del 2026-12-06:
+  `UPDATE stores SET publish_enabled = TRUE WHERE slug = 'unimarc'`.
+- **El desfase 20/30 entre producción y backtest** es permanente desde la
+  migración 48 y todavía no tiene consecuencia medible; recién se puede medir
+  sobre noviembre (~diciembre). El cambio y su costo están en el mismo archivo.

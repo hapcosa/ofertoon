@@ -127,7 +127,7 @@ al canal con dos precios.
 | **cocha**, **travelsecurity** | 🔴 nuevo | Falta la ruta de catálogo de su sección de paquetes |
 | **imperial** | 🔴 `occ_family` (Oracle Commerce Cloud) | Pasa con `BROWSER_HEADERS` pero su origen da **520/526 intermitentes** |
 | **myshop**, **winpy**, **maconline**, **mercadodigital**, **bip**, **pchardware** | 🔴 nuevo | Plataforma sin determinar. Winpy declara `generator: Winpy.cl` (hecho en casa); su `Crawl-delay` real es **5, no 10** |
-| ~~**unimarc**~~ | ✅ **adaptador probado** — `scrapers.stores.unimarc` | Las doce preguntas contestadas el 2026-11-06 (`research/2026-11-06/INVESTIGACION_unimarc.md`). 8 llaves, 8.213 entradas, 169 requests/pasada. El canal de venta quedó fijado en `co_sc=39` (el precio **sí** dependía de él) y la condición del precio viaja hasta el copy (`price_condition`, migración 47 **sin aplicar**). Lo que sigue abierto: qué sucursal física es el canal 39 — el endpoint que lo traduce exige sesión |
+| ~~**unimarc**~~ | ✅ **adaptador probado** — `scrapers.stores.unimarc` | Las doce preguntas contestadas el 2026-11-06 (`research/2026-11-06/INVESTIGACION_unimarc.md`). 8 llaves, 8.213 entradas, 169 requests/pasada. El canal de venta quedó fijado en `co_sc=39` (el precio **sí** dependía de él) y la condición del precio viaja hasta el copy (`price_condition`, migración 47 **sin aplicar**). Nace con `publish_enabled = FALSE`: ingesta desde el día uno, canal recién tras la aceptación del **2026-12-06**. Lo que sigue abierto: qué sucursal física es el canal 39 — el endpoint que lo traduce exige sesión |
 | **pc-express** | 🔴 nuevo | Host real `tienda.pc-express.cl`. Falta todo menos el borde |
 | **latamairlines** | 🔴 nuevo | Pasa con `BROWSER_HEADERS`; su `sitemapindex` da timeout |
 

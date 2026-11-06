@@ -14,13 +14,13 @@ todas existen porque alguien ya probó el camino obvio.
 
 ## Índice
 
-**A.** Llegar al catálogo: robots, User-Agent y bloqueos — 7 trampas. Todo lo que hace que una tienda parezca inaccesible sin estarlo — y al revés.
-**B.** Elegir las llaves: catálogo o vitrina, y solapamiento — 8 trampas. Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
-**C.** Paginación y completitud — 10 trampas. Cómo se enumera un catálogo entero, y cuándo el canario exacto es sostenible.
-**D.** Precio, stock e identidad del producto — 15 trampas. Qué número se guarda como `price_effective`, y qué cosa es un listing.
-**E.** Las guardas: canario, agujero y volumen — 7 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
-**F.** Infraestructura, Docker y verificación — 7 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
-**G.** Detector, θ, backtest y publicación — 9 trampas. Lo que decide si una señal es una oferta de verdad, y cómo se mide.
+**A.** Llegar al catálogo: robots, User-Agent y bloqueos — 9 trampas. Todo lo que hace que una tienda parezca inaccesible sin estarlo — y al revés.
+**B.** Elegir las llaves: catálogo o vitrina, y solapamiento — 9 trampas. Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
+**C.** Paginación y completitud — 11 trampas. Cómo se enumera un catálogo entero, y cuándo el canario exacto es sostenible.
+**D.** Precio, stock e identidad del producto — 18 trampas. Qué número se guarda como `price_effective`, y qué cosa es un listing.
+**E.** Las guardas: canario, agujero y volumen — 11 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
+**F.** Infraestructura, Docker y verificación — 11 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
+**G.** Detector, θ, backtest y publicación — 10 trampas. Lo que decide si una señal es una oferta de verdad, y cómo se mide.
 
 
 ---
@@ -796,6 +796,52 @@ Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son 
   silencio**, dejando un hueco que nada reporta.
   La regla práctica: **aplicar siempre desde un checkout que tenga la secuencia
   completa**, y mirar `schema_migrations` contra `ls migrations/`, no el mensaje.
+  Caso vivo del 2026-11-06: la base tenía **47 migraciones, 01-46 y 48 — con la
+  47 pendiente**, porque la 47 y la 48 se escribieron en ramas distintas y la 48
+  se aplicó primero. Desde `main`, que no tiene ninguno de los dos archivos,
+  `migrate.py --status` contesta "sin pendientes" **y es falso**. Un hueco en el
+  medio de la secuencia no es hipotético y no lo reporta nada: el único lugar
+  donde se ve es `SELECT filename FROM schema_migrations`.
+
+- **Hay filas que no las puede verificar ningún test, y las
+  `store_categories` son el caso.** El `_truncate_state` del conftest preserva
+  solo `categories`, `stores` y `schema_migrations`, y trunca el resto entre
+  tests — así que las llaves que inserta una migración existen al aplicarla y ya
+  no están cuando corre el primer test. Una suite en verde **no dice nada** sobre
+  si las llaves de una tienda nueva quedaron bien mapeadas. Verificado el
+  2026-11-06 con la 47: en la base de test `stores` tenía `unimarc` y
+  `store_categories` estaba vacía.
+  La forma de verificarlas antes de desplegar es aplicar la secuencia **completa**
+  sobre una base descartable propia y mirarla —`CREATE DATABASE` + `migrate.py`
+  con `DATABASE_URL` apuntado ahí a mano, nunca `docker compose run db-migrate`,
+  que escribe en la real—. Así salieron las 8 llaves de Unimarc (7 a
+  `supermercado`, `perfumeria` a `belleza`) y el `publish_enabled=false` de su
+  fila.
+
+- **Dos ramas pueden quedar interdependientes A TRAVÉS DE LA BASE, y entonces
+  ninguna de las dos se puede desplegar sola.** No es un conflicto de git: los
+  archivos no se tocan. Pasó el 2026-11-06 entre `feat/unimarc` y el trabajo de
+  PC Express: aplicar la 47 sin el código deja las 8 llaves de Unimarc en
+  `failed` cada pasada (`resolve_adapter` no encuentra el módulo), y desplegar el
+  código de Unimarc solo rompe `pc-express`, que **ya está en la base** apuntando
+  a un `scrapers/stores/pc_express.py` que esa rama no tiene. El síntoma no
+  aparece en ningún test: los dos árboles pasan en verde.
+  La única salida es integrar primero y desplegar una sola vez — merge, **una**
+  build, **una** aplicación—, y el merge se **verifica**, no se asume. Se puede
+  verificar sin tocar el árbol del otro agente, incluso con su trabajo sin
+  commitear:
+
+  ```bash
+  GIT_INDEX_FILE=/tmp/idx git add -A                 # índice temporal, no el suyo
+  T=$(GIT_INDEX_FILE=/tmp/idx git write-tree)
+  S=$(git commit-tree "$T" -p <base> -m simulacro)   # commit sintético
+  git merge-tree --write-tree --name-only "$S" <mi-rama>
+  ```
+
+  Devuelve el árbol mergeado y la lista de conflictos sin escribir una sola
+  referencia. Y sobre ese árbol se puede correr la suite de verdad
+  (`git archive <tree> | tar -x -C <dir>` y `pytest` ahí): el 6-nov dio
+  **954 passed** con un único conflicto, dos filas de `TIENDAS.md`.
 
 ---
 
@@ -915,3 +961,17 @@ Lo que decide si una señal es una oferta de verdad, y cómo se mide.
   silencio sería peor), pero el comando avisa si el rango los toca. Los días
   excluidos **siguen alimentando la baseline**: borrarles puntos sería la segunda
   implementación divergente que la regla de no-look-ahead prohíbe.
+
+- **Una tienda nueva nace PUBLICANDO, y con el piso de historia en 20 días eso
+  la pone en el canal antes de su propia evaluación de aceptación.** El default de
+  `stores.publish_enabled` es `TRUE` —tiene que serlo, para no apagar las que ya
+  estaban cuando la migración 40 agregó la columna—, así que una fila nueva
+  publica salvo que diga lo contrario. Y la cuenta no cierra: una tienda conectada
+  el 6-nov acumula los 20 días de `min_history_days` el **26-nov**, diez días
+  antes del **6-dic** en que recién se la evalúa. La fecha anotada en el header de
+  la migración **no se hace cumplir sola**: la hace cumplir
+  `publish_enabled = FALSE` en el INSERT, como en `ripley`, `pc-express` y
+  `unimarc`. Abrirla es un `UPDATE` del dueño después de correr
+  `scripts.aceptacion_tienda`.
+  Y conviene dejar la columna **afuera del `ON CONFLICT DO UPDATE`**: si el dueño
+  ya la abrió, una reaplicación de la migración se la cerraría en silencio.
