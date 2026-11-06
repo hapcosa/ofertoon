@@ -24,7 +24,7 @@ import pytest
 from curation.ranker import Candidate
 from pricing.baselines import Baseline
 from pricing.detector import PriorPost, evaluate
-from publisher.formatter import format_deal, promo_line
+from publisher.formatter import condition_line, format_deal, promo_line
 from scrapers.base import PromoCantidad
 
 NOW = datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc)
@@ -199,3 +199,48 @@ def test_la_etiqueta_va_escapada():
     )
     assert "<b>$1k</b>" not in linea
     assert "&lt;b&gt;" in linea
+
+
+# --- la condición del precio (Club Unimarc) -----------------------------
+#
+# Decisión del dueño del 2026-11-05: el precio Club cuenta como oferta porque ser
+# Club es solo dar el RUT. Por eso es `price_effective` y no `price_card`. Lo que
+# no se puede es publicar el porcentaje sin decir que hay que ser Club: quien
+# llega a la caja sin RUT paga el precio de lista, y entonces el mensaje mintió.
+# Es la misma lógica que `promo_line` y por eso vive en el mismo archivo.
+
+
+def test_la_condicion_del_precio_sale_verbatim():
+    linea = condition_line(candidato(price_condition="Club Unimarc"))
+    assert "Club Unimarc" in linea
+
+
+def test_sin_condicion_no_hay_linea():
+    """Casi todo el catálogo del sistema no tiene condición: escribir una donde
+    no hay es tan malo como callar la que hay."""
+    assert condition_line(candidato()) is None
+    assert condition_line(candidato(price_condition="")) is None
+
+
+def test_la_condicion_del_precio_va_escapada():
+    linea = condition_line(candidato(price_condition="Club <b>X</b>"))
+    assert "<b>X</b>" not in linea and "&lt;b&gt;" in linea
+
+
+def test_la_condicion_aparece_en_el_mensaje_antes_del_link():
+    msg = format_deal(candidato(price_condition="Club Unimarc", category_slug="supermercado"))
+    assert "Club Unimarc" in msg
+    assert msg.index("Club Unimarc") < msg.index("Ver oferta")
+
+
+def test_promo_y_condicion_conviven_y_son_cosas_distintas():
+    """`4 x $1.150` es el ahorro por cantidad; `Club Unimarc` es quién puede
+    pagarlo. En los 626 casos medidos el 2026-11-06 las dos vienen juntas, y el
+    mensaje tiene que decir las dos: una promo que exige RUT y no lo declara es
+    tan falsa como un porcentaje sin la condición de cantidad."""
+    msg = format_deal(
+        candidato(promo_qty=4, promo_total=Decimal("1150"), promo_label="4 x $1.150",
+                  price_condition="Club Unimarc", category_slug="supermercado")
+    )
+    assert "4 x $1.150" in msg and "Club Unimarc" in msg
+    assert msg.index("4 x $1.150") < msg.index("Club Unimarc") < msg.index("Ver oferta")
