@@ -1,16 +1,31 @@
 # TIENDAS.md
 
 Censo de tiendas: **las que están conectadas hoy** y **las que van a entrar**, con
-el estado real de cada una. Escrito el **2026-11-05**.
+el estado real de cada una. Escrito el **2026-11-05**, con actualización de
+producción del **2026-11-06** inmediatamente abajo.
+
+**Actualización 2026-11-06:** producción tiene **31 tiendas activas y 727 llaves**
+tras aplicar las migraciones 40–46. Se inició la primera ingesta dirigida de
+`ripley`, `hites`, `pc-express`, `megabytes`, `inforingen`, `colloky`, `nomades`,
+`speedo`, `trekbikeschile`, `newbalance`, `lippi`, `thenorthface`, `mammut` y
+`marmot`. Los recuentos y errores de la primera pasada están en el bloque nuevo
+de [`HANDOFF.md`](HANDOFF.md). `ripley` y `pc-express` acumulan puntos con
+`publish_enabled = false`; las otras doce tienen publicación habilitada, sujeta
+a la historia mínima observada y a la detección/curación habitual — ⚠️ que desde
+la migración 48 (6-nov) son **20 días, no 30**. Unimarc tiene su migración 47
+escrita y sin aplicar, y nace con `publish_enabled = false`. Imperial sigue sin
+fuente estable (403). Las tablas siguientes son la **fotografía del 5-nov**, no
+el estado actual de las tiendas ya conectadas.
 
 Los datos de la primera tabla salen de consultar la base de producción
 (`stores`, `store_categories`, `listings`), no de memoria. Los de las demás salen
 de las mediciones de `INVESTIGACION_*.md`.
 
-⚠️ **Las migraciones de esta rama son la 41 a la 45.** Nacieron como 40-44 y se
-renumeraron el 2026-11-05 porque otro agente escribió una `40_ripley_hites.sql`
-en `main`: dos migraciones con el mismo número son un `checksum_mismatch` en
-cuanto una de las dos se aplica. La 40 es de él.
+⚠️ **Las migraciones 40–46 ya están aplicadas en producción.** La 40 aplicada
+incluye `publish_enabled` y PC Express, añadidos el 6-nov al archivo del
+worktree principal antes de aplicarla. Su checksum debe mantenerse idéntico al
+de esa versión; revisar [`HANDOFF.md`](HANDOFF.md) antes de integrar otros
+worktrees.
 
 Documentos hermanos: [`TIENDAS_PROHIBIDAS.md`](TIENDAS_PROHIBIDAS.md) (las que no
 se pueden), [`INVESTIGACION_deporte_outdoor.md`](INVESTIGACION_deporte_outdoor.md),
@@ -21,7 +36,7 @@ se pueden), [`INVESTIGACION_deporte_outdoor.md`](INVESTIGACION_deporte_outdoor.m
 
 ---
 
-## 1. Conectadas hoy: 17 tiendas, 165 llaves
+## 1. Fotografía del 5-nov: 17 tiendas, 165 llaves
 
 | tienda | familia / adaptador | llaves | listings | estabilidad de cohorte |
 |---|---|---|---|---|
@@ -123,12 +138,12 @@ al canal con dos precios.
 | **tecnoplaza** | `woo_family` | Su endpoint de categorías agotó **3 reintentos con `ReadTimeout`** en dos corridas |
 | **alltec**, **todoclick**, **compuchile**, **globalmac** | 🔴 `presta_family` | Solo firma de PrestaShop; no hay familia |
 | **sipoonline**, **toptec**, **rutaoutdoor** | 🔴 `jumpseller_family` | Solo firma. Las tres con `Crawl-delay` 60/10/5 |
-| **pc-express**, **sistemax** | 🔴 `opencart_family` | Solo firma. ⚠️ El dominio es `pc-express.cl` **con guión** |
+| **sistemax** | 🔴 `opencart_family` | Solo firma |
 | **cocha**, **travelsecurity** | 🔴 nuevo | Falta la ruta de catálogo de su sección de paquetes |
-| **imperial** | 🔴 `occ_family` (Oracle Commerce Cloud) | Pasa con `BROWSER_HEADERS` pero su origen da **520/526 intermitentes** |
+| **imperial** | 🔴 `occ_family` (Oracle Commerce Cloud) | [Revalidación 6-nov](research/2026-11-06/IMPERIAL.md): 403 «Access Denied» en 6/6 intentos; el 5-nov hubo 11 precios en una respuesta y luego 520. Sin fuente estable |
 | **myshop**, **winpy**, **maconline**, **mercadodigital**, **bip**, **pchardware** | 🔴 nuevo | Plataforma sin determinar. Winpy declara `generator: Winpy.cl` (hecho en casa); su `Crawl-delay` real es **5, no 10** |
 | ~~**unimarc**~~ | ✅ **adaptador probado** — `scrapers.stores.unimarc` | Las doce preguntas contestadas el 2026-11-06 (`research/2026-11-06/INVESTIGACION_unimarc.md`). 8 llaves, 8.213 entradas, 169 requests/pasada. El canal de venta quedó fijado en `co_sc=39` (el precio **sí** dependía de él) y la condición del precio viaja hasta el copy (`price_condition`, migración 47 **sin aplicar**). Nace con `publish_enabled = FALSE`: ingesta desde el día uno, canal recién tras la aceptación del **2026-12-06**. Lo que sigue abierto: qué sucursal física es el canal 39 — el endpoint que lo traduce exige sesión |
-| **pc-express** | 🔴 nuevo | Host real `tienda.pc-express.cl`. Falta todo menos el borde |
+| **pc-express** | 🟢 conectado el 6-nov; publicación pausada | [8 llaves públicas, 458/458 SKU y 458 puntos iniciales en producción](research/2026-11-06/PC_EXPRESS.md). Precio principal: transferencia. Falta control negativo de stock antes de publicar |
 | **latamairlines** | 🔴 nuevo | Pasa con `BROWSER_HEADERS`; su `sitemapindex` da timeout |
 
 ---

@@ -317,6 +317,9 @@ _CANDIDATES_SQL = """
       LEFT JOIN price_points      AS pum ON pum.listing_id  = l.id
                                         AND pum.observed_at = dc.detected_at
      WHERE dc.verdict = 'accepted'
+       -- También protege candidatos ya aceptados si se cierra la publicación
+       -- después de detectarlos: la ingesta y sus series siguen intactas.
+       AND s.publish_enabled
        -- Agotado en la ficha: no se publica. `NULL` (no se verificó, tienda sin
        -- verificador, o la ficha no respondió) sí pasa — la duda no bloquea.
        -- Ver `publisher/stock.py` y la migración 30.
