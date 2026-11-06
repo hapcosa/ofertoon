@@ -69,3 +69,52 @@ emite y uno con 30 que no, sobre una serie de 25 días de historia.
 El costo a declarar antes de hacerlo: el **Cyber Monday del 5-7 de octubre** —el
 único evento de descuentos reales de la serie— se mediría contra baselines de 20
 días, que es exactamente lo que la migración 32 §2 quería evitar.
+
+---
+
+## Medido el 2026-11-06: qué hace el piso de 20 antes de que publique
+
+El piso de 20 días se aplicó el 6-nov 13:52 UTC y **el pipeline no volvió a
+correr desde entonces** (el último fue el 5-nov 18:51 UTC), así que la base no
+muestra todavía ni un candidato producido con él. Esto lo mide offline, sin
+escribir nada: se repite el SELECT de `detector._load_candidates` —sin su
+`NOT EXISTS`, para ver la foto completa— y se corre `evaluate` dos veces por
+observación, una con el `min_history_days` de la base (20) y otra forzando 30.
+
+Reloj de la medición: el de las baselines vigentes (5-nov 18:51 UTC). Con `NOW()`
+el filtro de `PRICE_MAX_AGE_HOURS` vaciaría la muestra y el resultado sería 0 por
+construcción. **66.146 observaciones.**
+
+    veredicto            con 20      con 30     delta
+    accepted                515         409      +106
+    history               40701       47034     -6333
+    threshold             22083       15961     +6122
+    ramp                    428         346       +82
+    above_floor             178         155       +23
+    refurbished            2149        2149        +0
+    out_of_stock             64          64        +0
+    server_hw                28          28        +0
+
+Lo que dice, y no es lo que uno esperaría:
+
+1. **6.333 observaciones cruzan la guarda de historia** que antes rechazaba, pero
+   **6.122 de ellas mueren en θ**. El piso no las convierte en ofertas: las
+   convierte en rechazos por umbral, que es un rechazo que **sí se persiste** y
+   por lo tanto sí calibra.
+2. **El pool de aceptados sube 409 → 515, un +26%.** Los 106 nuevos, por
+   categoría: `tecno-audio` 46, `supermercado` 21, `tecno-celulares` 9,
+   `deporte-equipamiento` 6, `deporte-vestuario` 6, `hogar-electro` 5,
+   `tecno-componentes` 4, `ropa-calzado` 4, `ferre-herramientas` 2, y 1 cada una
+   en `ferre-jardin`, `deporte-calzado` y `tecno-tv`.
+3. **Y la cuota diaria es 33.** Con 409 aceptados ya había 12 candidatos por
+   lugar; con 515 hay 15. O sea el piso de 20 **no publica más ofertas: cambia
+   cuáles ganan**, y mete 106 que se miden contra un p50 de 20 a 29 días en una
+   competencia que antes era solo entre series de 30 o más. El efecto es de
+   composición, no de volumen — que es justo lo que no se ve mirando el total
+   publicado.
+
+Dos límites de esta medición, para no sobreleerla: no modela el **cooldown**
+(`prior_post=None`), así que los aceptados son un techo —hay 545 `deal_posts`, el
+último del 5-nov—; y no modela las promociones de multicompra, que solo pueden
+sumar. Reproducible con el script del scratchpad de la sesión; el SELECT es el de
+`detector._load_candidates` sin el `NOT EXISTS`.
