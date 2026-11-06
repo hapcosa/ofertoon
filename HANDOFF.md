@@ -1,5 +1,53 @@
 # Handoff Ofertoon — estado al 2026-10-01
 
+## Actualización de producción 2026-11-06 — acumulación iniciada
+
+El cuerpo antiguo de este handoff es una fotografía del 1-oct. El estado actual
+se comprobó en producción después de aplicar **migraciones 40–46** y de iniciar
+una ingesta dirigida para las 14 tiendas nuevas. Hay **31 tiendas activas, 727
+llaves activas y 46 migraciones aplicadas**, sin pendientes ni diferencias de
+checksum. Las 17 categorías tienen `min_history_days = 30` (se revirtió el
+experimento temporal de 10 días). `scraper` y `publisher` están corriendo. La
+primera ingesta agregó **13.668 `price_points`**, uno por SKU/listing observado:
+La suite completa pasó con **912 tests** contra una base de prueba separada;
+`git diff --check` pasó.
+
+| Tienda | Puntos iniciales | Estado de primera pasada |
+|---|---:|---|
+| Colloky | 4.016 | 6 ok |
+| Lippi | 3.437 | 62 ok, 13 partial, 1 failed: llave vacía `cortavientos-kids` |
+| The North Face | 1.393 | 94 ok, 6 partial por llaves vacías |
+| Infor Ingen | 1.325 | 7 ok |
+| New Balance | 824 | 28 ok, 26 partial; límite de paginación por robots |
+| TrekBikesChile | 510 | 64 ok, 7 partial |
+| Mammut | 480 | 89 ok, 8 partial por llaves vacías |
+| PC Express | 458 | 8 ok; publicación desactivada |
+| Speedo | 351 | 25 ok, 14 partial; límite de paginación por robots |
+| Marmot | 325 | 41 ok, 34 partial por llaves vacías |
+| Nómades | 280 | 24 ok |
+| MegaBytes | 156 | 2 ok, 1 partial (llave de un ítem) |
+| Ripley | 95 | 1 partial: 928/940 SKU enumerados, 95 venta directa; publicación desactivada |
+| Hites | 18 | 1 ok |
+
+`ripley` y `pc-express` tienen `is_active = true` y `publish_enabled = false`: el
+scraper acumula su historia, pero detector **y** curador excluyen sus candidatos.
+La compuerta de PC Express depende de validar el stock con una ficha agotada; la
+de Ripley depende de estabilizar la cobertura y conservar solo venta directa.
+Las otras doce tiendas tienen publicación habilitada, pero deben cumplir los 30
+días observados y los controles normales. Una primera observación del 6-nov no
+es una oferta. La próxima pasada automática debe volver a observar las tiendas;
+revisar `scrape_runs` y el aumento real de `price_points`, no solo el log.
+
+**Cuidado al integrar worktrees:** el archivo `migrations/40_ripley_hites.sql`
+del worktree principal se amplió con `publish_enabled` y PC Express **antes de
+aplicarlo en producción**. Esa versión exacta tiene el checksum registrado.
+Otro worktree conserva una versión anterior de la 40: reemplazar el archivo
+produciría `checksum_mismatch`. Conservar la versión aplicada y usar migraciones
+nuevas para cambios posteriores. Unimarc está en el worktree
+`ofertoon-unimarc`, con migración 47 aún no integrada ni aplicada; **no tiene
+historia en producción todavía**. Imperial devolvió 403 estable y tampoco tiene
+fuente de precios. No se hizo commit ni push.
+
 Pegá el bloque de abajo como primer mensaje de la próxima sesión.
 
 ---

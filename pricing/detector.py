@@ -264,6 +264,7 @@ async def _load_candidates(conn: asyncpg.Connection) -> list[dict[str, Any]]:
                b.p50_60d, b.p10_60d, b.min_60d, b.n_points, b.n_days, b.ramp_flag,
                pp.price_effective, pp.in_stock, pp.observed_at
           FROM listings          AS l
+          JOIN stores            AS s ON s.id = l.store_id
           JOIN listing_baselines AS b ON b.listing_id = l.id
           LEFT JOIN categories   AS c ON c.id = l.category_id
           JOIN LATERAL (
@@ -274,6 +275,8 @@ async def _load_candidates(conn: asyncpg.Connection) -> list[dict[str, Any]]:
                 LIMIT 1
           ) AS pp ON TRUE
          WHERE l.is_active
+           -- Una tienda puede juntar serie sin producir candidatos todavía.
+           AND s.publish_enabled
            AND pp.observed_at >= NOW() - ($2 || ' hours')::INTERVAL
            AND NOT EXISTS (
                SELECT 1 FROM deal_candidates AS dc
