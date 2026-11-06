@@ -118,3 +118,46 @@ Dos límites de esta medición, para no sobreleerla: no modela el **cooldown**
 último del 5-nov—; y no modela las promociones de multicompra, que solo pueden
 sumar. Reproducible con el script del scratchpad de la sesión; el SELECT es el de
 `detector._load_candidates` sin el `NOT EXISTS`.
+
+### Y en lo que se PUBLICA, que es la pregunta que importa
+
+La misma medición, pero pasando los aceptados por la curación: `ORDER BY score
+DESC`, tope de 5 por tienda, de 3 por categoría y la cuota de cada tema, igual
+que `curation.ranker`.
+
+    piso 30   409 aceptados → 25 publicables →  0 de la cohorte de 20-29 días
+    piso 20   515 aceptados → 25 publicables →  8 de la cohorte de 20-29 días
+
+**El piso de 20 no agrega ni una oferta publicada: desplaza 8 de las 25**, o sea
+un tercio del canal pasa a medirse contra un p50 de 20 a 29 días. Y el
+desplazamiento tiene nombre:
+
+    categoría              piso 30   piso 20
+    tecno-notebooks              3         0     ← pierde sus tres lugares
+    tecno-audio                  0         3     ← los gana, los tres jóvenes
+    tecno-componentes            3         2
+    tecno-celulares              0         1       (joven)
+    supermercado                 3         3       (2 jóvenes)
+    ropa-calzado                 3         3       (1 joven)
+    tecno-tv                     2         2       (1 joven)
+    hogar-electro                3         3
+    deporte-equipamiento         3         3
+    deporte-vestuario            2         2
+    ferre-jardin                 1         1
+
+`tecno-notebooks` no empeoró: lo que pasó es que el tema `Tecnología` tiene cuota
+**8** y ahora hay más candidatos de audio con mejor score peleándola. Es
+exactamente el efecto de composición, visible solo acá.
+
+**Y de paso cae un número que no estaba medido: se publican 25 de los 33 de
+cuota, con los dos pisos.** Los 8 lugares que sobran no los limita el detector,
+los limitan los topes finos y las categorías sin candidatos maduros: 3 de
+`belleza` (su primer candidato posible es el 2026-12-04), 2 de `supermercado` y 2
+de `ropa` por `MAX_PER_CATEGORY_PER_DAY = 3`, y 1 de `viajes-tours`. El problema
+del tema `supermercado` que CLAUDE.md ya documentaba **es el mismo en cuatro
+temas más**, y vale 8 de 33.
+
+Límites, otra vez: no modela el cooldown (hay 545 `deal_posts`, así que algunos
+ganadores serían desplazados), es una foto de un solo momento del pipeline, y los
+scores salen del mismo set de observaciones. La conclusión que aguanta estos
+límites es la de composición, no los nombres exactos de las categorías.
