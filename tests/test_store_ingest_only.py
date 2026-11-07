@@ -15,7 +15,16 @@ async def test_store_activa_con_publicacion_cerrada_guarda_precios_sin_candidato
         "SELECT id, is_active, publish_enabled FROM stores WHERE slug='ripley'"
     )
     assert store["is_active"] is True
-    assert store["publish_enabled"] is False
+    # El test fija el estado que necesita en vez de heredarlo de las migraciones:
+    # `publish_enabled` de una tienda concreta es una decisión de producto y
+    # cambia (la 40 abrió `ripley` en FALSE, la 53 la volvió a abrir en TRUE), y
+    # el mecanismo que se prueba acá es el de la columna, no el valor sembrado.
+    # `stores` además sobrevive al `_truncate_state` del conftest, así que el
+    # valor original se restaura al final o se lo lleva el test siguiente.
+    original = store["publish_enabled"]
+    await db_conn.execute(
+        "UPDATE stores SET publish_enabled=FALSE WHERE id=$1", store["id"]
+    )
     category_id = await db_conn.fetchval(
         "SELECT id FROM categories WHERE slug='tecno-notebooks'"
     )
@@ -76,5 +85,6 @@ async def test_store_activa_con_publicacion_cerrada_guarda_precios_sin_candidato
         )
     finally:
         await db_conn.execute(
-            "UPDATE stores SET publish_enabled=FALSE WHERE id=$1", store["id"]
+            "UPDATE stores SET publish_enabled=$2 WHERE id=$1",
+            store["id"], original,
         )
