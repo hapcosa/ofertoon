@@ -218,3 +218,69 @@ colisión pasó igual, porque el canal de aviso no llegó a tiempo al tercer age
 Lo único que la cazó fue **medir los archivos contra la base**. Que es la misma
 lección de todo este repo: el efecto, nunca el mensaje — ni siquiera cuando el
 mensaje es un acuerdo entre agentes.
+
+---
+
+## ⚠️ CORRECCIÓN del 2026-11-07 — el piso de 20 no aflojó nada: apretó
+
+Lo de arriba comparó **20 contra 30** y concluyó que el piso de 20 "desplaza un
+tercio del canal" hacia baselines de 20-29 días. La aritmética está bien y la
+conclusión está **mal**, porque el 30 existió unas horas y **no produjo ni un
+post publicado**. El contrafáctico correcto es el que el canal venía usando de
+verdad: **10**.
+
+La secuencia real del piso, reconstruida de las migraciones y confirmada en lo
+publicado:
+
+    migración 32 (octubre)     7 categorías en 10, con reversión comprometida
+    ~5/6-nov, a mano           las 17 a 30 — sin migración, lo dice el header de la 48
+    migración 48, 6-nov 13:52  las 17 a 20
+
+Entre esos dos últimos pasos pasaron horas y ningún pipeline corrió, así que
+**ninguna oferta se publicó jamás con el piso en 30**.
+
+### Lo publicado, con la historia que de verdad tenía al detectarse
+
+Días distintos **con stock** en los 60 previos a `detected_at`, que es lo que
+cuenta `compute_baseline` (`in_stock` filtra, y eso baja el número). Validado
+contra el `n_days` guardado: coincide con una diferencia constante de 1, porque
+la baseline incluye la observación del propio `detected_at` y esta cuenta usa
+`< detected_at`.
+
+    fecha        posts   n_days < 21   n_days < 30   n_days mínimo
+    2026-10-30      24         8            14            11
+    2026-10-31      21         1            14            15
+    2026-11-01      22         9            12            10
+    2026-11-02      25        11            14            10
+    2026-11-03      25         9            12            10
+    2026-11-04      34         5            12            10
+    2026-11-05      25         6            11            11
+    ---- migración 48: el piso pasa a 20 ----
+    2026-11-06      23         0             7            24
+    2026-11-07      22         2             5            20
+
+Leído en voz alta: hasta el 5-nov el canal publicaba ofertas medidas contra
+**baselines de 10 u 11 días** —entre 5 y 11 por día por debajo de 21—, y después
+del 48 el mínimo es 20 y la cola corta **desaparece**. La fracción medida contra
+menos de 30 días cae de **44-56% a 23-30%**.
+
+**O sea la migración 48 fue un apriete, no un aflojamiento.** Hizo exactamente lo
+que un piso tiene que hacer: sacó las baselines más cortas. Lo que yo reporté
+—"mete 106 candidatos medidos contra un p50 de 20 a 29 días"— describía el paso
+de 30 a 20, que nunca ocurrió en producción.
+
+### Por qué me equivoqué, que es lo que vale guardar
+
+El header de la 48 avisa en su §1: *"Es importante no confundirla con la
+reversión de la 32, que ya ocurrió"*. Yo leí la columna (`min_history_days = 20`)
+y el código del backtest (`MIN_DAYS = 30`), y de ahí deduje el contrafáctico en
+vez de medirlo. **El estado anterior de una columna no se deduce del código: se
+lee en lo que el sistema ya produjo.** `deal_posts` + `deal_candidates` +
+`price_points` lo tenían escrito todo el tiempo.
+
+Corolario para el desfase backtest/producción de la regla 5: sigue siendo real
+—el backtest mide con 30 y producción corre con 20— pero su signo es el
+contrario del que supuse. El backtest es **más exigente** que producción, así que
+el θ que saca está calibrado sobre una población de listings más madura que la
+que el detector ve. Eso subestima el volumen que θ va a producir, no lo
+sobreestima.
