@@ -31,7 +31,7 @@ Lo que necesitás leer depende de lo que vas a hacer. **No leas todo.**
 | retomar una sesión | [`HANDOFF.md`](HANDOFF.md) · [`HANDOFF_MERCADOPAGO.md`](HANDOFF_MERCADOPAGO.md) |
 | saber qué está LOCKED | `~/.claude/plans/aprovechancho-el-sistema-de-toasty-squid.md` — **fuera del repo** |
 
-[`TRAMPAS.md`](TRAMPAS.md) son **81 trampas verificadas contra producción**,
+[`TRAMPAS.md`](TRAMPAS.md) son **82 trampas verificadas contra producción**,
 agrupadas por situación. Cada una existe porque alguien ya probó el camino obvio
 y perdió tiempo. Buscá tu sección, no leas el archivo.
 

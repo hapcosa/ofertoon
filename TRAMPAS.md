@@ -15,7 +15,7 @@ todas existen porque alguien ya probó el camino obvio.
 ## Índice
 
 **A.** Llegar al catálogo: robots, User-Agent y bloqueos — 9 trampas. Todo lo que hace que una tienda parezca inaccesible sin estarlo — y al revés.
-**B.** Elegir las llaves: catálogo o vitrina, y solapamiento — 9 trampas. Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
+**B.** Elegir las llaves: catálogo o vitrina, y solapamiento — 10 trampas. Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
 **C.** Paginación y completitud — 11 trampas. Cómo se enumera un catálogo entero, y cuándo el canario exacto es sostenible.
 **D.** Precio, stock e identidad del producto — 18 trampas. Qué número se guarda como `price_effective`, y qué cosa es un listing.
 **E.** Las guardas: canario, agujero y volumen — 11 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
@@ -225,6 +225,17 @@ Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
   chica: es inocuo **solo mientras las llaves que se solapan mapeen a la misma
   categoría interna**, porque gana la primera del orden de `db.load_store_targets`
   y `belleza` ordena antes que `supermercado`.
+
+- **En Sparta, el dedupe entre categorías cambia el θ de un producto.** Las
+  nueve raíces sugeridas por la investigación del 2026-11-04 se solapan 1,72×
+  y algunas cruzan `deporte-vestuario` con `deporte-equipamiento`.
+  `db.load_store_targets` ordena por `category_slug` **antes** que por
+  `store_key`: equipamiento gana alfabéticamente, así que una prenda compartida
+  podría puntuarse con θ=0,250 en vez de 0,350. Ordenar las llaves no lo
+  corrige. La primera tajada de la migración 52 elige 63 hojas que dieron
+  **cero SKUs cruzados** entre sus tres categorías internas en dos mediciones
+  (2026-11-04 y 2026-11-06; 1.208 SKUs únicos en la segunda). El dedupe queda
+  dentro de cada categoría. Ver `research/2026-11-07/sparta.md`.
 
 
 ---
