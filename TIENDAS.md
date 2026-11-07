@@ -11,8 +11,9 @@ tras aplicar las migraciones 40–46. Se inició la primera ingesta dirigida de
 `marmot`. Los recuentos y errores de la primera pasada están en el bloque nuevo
 de [`HANDOFF.md`](HANDOFF.md). `ripley` y `pc-express` acumulan puntos con
 `publish_enabled = false`; las otras doce tienen publicación habilitada, sujeta
-a los 30 días observados de historia y a la detección/curación habitual. Unimarc
-sigue en un worktree separado, sin ingesta en producción. Imperial sigue sin
+a la historia mínima observada y a la detección/curación habitual — ⚠️ que desde
+la migración 48 (6-nov) son **20 días, no 30**. Unimarc tiene su migración 47
+escrita y sin aplicar, y nace con `publish_enabled = false`. Imperial sigue sin
 fuente estable (403). Las tablas siguientes son la **fotografía del 5-nov**, no
 el estado actual de las tiendas ya conectadas.
 
@@ -25,6 +26,12 @@ incluye `publish_enabled` y PC Express, añadidos el 6-nov al archivo del
 worktree principal antes de aplicarla. Su checksum debe mantenerse idéntico al
 de esa versión; revisar [`HANDOFF.md`](HANDOFF.md) antes de integrar otros
 worktrees.
+
+**Actualización 2026-11-07:** Rockford y Sparta están en estado **adaptador
+probado**, con las migraciones 50 y 52 integradas pero aún sin aplicar en
+producción. Sparta usa una primera tajada de 63 hojas sin SKUs cruzados entre
+categorías internas; detalle y límites en
+[`research/2026-11-07/`](research/2026-11-07/README.md).
 
 Documentos hermanos: [`TIENDAS_PROHIBIDAS.md`](TIENDAS_PROHIBIDAS.md) (las que no
 se pueden), [`INVESTIGACION_deporte_outdoor.md`](INVESTIGACION_deporte_outdoor.md),
@@ -84,7 +91,7 @@ fecha de conexión anotada.
 | **colloky** | `vtex_family` | **4 raíces** | **3.530** | **1,00×** (disjuntas) | 🟢 57,5% | 🟢 Jaccard **1,0000**, canario exacto, GTIN 99,8%. ⚠️ Necesita **categoría nueva**: su raíz `Ropa` (1.449) no tiene dónde caer |
 | **trekbikeschile** | `magento_html` | **93 hojas** | 513 de 527 (97,3%) | **1,05×** | 🟢 42,4% | Config Sparta (`paginates=False`). ⚠️ Ticket hasta **$10,9M** (bicicletas) |
 | **speedo** | `magento_html` | **70 hojas** | 383 de 425 (90,1%) | **1,15×** | 🟢 41,5% | Config Sparta. Requiere los selectores nuevos (`name_selector`/`url_selector`/`sku_selector`) |
-| **sparta** | `magento_html` | 340 hojas | 3.157 de 13.448 (**24%**) | 1,72× | 🟢 41,6% | Config Kupfer. ⚠️ El techo de 24% es por `Disallow: /*?`. Requiere `dedupe_across_categories` con la letra chica de los ejes cruzados |
+| **sparta** | `magento_html` | **63 hojas en migración 52** | **1.208** re-medidos el 6-nov | sin cruces entre categorías internas | 🟢 41,6% | Adaptador probado; publicación apagada al conectar. `Disallow: /*?` limita a 36 productos por hoja; 29 hojas darán `partial` conocido. [Detalle](research/2026-11-07/sparta.md) |
 | **lippi** | `shopify_family` | **76 hojas** | 3.418 de 3.581 (95,4%) | **1,31×** | 🟢 11,6% | 🟢 Flag `emitir_por_producto` **ya implementado y testeado**. UA: `DEFAULT_USER_AGENT` (su 429 es por headers) |
 | **newbalance** | `magento_html` | **81 hojas** | 909 de 1.408 (64,6%) | 1,87× | 🟢 39,5% | ✅ Vitrinas excluidas por decisión del dueño (se pierde el 35%) |
 | **infor-ingen** | `woo_family` | **14 llaves** | **1.615** | **1,048×** | 🟢 100% muestra | 🟢 Jaccard **1,0000**, canario exacto (`count==enumerado` en 58/58), stock real |
@@ -141,7 +148,7 @@ al canal con dos precios.
 | **cocha**, **travelsecurity** | 🔴 nuevo | Falta la ruta de catálogo de su sección de paquetes |
 | **imperial** | 🔴 `occ_family` (Oracle Commerce Cloud) | [Revalidación 6-nov](research/2026-11-06/IMPERIAL.md): 403 «Access Denied» en 6/6 intentos; el 5-nov hubo 11 precios en una respuesta y luego 520. Sin fuente estable |
 | **myshop**, **winpy**, **maconline**, **mercadodigital**, **bip**, **pchardware** | 🔴 nuevo | Plataforma sin determinar. Winpy declara `generator: Winpy.cl` (hecho en casa); su `Crawl-delay` real es **5, no 10** |
-| **unimarc** | 🔴 nuevo (Next.js, `__NEXT_DATA__`) | 🟢 Acceso, paginación y EAN ya medidos (719/719). Falta: fijar y **verificar la sucursal** (riesgo Construmart), y decidir cómo trata el detector las **107 promociones de multicompra** y las **243 Club** |
+| ~~**unimarc**~~ | ✅ **adaptador probado** — `scrapers.stores.unimarc` | Las doce preguntas contestadas el 2026-11-06 (`research/2026-11-06/INVESTIGACION_unimarc.md`). 8 llaves, 8.213 entradas, 169 requests/pasada. El canal de venta quedó fijado en `co_sc=39` (el precio **sí** dependía de él) y la condición del precio viaja hasta el copy (`price_condition`, migración 47 **sin aplicar**). Nace con `publish_enabled = FALSE`: ingesta desde el día uno, canal recién tras la aceptación del **2026-12-06**. Lo que sigue abierto: qué sucursal física es el canal 39 — el endpoint que lo traduce exige sesión |
 | **pc-express** | 🟢 conectado el 6-nov; publicación pausada | [8 llaves públicas, 458/458 SKU y 458 puntos iniciales en producción](research/2026-11-06/PC_EXPRESS.md). Precio principal: transferencia. Falta control negativo de stock antes de publicar |
 | **latamairlines** | 🔴 nuevo | Pasa con `BROWSER_HEADERS`; su `sitemapindex` da timeout |
 
@@ -186,8 +193,9 @@ esperada, no simpatía por la vertical.
 4. **Lippi** — el flag ya está implementado y testeado.
 5. **nomades.com** — llena un tema que hoy está mudo, 24 requests por pasada, y el
    adaptador ya está escrito.
-6. **Sparta, New Balance, y las cuatro de `Crawl-delay: 3`** — después de resolver
-   el solapamiento con Kliper y el techo del 24% de Sparta.
+6. **Sparta, New Balance, y las cuatro de `Crawl-delay: 3`** — la primera tajada
+   de Sparta ya está escrita en la migración 52; quedan la aplicación y la
+   primera ingesta. Las demás requieren medir solapamiento con Kliper.
 7. **`salesforce_family`** (hites, tricot, abc, marathon) — el mejor retorno por
    adaptador escrito que queda, pero es un adaptador nuevo y le faltan 5 de las 12
    preguntas.

@@ -31,7 +31,7 @@ Lo que necesitás leer depende de lo que vas a hacer. **No leas todo.**
 | retomar una sesión | [`HANDOFF.md`](HANDOFF.md) · [`HANDOFF_MERCADOPAGO.md`](HANDOFF_MERCADOPAGO.md) |
 | saber qué está LOCKED | `~/.claude/plans/aprovechancho-el-sistema-de-toasty-squid.md` — **fuera del repo** |
 
-[`TRAMPAS.md`](TRAMPAS.md) son **67 trampas verificadas contra producción**,
+[`TRAMPAS.md`](TRAMPAS.md) son **82 trampas verificadas contra producción**,
 agrupadas por situación. Cada una existe porque alguien ya probó el camino obvio
 y perdió tiempo. Buscá tu sección, no leas el archivo.
 
@@ -61,13 +61,21 @@ producto que este proyecto existe para no ser.
 5. **Cold-start es un rechazo, no un default.** Sin `MIN_POINTS=30` y
    `MIN_DAYS=30` el p50 es una opinión. Un SKU nuevo cuyo precio de lanzamiento
    se "descuenta" a los 10 días no tiene contra qué contrastarse → `history`.
-   ⚠️ **Excepción vigente y temporal**: `categories.min_history_days` (migración
-   32) permite bajarlo por categoría y está en **10** para las siete conectadas en
-   octubre, por decisión explícita del dueño. **Revertir con
-   `UPDATE categories SET min_history_days = 30` el 2026-11-06.** Si leés esto
-   después de esa fecha y la columna sigue en 10, es un olvido: el canal publica
-   contra un p50 de dos semanas teniendo uno de ocho, que es **peor** que el
-   estado de partida.
+   El piso efectivo lo pone `categories.min_history_days` (migración 32) y desde
+   la **migración 48 es 20 en las 17 categorías**: un solo piso, sin excepciones
+   por categoría y **sin fecha de reversión**. Decisión del dueño del 2026-11-06,
+   tomada con los números delante y sabiendo que ninguna sube y que las 17 bajan
+   de 30. La excepción temporal de 10 días para las siete de octubre **ya no
+   existe**; si un documento viejo te manda revertirla, está desactualizado.
+   ⚠️ Eso dejó un **desfase permanente con el backtest**, que sigue midiendo con
+   30: `replay_listing` llama a `evaluate` sin `min_history_days` y cae en el
+   `MIN_DAYS` de `baselines.py`. O sea **el θ que sale del backtest describe un
+   detector que no es el que corre**. Era un desfase temporal por diseño —la
+   migración 32 contaba con que la columna volviera a 30— y con los 20
+   permanentes ese supuesto se cayó. Todavía no tiene consecuencia medible: en el
+   rango medible las categorías afectadas ni aparecen, porque no tienen 30 días de
+   futuro para etiquetar. El cambio, con su costo declarado, está en
+   `research/2026-11-06/BACKTEST_theta.md` — no lo toques sin leerlo.
 6. **Ante la duda, no se agrupa.** La identidad de producto
    (`catalog/identity.py`) es
    GTIN → (marca, modelo) → nada. No alimenta al detector, así que se puede ser
@@ -120,6 +128,12 @@ En este orden. Saltearse el 1 es el error más caro del repo.
    mapeadas a la taxonomía, la **fecha de conexión anotada** y la fecha de
    evaluación = conexión + 30 días. Categoría nueva → θ de partida explícito y
    anotado como **no calibrado**.
+   La fila nace con **`publish_enabled = FALSE`** y la columna queda **afuera del
+   `ON CONFLICT DO UPDATE`**. El default es `TRUE`, así que una tienda nueva
+   publica salvo que diga lo contrario — y con el piso de historia en 20 días
+   acumula baseline diez días antes de su propia evaluación: la fecha del header
+   no se hace cumplir sola. Ingesta desde el día uno, canal recién cuando el dueño
+   la abra a mano después de la aceptación. Ver [`TRAMPAS.md`](TRAMPAS.md) **G**.
 7. **Construir la imagen ANTES de migrar.** Si `stores.adapter` nombra un módulo
    que la imagen no tiene, `resolve_adapter` falla y las llaves quedan `failed`.
 8. **Verificar el efecto, no el mensaje** (§Paso 4).
@@ -177,6 +191,18 @@ el de "no hizo nada" son idénticos.
   `ps -eo etime,cmd | grep -E 'scrapers\.|publisher\.'` desde el host.
 - **Una prueba sin caso de control es un falso verde.** Si verificás un límite,
   incluí el caso que *tiene* que fallar.
+- 🔴 **Después de un despliegue que reinicie el scraper, disparar la pasada a
+  mano**: `docker compose exec scraper python -m scrapers.runner --once`. Sin eso
+  el runner duerme hasta que toque el ciclo de 12 h, el pipeline no corre —viaja
+  dentro del loop—, los candidatos vencen a las 13 h y **el canal publica cero
+  sin un solo error**. Medido el 2026-11-06: 0 publicaciones contra 21-34 diarias.
+  Ver [`TRAMPAS.md`](TRAMPAS.md) **F**.
+- **Hay filas que ningún test puede ver.** El `_truncate_state` del conftest
+  preserva solo `categories`, `stores` y `schema_migrations`, así que las
+  `store_categories` que inserta una migración **no están** cuando corre el
+  primer test: una suite en verde no dice nada sobre si las llaves de una tienda
+  nueva quedaron bien mapeadas. Se miran en la base, o se aplica la secuencia
+  completa sobre una base descartable propia y se mira ahí.
 
 ```bash
 set -a && . ./.env && set +a && \
@@ -191,9 +217,9 @@ El setup hace `DROP SCHEMA public CASCADE` — nunca apuntarlo a la base real.
 
 ## Trabajo multi-agente: cómo no pisarse
 
-Varios agentes trabajan este repo a la vez. Las tres colisiones de abajo **ya
-pasaron**, y ninguna falló ruidosamente: en los tres casos el trabajo se perdió o
-se corrompió sin un solo error en pantalla.
+Varios agentes trabajan este repo a la vez. Las cinco colisiones de abajo **ya
+pasaron**, y ninguna falló ruidosamente: en todos los casos el trabajo se perdió,
+se corrompió o quedó sin poder desplegarse sin un solo error en pantalla.
 
 ```bash
 cd ~/servicios/ofertoon
@@ -268,7 +294,20 @@ que está encendida.
   429. Perdí dos corridas de Lippi así, y encima me llevó a bajar el rps
   persiguiendo un fantasma: el 429 era por headers.
 
-### 5. Al terminar
+### 5. Dos ramas pueden ser interdependientes A TRAVÉS DE LA BASE
+
+Y entonces **ninguna de las dos se puede desplegar sola**, aunque no compartan un
+solo archivo. Pasó el 2026-11-06: aplicar la migración de Unimarc sin su código
+deja sus 8 llaves en `failed` cada pasada, y desplegar su código sin el del otro
+agente rompe `pc-express`, que **ya está en la base** apuntando a un módulo que
+esa rama no tiene. Las suites de los dos árboles pasan en verde.
+
+La salida es integrar primero y desplegar una vez: merge → **una** build → **una**
+aplicación. Y el merge **se verifica**, no se asume — se puede simular sin tocar
+el árbol del otro agente ni su trabajo sin commitear, con un `GIT_INDEX_FILE`
+temporal y `git merge-tree`. El cómo está en [`TRAMPAS.md`](TRAMPAS.md) **F**.
+
+### 6. Al terminar
 
 Commiteá en tu rama, mergeá a `main` y **recién entonces** borrá el worktree
 (`git worktree remove`). Un worktree abandonado con trabajo sin commitear es
@@ -327,27 +366,57 @@ decir en cuál está:
 
 ---
 
-## Estado — 2026-11-05
+## Estado — 2026-11-06
+
+Todo lo de esta tabla está **medido contra la base**, no heredado de un
+documento. Si vas a citarlo mañana, volvé a medirlo: lo que más veces se
+desactualizó de este archivo es justo esta sección.
 
 | | |
 |---|---|
-| Tiendas activas / targets / categorías | 17 / 165 / 15 |
-| Observaciones por pasada | ~59.000, dos pasadas diarias |
-| Publisher y gate | **encendidos**, cero suscriptores activos |
+| Tiendas activas / llaves / categorías | **31** / **727** activas (730 filas, 3 desactivadas) / **17** |
+| Tiendas que publican | **29** — `ripley` y `pc-express` con `publish_enabled=false`; `unimarc` entra igual cuando se aplique la 47 |
+| Listings activos | 135.880 |
+| Observaciones por pasada | **~73.000** (pasada del 5-nov 17:00 al 6-nov 04:00 UTC: 727 corridas, 606 `ok`, 115 `partial`, 6 `failed`) |
+| Migraciones aplicadas | **47: 01-46 y 48 — falta la 47**, que está escrita en `feat/unimarc` y sin aplicar |
+| Historia mínima | **20 días en las 17 categorías** (migración 48, aplicada el 6-nov 13:52 UTC) |
+| Publisher y gate | **encendidos**, 7 servicios `running`, cero suscriptores activos (1 membresía `expired`) |
 | Destino | grupo-foro `-1003735174401`, **8 temas** cableados, cuota 33/día |
-| θ | calibrados contra el backtest el 5-nov: el gate se cumple en 6 de las 7 categorías medibles |
+| θ | re-medidos el 6-nov: el gate se cumple en **2 de las 7** categorías medibles, y el limitante es el volumen |
+
+⚠️ **El piso de 20 días todavía no produjo ni un candidato**: el último pipeline
+corrió el **5-nov 18:51 UTC** y la migración 48 se aplicó a las 13:52 del 6. Lo
+que la base muestra hoy (323 / 666 / 757 aceptados los días 3, 4 y 5) es el
+detector con el piso viejo. La primera corrida con 20 es la que hay que mirar.
 
 **Decisiones del dueño abiertas** (ninguna la toma un agente):
 
-- **`ferre-jardin` θ 0.250 → 0.200**: a 0.250 produce 1,7 ofertas/día contra el
-  mínimo de 3 del gate. Es el único θ que el gate obliga a mover.
-- **`min_history_days = 30`** — reversión de la excepción de la migración 32,
-  **vence el 2026-11-06**. Si lo leés después de esa fecha y siguen 7 categorías
-  en 10, es un olvido: el canal publica contra un p50 de dos semanas teniendo uno
-  de ocho.
+- **Los θ.** Tabla medida en `research/2026-11-06/BACKTEST_theta.md` (rango
+  2026-08-15 → 2026-10-07, 51 días de mercado). Solo 7 de las 17 categorías son
+  medibles; **la precisión va de 90% a 97% contra el 80% que pide el gate**, y lo
+  que falta son las 3 ofertas/día: 5 categorías no llegan. O sea hay margen para
+  bajar θ sin romper la promesa del canal, que es lo contrario de lo que sugiere
+  la intuición. `ferre-jardin` es el caso extremo: 1,2 ofertas/día a θ 0.250.
+- **Abrir Unimarc al canal** después de su aceptación del **2026-12-06**:
+  `UPDATE stores SET publish_enabled = TRUE WHERE slug = 'unimarc'`. Lo mismo
+  para `ripley` y `pc-express` cuando les toque.
+- **El desfase 20/30 entre producción y backtest** (regla 5). Permanente desde
+  la 48, sin consecuencia medible hasta ~diciembre, y con el cambio y su costo ya
+  escritos.
 - **El tema `supermercado` tiene cuota 5 y una sola categoría ruteada**, así que
   `MAX_PER_CATEGORY_PER_DAY = 3` le deja **dos lugares inalcanzables**. Ya se
   materializó: el 5-nov publicó 3 de 5.
+  ⚠️ Y medido el 6-nov simulando la curación entera, **no es un caso aislado: se
+  publican 25 de los 33 de cuota**. Los 8 que faltan son 3 de `belleza` (su primer
+  candidato posible es el 2026-12-04), 2 de `supermercado`, 2 de `ropa` por el
+  mismo tope de 3, y 1 de `viajes-tours`. No los limita el detector: los limitan
+  los topes finos y las categorías sin candidatos maduros. Ver
+  `research/2026-11-06/BACKTEST_theta.md`.
+- **El piso de 20 días no agrega ofertas publicadas: desplaza un tercio del
+  canal.** Con 20 y con 30 se publican 25, pero con 20 **ocho de esas 25** se
+  miden contra un p50 de 20 a 29 días, y el reparto entre categorías cambia
+  (`tecno-notebooks` pierde sus tres lugares, `tecno-audio` los gana). Es un
+  efecto de composición y no se ve mirando el total publicado.
 - **El ritmo del chat**: `MIN_MINUTES_BETWEEN = 30` es por destino, así que con 8
   temas el chat puede recibir hasta 13 mensajes/hora y agotar la cuota en ~2,5 h.
 - **`UMBRAL_ESTABILIDAD = 0.40` manda apagar Falabella (8%) y Paris (15%)**, que
@@ -355,9 +424,9 @@ decir en cuál está:
 - **Nike da 30%**, pero medido el día en que madurar exige no faltar ni una vez:
   tiene 21% de sus listings a uno o dos días. Re-medir ~2026-11-10.
 
-**Fechas que no se adelantan**: Jumbo y Santa Isabel se evalúan el **2026-12-04**;
-`belleza` puede dar su primer candidato el **2026-12-04**; las siete categorías de
-octubre se pueden calibrar ~**2026-12-05**.
+**Fechas que no se adelantan**: Unimarc se evalúa el **2026-12-06**; Jumbo y
+Santa Isabel el **2026-12-04**; `belleza` puede dar su primer candidato el
+**2026-12-04**; las siete categorías de octubre se pueden calibrar ~**2026-12-05**.
 
 ---
 

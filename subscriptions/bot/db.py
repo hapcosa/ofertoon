@@ -139,17 +139,26 @@ async def fetch_active_plans(
     conn: asyncpg.Connection,
     tier_id: int,
 ) -> list[asyncpg.Record]:
-    """Devuelve los planes PayPal pagables del tier en orden de duración."""
+    """Devuelve los planes pagables del tier (PayPal y/o MercadoPago) en orden
+    de duración. Un plan entra si tiene AL MENOS un proveedor utilizable; cuál
+    de los dos mostrar botón lo decide `payments.select_payment_providers`,
+    no esta query."""
     return await conn.fetch(
-        """SELECT p.id, p.tier_id, p.period, p.price_usd, p.paypal_plan_id
+        """SELECT p.id, p.tier_id, p.period, p.price_usd, p.paypal_plan_id,
+                  p.price_clp, p.mercadopago_plan_id
              FROM telegram_tier_plans AS p
              JOIN telegram_tiers AS t ON t.id = p.tier_id
             WHERE p.tier_id = $1
               AND p.is_active = TRUE
               AND t.is_active = TRUE
-              AND p.paypal_plan_id IS NOT NULL
-              AND BTRIM(p.paypal_plan_id) <> ''
-              AND p.price_usd > 0
+              AND (
+                    (p.paypal_plan_id IS NOT NULL
+                     AND BTRIM(p.paypal_plan_id) <> ''
+                     AND p.price_usd > 0)
+                 OR (p.mercadopago_plan_id IS NOT NULL
+                     AND BTRIM(p.mercadopago_plan_id) <> ''
+                     AND p.price_clp > 0)
+                  )
             ORDER BY CASE p.period
                          WHEN 'weekly' THEN 0
                          WHEN 'monthly' THEN 1

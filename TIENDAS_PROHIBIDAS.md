@@ -75,7 +75,20 @@ cobertura que eso implica (~24% del catálogo). Ver
 Las dos las descubrió otro agente el 5-nov y las **re-verifiqué yo** con los
 headers del repo, porque la regla es verificar y no heredar. Las dos dan 200.
 
-### Unimarc — 🟢 viable
+### Unimarc — ✅ conectada (adaptador probado el 2026-11-06)
+
+> **Cerrada.** Ya no pertenece a este documento: tiene adaptador, fixtures, 33
+> tests y la migración 47 escrita. La investigación completa —las doce preguntas,
+> las ocho llaves verificadas disjuntas sobre SKUs reales y el canal de venta,
+> que era el riesgo real— está en
+> [`research/2026-11-06/INVESTIGACION_unimarc.md`](research/2026-11-06/INVESTIGACION_unimarc.md).
+> Lo de abajo se conserva como el registro de por qué el veredicto viejo era
+> falso, que es la parte que no hay que perder.
+>
+> Dos cosas de abajo quedaron **precisadas** por esa medición: el precio **sí
+> depende de la sucursal** (del `salesChannel`, y el del anónimo es el 39), y de
+> los dos UAs que acá figuran como equivalentes, `BROWSER_USER_AGENT` **a secas
+> da 403 las 4 veces** — pasan el identificable y `BROWSER_HEADERS` completos.
 
 **El bloqueo histórico ya no describe la fuente.** `www.unimarc.cl/` responde
 **200 con 1,86 MB y `__NEXT_DATA__`, con los dos UAs** (`DEFAULT_USER_AGENT` y

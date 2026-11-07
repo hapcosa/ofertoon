@@ -1,0 +1,1123 @@
+{
+  "medido_utc": "2026-11-06T03:08:42.186046+00:00",
+  "sales_channel": "39",
+  "contexto": "Visitante anónimo con co_sc=39 fijo. No es cobertura nacional.",
+  "requests": 169,
+  "filas_totales": 8213,
+  "skus_unicos_globales": 8212,
+  "llaves": {
+    "despensa": {
+      "declarado": 1681,
+      "unicos": 1680,
+      "agotados": 4,
+      "paginas": 34,
+      "detalle": [
+        {
+          "page": 1,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 2,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 3,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 4,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 5,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 6,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 7,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 8,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 9,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 10,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 11,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 12,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 13,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 14,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 15,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 16,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 17,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 49
+        },
+        {
+          "page": 18,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 19,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 20,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 21,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 22,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 23,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 24,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 25,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 26,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 27,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 28,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 29,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 30,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 31,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 32,
+          "filas": 50,
+          "agotados_en_pagina": 1,
+          "nuevos": 50
+        },
+        {
+          "page": 33,
+          "filas": 50,
+          "agotados_en_pagina": 1,
+          "nuevos": 50
+        },
+        {
+          "page": 34,
+          "filas": 31,
+          "agotados_en_pagina": 2,
+          "nuevos": 31
+        }
+      ]
+    },
+    "desayuno-y-dulces": {
+      "declarado": 1315,
+      "unicos": 1314,
+      "agotados": 1,
+      "paginas": 27,
+      "detalle": [
+        {
+          "page": 1,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 2,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 3,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 4,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 5,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 6,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 7,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 49
+        },
+        {
+          "page": 8,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 9,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 10,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 11,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 12,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 13,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 14,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 15,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 16,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 17,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 18,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 19,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 20,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 21,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 22,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 23,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 24,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 25,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 26,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 27,
+          "filas": 15,
+          "agotados_en_pagina": 1,
+          "nuevos": 15
+        }
+      ]
+    },
+    "bebidas-y-licores": {
+      "declarado": 1588,
+      "unicos": 1588,
+      "agotados": 2,
+      "paginas": 32,
+      "detalle": [
+        {
+          "page": 1,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 2,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 3,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 4,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 5,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 6,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 7,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 8,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 9,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 10,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 11,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 12,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 13,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 14,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 15,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 16,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 17,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 18,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 19,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 20,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 21,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 22,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 23,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 24,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 25,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 26,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 27,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 28,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 29,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 30,
+          "filas": 50,
+          "agotados_en_pagina": 1,
+          "nuevos": 50
+        },
+        {
+          "page": 31,
+          "filas": 50,
+          "agotados_en_pagina": 1,
+          "nuevos": 50
+        },
+        {
+          "page": 32,
+          "filas": 38,
+          "agotados_en_pagina": 0,
+          "nuevos": 38
+        }
+      ]
+    },
+    "limpieza": {
+      "declarado": 811,
+      "unicos": 810,
+      "agotados": 0,
+      "paginas": 17,
+      "detalle": [
+        {
+          "page": 1,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 2,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 3,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 4,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 5,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 6,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 7,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 8,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 9,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 10,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 11,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 12,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 13,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 14,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 15,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 16,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 49
+        },
+        {
+          "page": 17,
+          "filas": 11,
+          "agotados_en_pagina": 0,
+          "nuevos": 11
+        }
+      ]
+    },
+    "mascotas": {
+      "declarado": 241,
+      "unicos": 241,
+      "agotados": 0,
+      "paginas": 5,
+      "detalle": [
+        {
+          "page": 1,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 2,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 3,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 4,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 5,
+          "filas": 41,
+          "agotados_en_pagina": 0,
+          "nuevos": 41
+        }
+      ]
+    },
+    "lacteos-huevos-y-refrigerados": {
+      "declarado": 719,
+      "unicos": 719,
+      "agotados": 3,
+      "paginas": 15,
+      "detalle": [
+        {
+          "page": 1,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 2,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 3,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 4,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 5,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 6,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 7,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 8,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 9,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 10,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 11,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 12,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 13,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 14,
+          "filas": 50,
+          "agotados_en_pagina": 2,
+          "nuevos": 50
+        },
+        {
+          "page": 15,
+          "filas": 19,
+          "agotados_en_pagina": 1,
+          "nuevos": 19
+        }
+      ]
+    },
+    "congelados": {
+      "declarado": 508,
+      "unicos": 508,
+      "agotados": 0,
+      "paginas": 11,
+      "detalle": [
+        {
+          "page": 1,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 2,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 3,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 4,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 5,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 6,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 7,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 8,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 9,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 10,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 11,
+          "filas": 8,
+          "agotados_en_pagina": 0,
+          "nuevos": 8
+        }
+      ]
+    },
+    "perfumeria": {
+      "declarado": 1353,
+      "unicos": 1353,
+      "agotados": 5,
+      "paginas": 28,
+      "detalle": [
+        {
+          "page": 1,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 2,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 3,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 4,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 5,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 6,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 7,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 8,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 9,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 10,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 11,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 12,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 13,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 14,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 15,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 16,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 17,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 18,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 19,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 20,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 21,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 22,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 23,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 24,
+          "filas": 50,
+          "agotados_en_pagina": 1,
+          "nuevos": 50
+        },
+        {
+          "page": 25,
+          "filas": 50,
+          "agotados_en_pagina": 0,
+          "nuevos": 50
+        },
+        {
+          "page": 26,
+          "filas": 50,
+          "agotados_en_pagina": 2,
+          "nuevos": 50
+        },
+        {
+          "page": 27,
+          "filas": 50,
+          "agotados_en_pagina": 2,
+          "nuevos": 50
+        },
+        {
+          "page": 28,
+          "filas": 3,
+          "agotados_en_pagina": 0,
+          "nuevos": 3
+        }
+      ]
+    }
+  },
+  "solapes_entre_llaves": [
+    {
+      "a": "desayuno-y-dulces",
+      "b": "lacteos-huevos-y-refrigerados",
+      "comunes": 1,
+      "frac_a": 0.00076103500761035,
+      "ejemplos": [
+        "97701"
+      ]
+    }
+  ],
+  "ean_presente": 8204,
+  "club": 2615,
+  "promo_cantidad": 693,
+  "ppum_presente": 8201,
+  "agotados": 15,
+  "medios_pago_no_vacios": 0,
+  "etiquetas": [
+    [
+      "Club Unimarc",
+      2615
+    ],
+    [
+      "Exclusivo .cl",
+      220
+    ],
+    [
+      "Pronto disponible",
+      15
+    ],
+    [
+      "Diamante",
+      5
+    ]
+  ]
+}

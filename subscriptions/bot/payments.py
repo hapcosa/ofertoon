@@ -1,4 +1,4 @@
-"""Decisiones puras del checkout PayPal del bot de onboarding."""
+"""Decisiones puras del checkout (PayPal y MercadoPago) del bot de onboarding."""
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -12,20 +12,43 @@ from uuid import NAMESPACE_URL, uuid5
 
 
 class PlanChoiceMode(str, Enum):
-    """Resultado posible al resolver los planes pagables de un tier."""
+    """Resultado posible al resolver las opciones pagables de un tier.
+
+    Se reutiliza para dos decisiones distintas con la misma forma: elegir
+    período (``select_plan_options``) y elegir proveedor de pago dentro de un
+    período ya elegido (``select_payment_providers``). Las tres salidas
+    posibles son idénticas en ambos casos — sin opciones, una sola (se salta
+    el submenú) o varias — así que separar el enum no agregaría nada.
+    """
 
     UNAVAILABLE = "unavailable"
     DIRECT = "direct"
     MENU = "menu"
 
 
+class PaymentProvider(str, Enum):
+    """Proveedor de pago disponible para un plan ya resuelto."""
+
+    PAYPAL = "paypal"
+    MERCADOPAGO = "mercadopago"
+
+
 @dataclass(frozen=True)
 class PlanChoice:
-    """Selección de plan independiente de DB, aiogram y PayPal."""
+    """Selección de plan independiente de DB, aiogram y del proveedor de pago."""
 
     mode: PlanChoiceMode
     plans: tuple[Any, ...]
     direct_plan: Any | None = None
+
+
+@dataclass(frozen=True)
+class ProviderChoice:
+    """Selección de proveedor de pago para un plan ya resuelto."""
+
+    mode: PlanChoiceMode
+    providers: tuple[PaymentProvider, ...]
+    direct_provider: PaymentProvider | None = None
 
 
 class PaymentConfigurationError(ValueError):
@@ -66,6 +89,29 @@ def select_plan_options(plans: list[Any]) -> PlanChoice:
     return PlanChoice(PlanChoiceMode.MENU, options)
 
 
+def select_payment_providers(plan: Mapping[str, Any] | Any) -> ProviderChoice:
+    """Decide con qué proveedor(es) se puede pagar un plan ya resuelto.
+
+    Un plan puede tener ``paypal_plan_id``, ``mercadopago_plan_id``, ninguno o
+    los dos. Con los dos, el bot muestra un paso extra para elegir; con uno
+    solo, lo salta — mismo criterio que ``select_plan_options`` aplica un
+    nivel más arriba para el período.
+    """
+    providers: list[PaymentProvider] = []
+    paypal_id = _field(plan, "paypal_plan_id")
+    if paypal_id and str(paypal_id).strip():
+        providers.append(PaymentProvider.PAYPAL)
+    mercadopago_id = _field(plan, "mercadopago_plan_id")
+    if mercadopago_id and str(mercadopago_id).strip():
+        providers.append(PaymentProvider.MERCADOPAGO)
+    options = tuple(providers)
+    if not options:
+        return ProviderChoice(PlanChoiceMode.UNAVAILABLE, options)
+    if len(options) == 1:
+        return ProviderChoice(PlanChoiceMode.DIRECT, options, options[0])
+    return ProviderChoice(PlanChoiceMode.MENU, options)
+
+
 def format_period(plan: Mapping[str, Any] | Any) -> str:
     """Traduce el período persistido a copy estable en español."""
     period = str(_field(plan, "period") or "").strip().lower()
@@ -87,6 +133,30 @@ def format_plan_button(plan: Mapping[str, Any] | Any) -> str:
     return f"{format_period(plan)} · {_format_price(plan)}"
 
 
+def _format_price_clp(plan: Mapping[str, Any] | Any) -> str:
+    raw = _field(plan, "price_clp")
+    try:
+        price = Decimal(str(raw))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError("El plan no tiene un precio CLP válido") from exc
+    if price <= 0 or price != price.to_integral_value():
+        # Regla 3 de CLAUDE.md: CLP es siempre entero. Un precio no-entero acá
+        # es un dato corrupto, no algo para redondear en el copy.
+        raise ValueError("El precio CLP debe ser un entero positivo")
+    return f"CLP ${int(price):,}".replace(",", ".")
+
+
+_PROVIDER_LABELS = {
+    PaymentProvider.PAYPAL: "💳 PayPal (USD)",
+    PaymentProvider.MERCADOPAGO: "🏦 MercadoPago (CLP)",
+}
+
+
+def format_provider_button(provider: PaymentProvider) -> str:
+    """Copy compacto de una opción del submenú de proveedor de pago."""
+    return _PROVIDER_LABELS[provider]
+
+
 def format_pay_prompt(
     tier: Mapping[str, Any] | Any,
     plan: Mapping[str, Any] | Any,
@@ -100,6 +170,19 @@ def format_pay_prompt(
     )
 
 
+def format_pay_prompt_mercadopago(
+    tier: Mapping[str, Any] | Any,
+    plan: Mapping[str, Any] | Any,
+) -> str:
+    """Mensaje mostrado junto al enlace externo de MercadoPago."""
+    tier_name = str(_field(tier, "name") or "canal VIP").strip()
+    return (
+        f"Completá el pago de {tier_name} "
+        f"({format_period(plan)}, {_format_price_clp(plan)}) en MercadoPago. "
+        "Tu acceso se activará cuando MercadoPago confirme el pago."
+    )
+
+
 def build_request_id(
     callback_id: str,
     user_id: int,
@@ -110,6 +193,26 @@ def build_request_id(
     if not callback_id:
         raise ValueError("callback_id no puede estar vacío")
     identity = f"telegram-paypal:{callback_id}:{user_id}:{tier_id}:{plan_id}"
+    return str(uuid5(NAMESPACE_URL, identity))
+
+
+def build_mp_idempotency_key(
+    callback_id: str,
+    user_id: int,
+    tier_id: int,
+    plan_id: int,
+) -> str:
+    """Genera una `X-Idempotency-Key` estable para reintentos del mismo callback.
+
+    Mismo mecanismo que `build_request_id`, con namespace propio: aunque las
+    dos funciones produjeran el mismo UUID para la misma tupla (no pueden —
+    los `plan_id` de PayPal y MercadoPago son filas distintas de
+    `telegram_tier_plans` — pero aun así), cada proveedor tiene que poder leer
+    su propia clave sin ambigüedad sobre a qué checkout pertenece.
+    """
+    if not callback_id:
+        raise ValueError("callback_id no puede estar vacío")
+    identity = f"telegram-mercadopago:{callback_id}:{user_id}:{tier_id}:{plan_id}"
     return str(uuid5(NAMESPACE_URL, identity))
 
 
@@ -152,3 +255,28 @@ def resolve_redirect_urls(
             "Configurá URLs HTTPS de PayPal o un ONBOARDING_BOT_USERNAME válido"
         )
     return resolved_return, resolved_cancel
+
+
+def resolve_mercadopago_back_url(
+    *,
+    bot_username: str,
+    back_url: str | None,
+) -> str:
+    """Resuelve el override HTTPS o el deep-link seguro de vuelta al bot.
+
+    MercadoPago pide una sola `back_url` (a diferencia de PayPal, que separa
+    return/cancel): mismo criterio de validación que `resolve_redirect_urls`,
+    sin forzar una segunda URL que nadie va a usar.
+    """
+    username = bot_username.strip().lstrip("@").strip()
+    if username and not _BOT_USERNAME_RE.fullmatch(username):
+        username = ""
+    default_back = (
+        f"https://t.me/{username}?start=mercadopago_approved" if username else ""
+    )
+    resolved_back = (back_url or "").strip() or default_back
+    if not _valid_https_url(resolved_back):
+        raise PaymentConfigurationError(
+            "Configurá una URL HTTPS de MercadoPago o un ONBOARDING_BOT_USERNAME válido"
+        )
+    return resolved_back
