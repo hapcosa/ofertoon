@@ -4,7 +4,16 @@ from __future__ import annotations
 from datetime import date, datetime
 
 import alerts
-from alerts import MAX_LINES, PasadaFlaca, RunOutcome, format_summary, send_alert
+from alerts import (
+    MAX_ERROR_CHARS,
+    MAX_LINES,
+    TELEGRAM_MAX_CHARS,
+    PasadaFlaca,
+    RunOutcome,
+    format_summary,
+    recortar_para_telegram,
+    send_alert,
+)
 
 
 def ok(store="falabella", cat="tecno", key="cat1", seen=900):
@@ -41,6 +50,111 @@ def test_mensaje_acotado_para_no_exceder_el_limite_de_telegram():
     cuerpo = summary.splitlines()[2:]
     assert len(cuerpo) == MAX_LINES + 1  # + la línea de "… y N más"
     assert cuerpo[-1] == f"… y {60 - MAX_LINES} más"
+
+
+# El error REAL de un FetchError, con su query string percent-encodeada: 435
+# caracteres en el peor caso medido el 2026-11-07. Lo de arriba usaba
+# "canario: X" (11 chars), así que su aserción sobre líneas y el límite de
+# caracteres coincidían por casualidad y el test pasaba sin ejercitar nada.
+ERROR_LARGO = (
+    "FetchError: https://ferretek.cl/rest/V1/products?searchCriteria"
+    "%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bfield%5D=category_id"
+    "%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bvalue%5D=1234"
+    "%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bcondition_type%5D=eq"
+    "&searchCriteria%5BpageSize%5D=100&searchCriteria%5BcurrentPage%5D=1"
+    ": agotados 3 reintentos"
+)
+
+
+def test_el_resumen_con_errores_REALES_entra_en_telegram():
+    """Es la regresión del 2026-11-07: 202 fallos dieron 5.766 caracteres.
+
+    `MAX_LINES` acota líneas, no caracteres, así que no alcanza. Lo que tiene
+    que cumplirse es el límite de `sendMessage`, y lo garantiza el recorte del
+    camino de salida.
+    """
+    outcomes = [
+        bad("failed", key=f"categoria/larga/numero-{i}", error=ERROR_LARGO)
+        for i in range(202)
+    ]
+    crudo = format_summary(outcomes)
+    assert len(recortar_para_telegram(crudo)) <= TELEGRAM_MAX_CHARS
+
+
+def test_el_error_se_recorta_para_que_max_lines_signifique_algo():
+    summary = format_summary([bad("failed", error=ERROR_LARGO)])
+    linea = summary.splitlines()[2]
+    assert ERROR_LARGO not in linea
+    assert linea.endswith("…")
+    assert len(linea) < len(ERROR_LARGO)
+
+
+def test_los_202_fallos_reales_ya_entran_sin_truncar():
+    """La regresión exacta del 7-nov, con el recorte del error puesto.
+
+    Son 3.624 caracteres contra los 5.766 que Telegram rechazó. Lo escribo como
+    aserción y no como comentario porque si alguien sube `MAX_ERROR_CHARS` o
+    `MAX_LINES`, esto tiene que avisar antes de que vuelva a pasar.
+    """
+    outcomes = [
+        bad("failed", key=f"k{i}", error=ERROR_LARGO) for i in range(202)
+    ]
+    crudo = format_summary(outcomes)
+    assert len(crudo) <= TELEGRAM_MAX_CHARS
+    assert recortar_para_telegram(crudo) == crudo
+
+
+#: Una llave de Magento real es un path largo (Sparta tiene 63 de estas), y la
+#: llave NO se recorta: identifica el target y es lo que uno busca en el log.
+LLAVE_LARGA = "vestuario-deportivo/" + "poleras-y-shorts-de-entrenamiento-hombre/" * 3
+
+
+def test_el_recorte_preserva_los_conteos_y_dice_cuanto_dejo_afuera():
+    outcomes = [
+        bad("failed", key=f"{LLAVE_LARGA}{i}", error=ERROR_LARGO) for i in range(202)
+    ]
+    crudo = format_summary(outcomes)
+    assert len(crudo) > TELEGRAM_MAX_CHARS          # con llaves largas sí desborda
+    recortado = recortar_para_telegram(crudo)
+    assert len(recortado) <= TELEGRAM_MAX_CHARS
+    assert recortado.splitlines()[0].startswith("⚠️ OfertasCL — pasada con 202 fallo(s)")
+    assert "mensaje recortado" in recortado.splitlines()[-1]
+
+
+def test_un_mensaje_corto_pasa_intacto():
+    """El caso de control: sin esto, el recorte podría estar mutilando todo."""
+    corto = format_summary([bad("partial")])
+    assert len(corto) < TELEGRAM_MAX_CHARS
+    assert recortar_para_telegram(corto) == corto
+
+
+def test_una_sola_linea_mas_larga_que_el_limite_igual_sale_algo():
+    """Un aviso mutilado sigue siendo mejor que ninguno."""
+    monstruo = "x" * (TELEGRAM_MAX_CHARS * 2)
+    salida = recortar_para_telegram(monstruo)
+    assert 0 < len(salida) <= TELEGRAM_MAX_CHARS
+
+
+async def test_send_alert_manda_el_texto_recortado(monkeypatch):
+    enviados: list[str] = []
+
+    class FakeClient:
+        def __init__(self, token): pass
+        async def send_message(self, chat_id, text):
+            enviados.append(text)
+            return 1
+
+    monkeypatch.setenv("ALERT_BOT_TOKEN", "t")
+    monkeypatch.setenv("ALERT_CHAT_ID", "-100")
+    import subscriptions.telegram_client as tc
+    monkeypatch.setattr(tc, "TelegramClient", FakeClient)
+
+    largo = format_summary(
+        [bad("failed", key=f"{LLAVE_LARGA}{i}", error=ERROR_LARGO) for i in range(202)]
+    )
+    assert len(largo) > TELEGRAM_MAX_CHARS      # el crudo no entra…
+    assert await send_alert(largo) is True
+    assert len(enviados[0]) <= TELEGRAM_MAX_CHARS   # …y lo que sale, sí
 
 
 async def test_send_alert_sin_configurar_es_no_op(monkeypatch, caplog):
