@@ -167,6 +167,16 @@ migraciones 26, 35 y 38.
 - **Al mover una cuota hay que recalcular los topes finos**, o el limitante pasa
   a ser el tope: `categorías × MAX_PER_CATEGORY_PER_DAY ≥ cuota` y
   `tiendas_maduras × MAX_PER_STORE_PER_DAY ≥ cuota`.
+  Desde la **migración 55** (2026-11-07) los tres números son **20**: cuota de
+  cada tema, tope por tienda y tope por categoría. Así la cuota decide sola y el
+  techo del canal son **8 temas × 20 = 160/día**. ⚠️ El precio es que **una sola
+  tienda o categoría puede llenar un tema**: se aceptó a propósito con el canal
+  sin suscriptores, y es el primer número a revisar cuando los haya. Bajar
+  cualquiera de los dos topes por debajo de la cuota devuelve la variedad, y hay
+  un test que falla si alguien lo hace sin querer.
+  **Y la mitad de ese cambio es código**, así que mover una cuota puede necesitar
+  rebuild del publisher: los topes viven en `curation/ranker.py`, la cuota en la
+  base.
 - Un cambio de θ, de cuota o de umbral **es una decisión de producto**: se mide,
   se reporta y la toma el dueño.
 
