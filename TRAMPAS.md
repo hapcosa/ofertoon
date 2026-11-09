@@ -19,7 +19,7 @@ todas existen porque alguien ya probó el camino obvio.
 **C.** Paginación y completitud — 11 trampas. Cómo se enumera un catálogo entero, y cuándo el canario exacto es sostenible.
 **D.** Precio, stock e identidad del producto — 18 trampas. Qué número se guarda como `price_effective`, y qué cosa es un listing.
 **E.** Las guardas: canario, agujero y volumen — 12 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
-**F.** Infraestructura, Docker y verificación — 13 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
+**F.** Infraestructura, Docker y verificación — 14 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
 **G.** Detector, θ, backtest y publicación — 10 trampas. Lo que decide si una señal es una oferta de verdad, y cómo se mide.
 
 
@@ -885,6 +885,31 @@ Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son 
   referencia. Y sobre ese árbol se puede correr la suite de verdad
   (`git archive <tree> | tar -x -C <dir>` y `pytest` ahí): el 6-nov dio
   **954 passed** con un único conflicto, dos filas de `TIENDAS.md`.
+
+- **Antes de recrear el scraper, mirá si hay una pasada EN VUELO — y el momento
+  más probable de que la haya es justo cuando desplegás.** El ciclo de 12 h
+  arranca a una hora fija derivada de la última pasada, no de cuándo desplegás
+  vos, así que la colisión no es improbable: es una lotería de 2 h sobre 12.
+  Pasó el 2026-11-09 desplegando las seis migraciones pendientes: el ciclo
+  disparó una pasada a las **04:50** y el `up -d --force-recreate` entró a las
+  **04:53**. La pasada murió en **79 de ~800 corridas** (72 `ok`, 6 `partial`) y
+  dejó **una fila huérfana en `scrape_runs` con `status='running'`**, que no se
+  cierra nunca porque el proceso que la iba a cerrar ya no existe.
+  Lo que NO se pierde: las 72 corridas escribieron sus observaciones, así que la
+  serie no tiene un hueco — tiene una pasada corta. Lo que sí se pierde es
+  `run_pricing`, que vive al final del loop: sin pasada completa no hay baselines
+  ni detector, y de ahí al canal mudo es el camino de la viñeta de abajo.
+  La guarda es una consulta antes de tocar nada:
+
+  ```bash
+  # ¿hay corridas de los últimos minutos? Entonces hay pasada en vuelo.
+  SELECT count(*), max(started_at) FROM scrape_runs
+   WHERE started_at > now() - interval '10 minutes';
+  ```
+
+  Si hay, o se esperan los ~2 h de `PASS_WINDOW`, o se acepta cortarla **sabiendo
+  que el `--once` posterior no es opcional**. Cortarla es tolerable; cortarla sin
+  saberlo es cómo se llega a un día sin publicar.
 
 - **Reiniciar el scraper le cuesta al canal hasta un DÍA de publicación, y el
   costo no es el que advierte la regla.** CLAUDE.md prohíbe reiniciarlo desde un
