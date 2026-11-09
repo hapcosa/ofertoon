@@ -15,14 +15,20 @@ verificación se hace ANTES de tocar el body, y por eso el handler cruza el
 dos: la firma solo prueba "MercadoPago me mandó a mirar este id", nunca el
 contenido del body.
 
-⚠️ Esta implementación sigue el esquema que MercadoPago documenta para firmar
-notificaciones, pero no se probó contra una entrega real de su sandbox todavía
-(no hay `MERCADOPAGO_ACCESS_TOKEN` configurado en este repo). Antes de confiar
-en ella en producción: dar de alta un webhook de prueba en el panel de
-MercadoPago, mirar un payload real (headers `x-signature`/`x-request-id`
-incluidos) y confirmar que `_build_manifest` reproduce el mismo hash. Es el
-mismo tipo de guarda que ya pide CLAUDE.md para un 403 viejo: la firma de un
-proveedor de pago no se da por buena sin medirla contra un envío real.
+⚠️ **Revisada el 2026-11-09 contra el SDK oficial de MercadoPago**
+(`github.com/mercadopago/sdk-go`, `pkg/webhook/webhook.go`), que es la fuente
+autoritativa del esquema, y tenía **un bug que rechazaba el 100% de las
+notificaciones reales**: el `ts` viene en milisegundos y se comparaba contra
+segundos. Corregido, junto con dos divergencias menores (el manifiesto omite
+los pares vacíos; la clave del header se compara en minúsculas).
+
+Sigue faltando la prueba contra una entrega real del sandbox —no hay
+`MERCADOPAGO_ACCESS_TOKEN` en este repo—, y la lección de este bug es por qué
+esa prueba no es opcional: los 11 tests construían el `ts` en segundos, o sea
+medían la implementación contra sí misma y no contra MercadoPago. Antes de
+confiar en esto con dinero real: dar de alta un webhook de prueba, mirar un
+payload real con sus headers y confirmar que `_build_manifest` reproduce el
+hash. Es la misma guarda que CLAUDE.md pide para un 403 viejo.
 """
 from __future__ import annotations
 
@@ -51,7 +57,18 @@ _MAX_BODY_BYTES = 1_000_000
 # Tolerancia de replay sobre `ts`: MercadoPago no documenta una ventana, pero
 # dejar el campo sin usar sería ignorar la mitad de la firma. 10 minutos es
 # generoso para reintentos legítimos y corto para un replay.
-_MAX_TS_SKEW_SECONDS = 600
+#
+# 🔴 **El `ts` de la firma viene en MILISEGUNDOS, no en segundos**, y acá estaba
+# mal: se comparaba contra `time.time()`. El efecto no era un borde raro, era
+# **rechazar con 401 toda notificación real** —`abs(1,76e9 − 1,76e12)` no entra
+# en ninguna ventana— y ninguno de los 11 tests lo veía porque construían el
+# `ts` en segundos, o sea medían la implementación contra sí misma. Verificado
+# el 2026-11-09 contra el SDK oficial de MercadoPago
+# (`github.com/mercadopago/sdk-go`, `pkg/webhook/webhook.go`): la variable se
+# llama `tsMs` y la tolerancia se compara contra `o.now().UnixMilli()`. El
+# ejemplo de header de su propia documentación lo confirma a simple vista:
+# `ts=1742505638683`, 13 dígitos.
+_MAX_TS_SKEW_MS = 600_000
 
 #: Claves en `app` donde viven el pool asyncpg y el cliente MercadoPago.
 POOL_KEY = web.AppKey("mercadopago_webhook_pool", asyncpg.Pool)
@@ -59,10 +76,21 @@ CLIENT_KEY = web.AppKey("mercadopago_webhook_client", MercadoPagoClient)
 
 
 def _parse_signature_header(value: str) -> tuple[str, str] | None:
+    """`ts=...,v1=...` → `(ts, v1)`. La clave se compara en minúsculas igual que
+    el SDK oficial (`strings.ToLower`), que es lo que decide si un header con
+    `TS=` se acepta o se descarta en silencio.
+
+    ⚠️ Solo `v1`, que es la única versión que MercadoPago firma hoy y el default
+    del SDK oficial. **Si algún día migran a `v2`, esto devuelve `None` y el
+    webhook contesta 401 a todo sin decir por qué** — el SDK documenta ese caso
+    como "la versión cambió, actualizá". Si las notificaciones empiezan a dar
+    401 en masa sin que nadie toque el secreto, mirá acá primero.
+    """
     ts = ""
     v1 = ""
     for part in value.split(","):
         key, _, raw = part.strip().partition("=")
+        key = key.strip().lower()
         if key == "ts":
             ts = raw.strip()
         elif key == "v1":
@@ -73,7 +101,20 @@ def _parse_signature_header(value: str) -> tuple[str, str] | None:
 
 
 def _build_manifest(*, data_id: str, request_id: str, ts: str) -> bytes:
-    return f"id:{data_id};request-id:{request_id};ts:{ts};".encode("utf-8")
+    """El manifiesto firmado, **omitiendo los pares vacíos**.
+
+    No es un detalle cosmético: si `x-request-id` no viene, MercadoPago firma
+    `id:X;ts:Y;` —sin el par ni su separador— así que rellenarlo con vacío da
+    `id:X;request-id:;ts:Y;` y el HMAC no calza. Copiado de `buildManifest` del
+    SDK oficial, verificado el 2026-11-09.
+    """
+    partes = []
+    if data_id:
+        partes.append(f"id:{data_id}")
+    if request_id:
+        partes.append(f"request-id:{request_id}")
+    partes.append(f"ts:{ts}")
+    return (";".join(partes) + ";").encode("utf-8")
 
 
 class MercadoPagoWebhookVerifier:
@@ -95,21 +136,28 @@ class MercadoPagoWebhookVerifier:
         *,
         now: float,
     ) -> bool:
+        """`now` en SEGUNDOS (`time.time()`); el `ts` del header en milisegundos.
+
+        `data.id` sigue siendo obligatorio: sin él la notificación no dice qué
+        recurso mirar y `apply_mercadopago_event` no tiene nada que buscar. El
+        `x-request-id`, en cambio, es opcional —el SDK oficial lo trata así— y
+        su ausencia cambia el manifiesto, no lo invalida.
+        """
         secret = self._secret()
         signature_header = headers.get("x-signature", "").strip()
         request_id = headers.get("x-request-id", "").strip()
         data_id = query.get("data.id", "").strip().lower()
-        if not signature_header or not request_id or not data_id:
+        if not signature_header or not data_id:
             return False
         parsed = _parse_signature_header(signature_header)
         if parsed is None:
             return False
         ts, v1 = parsed
         try:
-            ts_value = int(ts)
+            ts_ms = int(ts)
         except ValueError:
             return False
-        if abs(now - ts_value) > _MAX_TS_SKEW_SECONDS:
+        if abs(now * 1000 - ts_ms) > _MAX_TS_SKEW_MS:
             return False
         try:
             expected_signature = bytes.fromhex(v1)

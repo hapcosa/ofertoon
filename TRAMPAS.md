@@ -620,6 +620,29 @@ Tres alturas distintas, y los modos de falla que no veía ninguna.
   minutos a cada ciclo — que es justo la deriva que el ancla elimina.
 
 
+- **Las tres guardas de arriba miran la INGESTA, y por eso ninguna vio el canal
+  mudo del 6-nov.** Ese día la ingesta estaba sana: lo que se había reagendado
+  era el ciclo de 12 h del scraper, con el pipeline a bordo, y el canal publicó
+  recién 17:18 UTC contra las 11:00 de siempre. La cuarta guarda
+  (`publisher/guarda_canal.py`, 2026-11-09) mira **el primer post del día, no el
+  total** — y la distinción no es estética: ese día terminó con **23 posts**, un
+  total perfectamente sano, así que un chequeo de total diario no lo habría visto
+  nunca. "No arrancó" y "publicó poco" son dos fallas distintas con dos
+  mitigaciones distintas.
+  ⚠️ **Y el umbral de esa guarda es una hora UTC, lo que la hace frágil de una
+  forma no obvia: un deadline en hora UTC absoluta solo vale para la ventana que
+  lo produjo.** Medido sobre los 49 días de historia de `deal_posts`: con el
+  deadline en 12:00 UTC la guarda dispara **26 veces, 23 de ellas falsas**,
+  porque `ranker.WINDOW_START_HOUR` era 9 hasta el 2026-10-21 y la ventana abría
+  justo a las 12:00 UTC. Con 13:00 dispara 3 veces y las 3 son incidentes
+  diagnosticados (29-sep la pasada flaca, 14-oct el apagón de cinco días, 6-nov
+  el canal mudo). El backtest anterior medía 12 días, todos del lado nuevo de ese
+  cambio, y por eso daba cero falsos positivos para las 12:00 — el número estaba
+  bien calculado sobre un recorte que no representaba al sistema. Si alguien
+  mueve `WINDOW_START_HOUR`, o cuando Santiago pase a UTC-4 el **2027-04-04**,
+  hay que volver a medirlo: el backtest vive en `tests/test_guarda_canal.py` y
+  corre en CI.
+
 ### El criterio de aceptación de una tienda
 
 Las cuatro viñetas que vivían en la §«Agregar una tienda» de `CLAUDE.md`. Las
@@ -957,6 +980,29 @@ Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son 
   con todos sus componentes sanos y no disparó nada — ni log, ni alerta. Es una
   guarda que falta, y es de una tercera altura: no "entró poco" ni "esta llave
   trae menos", sino "el producto no salió".
+  **Desde el 2026-11-09 ya no falta**: `publisher/guarda_canal.py`, apagada por
+  default, mira el PRIMER post del día y no el total. El por qué de esa
+  distinción y el backtest de su umbral están en la §E.
+
+- **Un test que construye su input con la MISMA suposición que el código no
+  prueba nada — y en una firma de pago eso se paga con dinero.** Medido el
+  2026-11-09: el webhook de MercadoPago verificaba la firma comparando el `ts`
+  del header contra `time.time()`, y el `ts` de MercadoPago viene en
+  **milisegundos**. O sea `abs(1,76e9 − 1,76e12)` contra una ventana de 10
+  minutos: **el 100% de las notificaciones auténticas se habría rechazado con
+  401**. Los 11 tests pasaban en verde porque armaban el `ts` en segundos, la
+  misma unidad que el bug. Y el síntoma en producción no habría apuntado a la
+  causa: PayPal cobrando normal y las suscripciones de MercadoPago sin
+  activarse nunca.
+  La salida no es "escribir más tests" sino **cerrar el lazo contra una fuente
+  que no seas vos**: el SDK oficial del proveedor (acá
+  `github.com/mercadopago/sdk-go`, `pkg/webhook/webhook.go`, que nombra la
+  variable `tsMs` y compara contra `UnixMilli()`), un payload real, o el
+  ejemplo literal de su documentación — `ts=1742505638683`, 13 dígitos, se ve a
+  simple vista. En el mismo paso aparecieron dos divergencias más contra el
+  SDK: el manifiesto firmado **omite los pares vacíos** (sin `x-request-id` es
+  `id:X;ts:Y;`, no `id:X;request-id:;ts:Y;`) y la clave del header se compara
+  en minúsculas.
 
 ---
 
