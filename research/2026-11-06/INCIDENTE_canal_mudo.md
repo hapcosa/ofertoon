@@ -1,8 +1,17 @@
-# El canal publicó CERO el 2026-11-06, y ninguna guarda lo reportó
+# El canal se quedó mudo 6 h el 2026-11-06, y ninguna guarda lo reportó
 
-Encontrado el 2026-11-06 16:35 UTC mirando la base, no un log de error: **no hay
-ningún `deal_post` del 6-nov**, contra 21 a 34 por día en los siete días
-anteriores.
+> ⚠️ **Corrección del 2026-11-07.** Este informe se escribió a las 16:35 UTC del
+> 6-nov y se tituló "el canal publicó CERO". Era cierto en ese momento y dejó de
+> serlo a las 17:18, cuando la pasada cerró y el pipeline repuso candidatos: el
+> día terminó con **23 posts**, dentro del rango normal de 21-34. Lo que se midió
+> no fue un día perdido sino **6 h 18 min de ventana muda**, y el cuerpo de abajo
+> describe bien el mecanismo pero exageraba el costo. El peor caso sigue existiendo
+> y está al final: si el reinicio cae de modo que la pasada termine después del
+> cierre de ventana, ahí sí el día entero es cero.
+
+Encontrado el 2026-11-06 16:35 UTC mirando la base, no un log de error: **no
+había ningún `deal_post` del 6-nov** a esa hora, contra 21 a 34 por día en los
+siete días anteriores, con el primero siempre cerca de las 11:00 UTC.
 
     fecha        posts   primero   último
     2026-11-06       0        --       --     ← hoy
@@ -49,11 +58,24 @@ se diseñaron.**
 ## Lo que esto cuesta y cómo se evita
 
 El costo no es "una pasada a medias" —que es lo que CLAUDE.md §Trabajo
-multi-agente §4 advierte al prohibir reiniciar el scraper desde un worktree—:
-es que **un despliegue del scraper le cuesta al canal hasta un día entero de
-publicación**, porque reagenda el ciclo de 12 h y el pipeline viaja a bordo de la
-pasada. Con 0 suscriptores hoy es gratis. Con suscriptores pagando, es un día sin
-producto.
+multi-agente §4 advierte al prohibir reiniciar el scraper desde un worktree—: es
+que **un despliegue del scraper deja al canal mudo hasta que termine la pasada
+siguiente**, porque reagenda el ciclo de 12 h y el pipeline viaja a bordo de la
+pasada.
+
+Cuánto cuesta depende de la hora del reinicio, y la cuenta es simple: la ventana
+de publicación va de 11:00 a 02:00 UTC (08:00-23:00 de Santiago), el reinicio
+manda la pasada a `T + 12 h` y el pipeline termina cerca de `T + 14 h`.
+
+    reinicio 03:37 UTC  -> pipeline ~17:40  -> 8 h de ventana por delante
+                           medido: 23 posts, 6 h 18 min de retraso
+
+    reinicio ~12:00 UTC -> pipeline ~02:00  -> la ventana acaba de cerrar
+                           el día entero es CERO, y nada lo recupera
+
+O sea el rango va de unas horas de retraso a un día completo sin producto, según
+la hora. Con 0 suscriptores hoy es gratis en los dos extremos. Con suscriptores
+pagando, el extremo malo es un día sin servicio.
 
 La herramienta ya existe y el propio runner la documenta: **`--once` es una orden
 directa del operador y corre sin esperar a que toque.** Después de un despliegue
@@ -67,9 +89,10 @@ Eso dispara la pasada y su `run_pricing`, repone candidatos frescos y la ventana
 de publicación los encuentra. No desarma ninguna guarda: `espera_hasta_proxima`
 sigue protegiendo el caso que le importa, que es el reinicio **no** supervisado.
 
-Hoy se recupera solo: la pasada de las 15:34 termina alrededor de las 17:30 UTC y
-su pipeline repone candidatos para la ventana que cierra a las 23:00 locales.
-Vale confirmarlo mirando `deal_posts` después de esa hora, no el log.
+Se recuperó solo, y está confirmado mirando `deal_posts` y no el log: la pasada
+de las 15:34 cerró, el pipeline corrió a las **17:13** con 349 candidatos
+aceptados y el primer post salió **17:18**. El 7-nov volvió a la normalidad —
+22 posts con el primero a las 11:00.
 
 ## Y lo que no cubre ninguna guarda
 
