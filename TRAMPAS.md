@@ -19,7 +19,7 @@ todas existen porque alguien ya probó el camino obvio.
 **C.** Paginación y completitud — 11 trampas. Cómo se enumera un catálogo entero, y cuándo el canario exacto es sostenible.
 **D.** Precio, stock e identidad del producto — 18 trampas. Qué número se guarda como `price_effective`, y qué cosa es un listing.
 **E.** Las guardas: canario, agujero y volumen — 12 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
-**F.** Infraestructura, Docker y verificación — 14 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
+**F.** Infraestructura, Docker y verificación — 15 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
 **G.** Detector, θ, backtest y publicación — 10 trampas. Lo que decide si una señal es una oferta de verdad, y cómo se mide.
 
 
@@ -885,6 +885,25 @@ Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son 
   referencia. Y sobre ese árbol se puede correr la suite de verdad
   (`git archive <tree> | tar -x -C <dir>` y `pytest` ahí): el 6-nov dio
   **954 passed** con un único conflicto, dos filas de `TIENDAS.md`.
+
+- **`docker compose up` APLICA MIGRACIONES como efecto lateral, y por eso el
+  orden del despliegue no es el que dice la receta.** `scraper` y `publisher`
+  declaran `depends_on: db-migrate: service_completed_successfully`, así que
+  cualquier `up -d --force-recreate scraper` corre `db-migrate` primero y aplica
+  lo que su imagen tenga. Medido el 2026-11-09 desplegando la migración 54: el
+  `up --force-recreate` la aplicó a las 13:43:25 y el `docker compose run --rm
+  db-migrate` que vino después contestó **`listo — 0 migración(es) aplicada(s)`**
+  — el mismo mensaje que da una imagen vieja sin la migración. Sin mirar
+  `schema_migrations.applied_at` las dos lecturas son idénticas.
+  Las dos consecuencias:
+  **(1)** `0 aplicadas` después de un `up` no significa que falte nada: puede
+  significar que ya se aplicó treinta segundos antes;
+  **(2)** 🔴 y la peligrosa: **recrear un servicio con una imagen vieja aplica el
+  juego de migraciones de esa imagen**, en silencio. El `build` no es un paso
+  opcional previo al `run db-migrate`, es un paso previo a **cualquier** `up` de
+  scraper o publisher.
+  La verificación es siempre la misma y no es el mensaje:
+  `SELECT filename, applied_at FROM schema_migrations ORDER BY applied_at DESC`.
 
 - **Antes de recrear el scraper, mirá si hay una pasada EN VUELO — y el momento
   más probable de que la haya es justo cuando desplegás.** El ciclo de 12 h
