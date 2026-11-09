@@ -31,7 +31,7 @@ Lo que necesitás leer depende de lo que vas a hacer. **No leas todo.**
 | retomar una sesión | [`HANDOFF.md`](HANDOFF.md) · [`HANDOFF_MERCADOPAGO.md`](HANDOFF_MERCADOPAGO.md) |
 | saber qué está LOCKED | `~/.claude/plans/aprovechancho-el-sistema-de-toasty-squid.md` — **fuera del repo** |
 
-[`TRAMPAS.md`](TRAMPAS.md) son **84 trampas verificadas contra producción**,
+[`TRAMPAS.md`](TRAMPAS.md) son **85 trampas verificadas contra producción**,
 agrupadas por situación. Cada una existe porque alguien ya probó el camino obvio
 y perdió tiempo. Buscá tu sección, no leas el archivo.
 
@@ -187,6 +187,12 @@ docker compose build db-migrate     # SIN esto, una migración nueva no está en
 docker compose run --rm db-migrate
 ```
 
+- ⚠️ **`docker compose up` de `scraper` o `publisher` también aplica
+  migraciones**: las dos declaran `depends_on: db-migrate`. Así que el `build` no
+  es un paso previo al `run db-migrate`, es previo a **cualquier** `up` — recrear
+  con una imagen vieja aplica el juego de migraciones de esa imagen en silencio.
+  Y un `0 aplicadas` después de un `up` puede significar "ya se aplicó recién".
+  Ver [`TRAMPAS.md`](TRAMPAS.md) **F**.
 - **Aplicar siempre desde un checkout con la secuencia completa.** `migrate.py`
   aplica lo que su `glob` encuentre: no detecta huecos. Con migraciones
   repartidas en dos worktrees, correr desde uno **saltea las del otro en
