@@ -8,11 +8,14 @@ y el detector solo conocen `RawProduct`.
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
+
+logger = logging.getLogger(__name__)
 
 
 #: Techo de plausibilidad para un precio en CLP. Falabella publica productos sin
@@ -27,6 +30,24 @@ MAX_PLAUSIBLE_CLP = Decimal("100000000")
 #: `10GR`, `100UN`), así que algo más largo que esto no es una unidad de medida y
 #: no vale la pena arriesgar un error de inserción por él.
 PUM_LABEL_MAX_CHARS = 16
+
+#: Largo máximo del GTIN. Es el ancho de `listings.gtin_raw` (VARCHAR(14)) y a
+#: la vez el largo del GTIN más largo que existe, el GTIN-14 — así que la
+#: coincidencia no es casual: cualquier cosa más larga **no puede ser un GTIN**.
+#:
+#: A diferencia de `price_condition` y del label del `pum`, esto NO lanza: se
+#: descarta el valor y el producto entra sin GTIN. La razón es de quién es el
+#: error. Una condición larga es un bug del adaptador y conviene que grite; un
+#: GTIN largo es ruido conocido de las tiendas —`catalog.normalize.normalize_gtin`
+#: lo documenta como el tercero de sus tres modos de suciedad— y hacerlo gritar
+#: cuesta **la llave entera de esa pasada**.
+#:
+#: Medido el 2026-11-09: una llave de `unimarc/supermercado` venía fallando en
+#: cada pasada con `StringDataRightTruncationError: value too long for type
+#: character varying(14)`, o sea ~1.700 observaciones perdidas por pasada por un
+#: campo que ni alimenta al detector. El GTIN solo sirve para el matching
+#: cross-store; perderlo degrada el copy, perder la llave pierde la serie.
+GTIN_MAX_CHARS = 14
 
 #: Largo máximo de `price_condition`. Es el ancho de
 #: `price_points.price_condition` (VARCHAR(48)): las etiquetas observadas son
@@ -219,6 +240,14 @@ class RawProduct:
                 f"{self.store_slug}/{self.store_sku}: price_condition inválida: "
                 f"{self.price_condition!r}"
             )
+        # Un GTIN que no cabe en la columna no es un GTIN: se descarta y el
+        # producto entra sin él. Ver `GTIN_MAX_CHARS` para por qué esto no lanza.
+        if self.gtin is not None and len(self.gtin) > GTIN_MAX_CHARS:
+            logger.warning(
+                "gtin_descartado store=%s sku=%s largo=%d — no puede ser un GTIN",
+                self.store_slug, self.store_sku, len(self.gtin),
+            )
+            object.__setattr__(self, "gtin", None)
 
 
 @runtime_checkable
