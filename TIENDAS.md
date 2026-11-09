@@ -207,3 +207,15 @@ retorno de todo esto se ve en diciembre de 2026, no en noviembre.
 ⚠️ **Conectar por tandas, midiendo la duración de la pasada después de cada una.**
 El runner es secuencial y `db.PASS_WINDOW` son 2 h; la pasada ya usa ~57 min, así
 que el presupuesto que queda es de ~1 h de requests.
+
+## Actualización del 2026-11-09 — ABC y Tricot
+
+La fila Salesforce y la prioridad 7 anteriores son el estado previo a la
+re-medición. ABC y Tricot quedaron en **adaptador probado**, documentadas en
+[`research/2026-11-07/salesforce.md`](research/2026-11-07/salesforce.md).
+La migración 54 conecta solo `/mujer/ropa-mujer/` de ABC (820 productos en la
+última pasada) y nueve hojas limpias y disjuntas de Tricot (465 de 1.122
+declarados, sin paginar por robots). Ambas nacen con `publish_enabled=false`.
+En una pasada de lectura sin base de datos, los adaptadores emitieron 820 y
+465 observaciones. La migración sigue sin aplicar; no hay fecha de conexión ni
+evaluación de 30 días hasta la primera ingesta real.

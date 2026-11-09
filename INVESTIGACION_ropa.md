@@ -107,6 +107,12 @@ hizo con `supermercado` y `belleza`?), y esta Fase 0 no la toma.
 
 ## 2. La terna Salesforce — 🟢 un adaptador, tres tiendas
 
+> **Corrección medida el 2026-11-07:** el `robots.txt` actual de Tricot incluye
+> `Disallow: /*?start*` y `Disallow: /*&start*`. La afirmación de abajo de que
+> la paginación limpia con `?start` está permitida ya no rige para Tricot.
+> Se detuvo esa ruta y no se conecta con ella. Evidencia en
+> `research/2026-11-07/salesforce.md`.
+
 ### ⚠️ Primera corrección: son tres, no cuatro
 
 `PLAN_EXPANSION.md` §2.4 dice: "**Hites, La Polar, Tricot y ABCDin** corren las
@@ -328,3 +334,15 @@ paginación real, selectores y la trampa de zona. **Sin medir**:
 |---|---|---|---|
 | **Colloky** | 🟢 **entra** | **Una fila en `stores` + 4 `store_categories` + un fixture.** Cero líneas de adaptador: `vtex_family` la cubre tal como está | Decidir si va a `ropa-*` existente o a categoría propia por el ticket de $50k |
 | **Hites / Tricot / ABC** | 🟢 **viables, no listas** | Un `salesforce_family.py` nuevo (3 tiendas) | Las 6 preguntas de arriba, empezando por el orden estable |
+
+## Actualización medida el 2026-11-09
+
+La tabla de pendientes Salesforce anterior conserva el estado de su fecha.
+ABC y Tricot ya tienen adaptadores y migración 54 **escrita sin aplicar**;
+Hites mantiene su adaptador propio. Tricot sigue sin poder usar `?start` por
+robots, pero nueve hojas limpias dieron 465 IDs estables en dos pasadas
+separadas 15 minutos, con techo parcial declarado de 465/1.122. ABC dio 820/820
+en la hoja de ropa mujer con zona Metropolitana fija y control de un PDP
+agotado ausente del listado. Las pruebas de parser y una pasada completa de
+lectura de ambos adaptadores terminaron bien. Evidencia, límites y comandos:
+[`research/2026-11-07/salesforce.md`](research/2026-11-07/salesforce.md).

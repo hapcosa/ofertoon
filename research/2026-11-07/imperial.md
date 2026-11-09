@@ -27,3 +27,14 @@ PYTHONPATH=. /home/donaldchavez/servicios/ofertoon/.venv/bin/python research/202
 
 Re-medir en otra sesión. Un 520 tiene fecha, no convierte la tienda en
 prohibida de forma permanente.
+
+## Re-medición 2026-11-07 22:56 UTC
+
+Con los mismos headers del proyecto y TLS verificado: la home dio **200/200**
+(firma `occ-public`); `/ccstore/v1/collections` dio **520/520** con
+`unknown_origin_error`, `retryable=true`, `owner_action_required=true`;
+`/ccstore/v1/products` dio **520**; la categoría
+`/herramientas-de-banco/category/14341` dio **520/520**. `robots.txt` en `www`
+respondió **403**. No apareció una ventana estable de catálogo, así que sigue
+sin adaptador. Para reproducir la re-medición, usar los comandos de arriba con
+`--repeat 2 --delay 2` en home, collections y categoría.

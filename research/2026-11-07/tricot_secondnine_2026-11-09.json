@@ -1,0 +1,4796 @@
+[
+  {
+    "at_utc": "2026-11-09T04:51:21+00:00",
+    "path": "/accesorios/mujer/bananos",
+    "final_url": "https://www.tricot.cl/accesorios/mujer/bananos",
+    "bytes": 654986,
+    "tile_nodes": 10,
+    "linked_nodes": 10,
+    "unique_urls": 10,
+    "unique_pids": 10,
+    "declared_total": 10,
+    "pagination": [
+      "1"
+    ],
+    "rows": [
+      {
+        "url": "https://www.tricot.cl/banano-mujer-liso-643048.html",
+        "pid": "643048",
+        "name": "Banano mujer liso",
+        "price": 8990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/banano-deportivo-running-268953.html",
+        "pid": "268953",
+        "name": "Banano deportivo running",
+        "price": 3990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/banano-mujer-rafia-643027.html",
+        "pid": "643027",
+        "name": "Banano mujer rafia",
+        "price": 6990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/banano-mujer-animal-print-643026.html",
+        "pid": "643026",
+        "name": "Banano mujer animal print",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/banano-mujer-tachas-cafe-645910.html",
+        "pid": "645910",
+        "name": "Banano mujer tachas café",
+        "price": 8990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/banano-mujer-cross-negro-645162.html",
+        "pid": "645162",
+        "name": "Banano mujer cross negro",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/banano-mujer-verde-643025.html",
+        "pid": "643025",
+        "name": "Banano mujer verde",
+        "price": 6990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/banano-mujer-animal-print-643024.html",
+        "pid": "643024",
+        "name": "Banano mujer animal print",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/banano-deportivo-bolsillos-267944.html",
+        "pid": "267944",
+        "name": "Banano deportivo bolsillos",
+        "price": 5990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/banano-mujer-textura-645163.html",
+        "pid": "645163",
+        "name": "Banano mujer textura",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-09T04:51:24+00:00",
+    "path": "/hombre/pijamas",
+    "final_url": "https://www.tricot.cl/hombre/pijamas",
+    "bytes": 1516791,
+    "tile_nodes": 60,
+    "linked_nodes": 60,
+    "unique_urls": 60,
+    "unique_pids": 60,
+    "declared_total": 62,
+    "pagination": [
+      "1 2"
+    ],
+    "rows": [
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-palmeras-720901.html",
+        "pid": "720901",
+        "name": "Pijama hombre palmeras",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-hojas-azul-720897.html",
+        "pid": "720897",
+        "name": "Pijama hombre hojas azul",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-lineas-720883.html",
+        "pid": "720883",
+        "name": "Pijama hombre líneas",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-mini-print-720501.html",
+        "pid": "720501",
+        "name": "Pijama hombre mini print",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-rayas-720507.html",
+        "pid": "720507",
+        "name": "Pijama hombre rayas",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-pez-720513.html",
+        "pid": "720513",
+        "name": "Pijama hombre pez",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-rayas-colores-720510.html",
+        "pid": "720510",
+        "name": "Pijama hombre rayas colores",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-short-rayas-720511.html",
+        "pid": "720511",
+        "name": "Pijama hombre short rayas",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-ornitorrinco-720523.html",
+        "pid": "720523",
+        "name": "Pijama hombre ornitorrinco",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-short-lineas-720509.html",
+        "pid": "720509",
+        "name": "Pijama hombre short líneas",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-hojas-720514.html",
+        "pid": "720514",
+        "name": "Pijama hombre hojas",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-short-navy-720504.html",
+        "pid": "720504",
+        "name": "Pijama hombre short navy",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-langostas-720881.html",
+        "pid": "720881",
+        "name": "Pijama hombre langostas",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-short-rayas-720508.html",
+        "pid": "720508",
+        "name": "Pijama hombre short rayas",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-huevo-720892.html",
+        "pid": "720892",
+        "name": "Pijama hombre huevo",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-tortuga-720512.html",
+        "pid": "720512",
+        "name": "Pijama hombre tortuga",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-linea-azul-720886.html",
+        "pid": "720886",
+        "name": "Pijama hombre línea azul",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-circulos-720891.html",
+        "pid": "720891",
+        "name": "Pijama hombre círculos",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-puntos-720505.html",
+        "pid": "720505",
+        "name": "Pijama hombre puntos",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-lineas-720506.html",
+        "pid": "720506",
+        "name": "Pijama hombre líneas",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre--azul-liso-720898.html",
+        "pid": "720898",
+        "name": "Pijama hombre  azul liso",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-lineas-bicolor-720451.html",
+        "pid": "720451",
+        "name": "Pijama hombre líneas bicolor",
+        "price": 6990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-cuello-v-720449.html",
+        "pid": "720449",
+        "name": "Pijama hombre cuello v",
+        "price": 6990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-puntos-colores-720448.html",
+        "pid": "720448",
+        "name": "Pijama hombre puntos colores",
+        "price": 6990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-bolsillo-boton-720450.html",
+        "pid": "720450",
+        "name": "Pijama hombre bolsillo botón",
+        "price": 6990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-bicolor-720903.html",
+        "pid": "720903",
+        "name": "Pijama hombre bicolor",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-tricolor-720888.html",
+        "pid": "720888",
+        "name": "Pijama hombre tricolor",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-capibara-720882.html",
+        "pid": "720882",
+        "name": "Pijama hombre capibara",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-print-720884.html",
+        "pid": "720884",
+        "name": "Pijama hombre print",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-diseno-720889.html",
+        "pid": "720889",
+        "name": "Pijama hombre diseño",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-pinas-720900.html",
+        "pid": "720900",
+        "name": "Pijama hombre piñas",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-pizza-720890.html",
+        "pid": "720890",
+        "name": "Pijama hombre pizza",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-perro-salchicha-720895.html",
+        "pid": "720895",
+        "name": "Pijama hombre perro salchicha",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-lineas-720885.html",
+        "pid": "720885",
+        "name": "Pijama hombre líneas",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-print-720887.html",
+        "pid": "720887",
+        "name": "Pijama hombre print",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-dinosaurios-720896.html",
+        "pid": "720896",
+        "name": "Pijama hombre dinosaurios",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-mini-print-720902.html",
+        "pid": "720902",
+        "name": "Pijama hombre mini print",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-pulpo-720904.html",
+        "pid": "720904",
+        "name": "Pijama hombre pulpo",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-hojas-720899.html",
+        "pid": "720899",
+        "name": "Pijama hombre hojas",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-pug-720894.html",
+        "pid": "720894",
+        "name": "Pijama hombre pug",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-puntos-720893.html",
+        "pid": "720893",
+        "name": "Pijama hombre puntos",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-cafe-720908.html",
+        "pid": "720908",
+        "name": "Pantufla hombre café",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-acolchada-720913.html",
+        "pid": "720913",
+        "name": "Pantufla hombre acolchada",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-verde-720909.html",
+        "pid": "720909",
+        "name": "Pantufla hombre verde",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantuflas-hombre-negra-relieve-720912.html",
+        "pid": "720912",
+        "name": "Pantuflas hombre negra relieve",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-canale-720910.html",
+        "pid": "720910",
+        "name": "Pantufla hombre canalé",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantuflas-hombre-gris-720911.html",
+        "pid": "720911",
+        "name": "Pantuflas hombre gris",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-gris-botones-720503.html",
+        "pid": "720503",
+        "name": "Pijama hombre gris botones",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-triangulos-720502.html",
+        "pid": "720502",
+        "name": "Pijama hombre triángulos",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-gamer-720517.html",
+        "pid": "720517",
+        "name": "Pantufla hombre gamer",
+        "price": 4990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-dinosaurios-720516.html",
+        "pid": "720516",
+        "name": "Pantufla hombre dinosaurios",
+        "price": 4990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-navidad-rojo-rayas-646111.html",
+        "pid": "646111",
+        "name": "Pijama hombre navidad rojo rayas",
+        "price": 11990,
+        "normal": 23990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-toro-720518.html",
+        "pid": "720518",
+        "name": "Pantufla hombre toro",
+        "price": 4990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pijama-hombre-navidad-verde-646116.html",
+        "pid": "646116",
+        "name": "Pijama hombre navidad verde",
+        "price": 11990,
+        "normal": 23990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-720906.html",
+        "pid": "720906",
+        "name": "Pantufla hombre",
+        "price": 4990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-suave-720515.html",
+        "pid": "720515",
+        "name": "Pantufla hombre suave",
+        "price": 4990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-estilo-lana-720455.html",
+        "pid": "720455",
+        "name": "Pantufla hombre estilo lana",
+        "price": 4990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-zapatilla-720520.html",
+        "pid": "720520",
+        "name": "Pantufla hombre zapatilla",
+        "price": 9990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-720519.html",
+        "pid": "720519",
+        "name": "Pantufla hombre",
+        "price": 5990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantufla-hombre-zapatilla-azul-720460.html",
+        "pid": "720460",
+        "name": "Pantufla hombre zapatilla azul",
+        "price": 9990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-09T04:51:26+00:00",
+    "path": "/mujer/poleras",
+    "final_url": "https://www.tricot.cl/mujer/poleras",
+    "bytes": 1485859,
+    "tile_nodes": 60,
+    "linked_nodes": 60,
+    "unique_urls": 60,
+    "unique_pids": 60,
+    "declared_total": 516,
+    "pagination": [
+      "1 2 ... 9"
+    ],
+    "rows": [
+      {
+        "url": "https://www.tricot.cl/polera-mujer-tomato-girl-681962.html",
+        "pid": "681962",
+        "name": "Polera mujer tomato girl",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-toscana-681981.html",
+        "pid": "681981",
+        "name": "Polera mujer toscana",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-bordado-texto-681997.html",
+        "pid": "681997",
+        "name": "Polera mujer bordado texto",
+        "price": 3990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-lunares-686360.html",
+        "pid": "686360",
+        "name": "Polera mujer lunares",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-estampados-686386.html",
+        "pid": "686386",
+        "name": "Polera mujer estampados",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-flor-margarita-686672.html",
+        "pid": "686672",
+        "name": "Polera mujer flor margarita",
+        "price": 3990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-clasica-corta-blanca-686381.html",
+        "pid": "686381",
+        "name": "Polera mujer clásica corta blanca",
+        "price": 2990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-torta-crop-684222.html",
+        "pid": "684222",
+        "name": "Polera mujer torta crop",
+        "price": 2990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-rayas-bicolor-686364.html",
+        "pid": "686364",
+        "name": "Polera mujer rayas bicolor",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-rayas-rojas-686366.html",
+        "pid": "686366",
+        "name": "Polera mujer rayas rojas",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-frase-cuello-684460.html",
+        "pid": "684460",
+        "name": "Polera mujer frase cuello",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-encaje-inferior-686408.html",
+        "pid": "686408",
+        "name": "Polera mujer encaje inferior",
+        "price": 3990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-bordado-botones-686665.html",
+        "pid": "686665",
+        "name": "Polera mujer bordado botones",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-flores-mostacillas-686351.html",
+        "pid": "686351",
+        "name": "Polera mujer flores mostacillas",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-luna-bordada-684109.html",
+        "pid": "684109",
+        "name": "Polera mujer luna bordada",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-rayas-rosada-686365.html",
+        "pid": "686365",
+        "name": "Polera mujer rayas rosada",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-caballito-de-mar-686350.html",
+        "pid": "686350",
+        "name": "Polera mujer caballito de mar",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-orquideas-bordadas-686395.html",
+        "pid": "686395",
+        "name": "Polera mujer orquídeas bordadas",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-patitas-686348.html",
+        "pid": "686348",
+        "name": "Polera mujer patitas",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-flor-de-loto-686353.html",
+        "pid": "686353",
+        "name": "Polera mujer flor de loto",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-cuadrada-rayas-686367.html",
+        "pid": "686367",
+        "name": "Polera mujer cuadrada rayas",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-bordado-libelula-686400.html",
+        "pid": "686400",
+        "name": "Polera mujer bordado libélula",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-mini-mariposa-686390.html",
+        "pid": "686390",
+        "name": "Polera mujer mini mariposa",
+        "price": 3990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-jacquard-vertical-686633.html",
+        "pid": "686633",
+        "name": "Polera mujer jacquard vertical",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-music-fest-686670.html",
+        "pid": "686670",
+        "name": "Polera mujer music fest",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-accesorio-lateral-686371.html",
+        "pid": "686371",
+        "name": "Polera mujer accesorio lateral",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-rayas-azul-686363.html",
+        "pid": "686363",
+        "name": "Polera mujer rayas azul",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-limones-686666.html",
+        "pid": "686666",
+        "name": "Polera mujer limones",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-lunares-686359.html",
+        "pid": "686359",
+        "name": "Polera mujer lunares",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-bordado-tigre-686349.html",
+        "pid": "686349",
+        "name": "Polera mujer bordado tigre",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-flor-market-686667.html",
+        "pid": "686667",
+        "name": "Polera mujer flor market",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-cintura-recogida-686642.html",
+        "pid": "686642",
+        "name": "Polera mujer cintura recogida",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-lisa-686379.html",
+        "pid": "686379",
+        "name": "Polera mujer lisa",
+        "price": 2990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-pajaritos-crop-684218.html",
+        "pid": "684218",
+        "name": "Polera mujer pajaritos crop",
+        "price": 2990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-pure-peach-686387.html",
+        "pid": "686387",
+        "name": "Polera mujer pure peach",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-basta-irregular-684456.html",
+        "pid": "684456",
+        "name": "Polera mujer basta irregular",
+        "price": 3990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-cuadrada-686370.html",
+        "pid": "686370",
+        "name": "Polera mujer cuadrada",
+        "price": 3990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-top-lunares-684430.html",
+        "pid": "684430",
+        "name": "Polera mujer top lunares",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-collar-684039.html",
+        "pid": "684039",
+        "name": "Polera mujer collar",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-crop-sandia-684225.html",
+        "pid": "684225",
+        "name": "Polera mujer crop sandía",
+        "price": 2990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-market-fruit-686671.html",
+        "pid": "686671",
+        "name": "Polera mujer market fruit",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-perritos-salchicha-686669.html",
+        "pid": "686669",
+        "name": "Polera mujer perritos salchicha",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-pulpo-brillos-686352.html",
+        "pid": "686352",
+        "name": "Polera mujer pulpo brillos",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-dogs-club-686668.html",
+        "pid": "686668",
+        "name": "Polera mujer dogs club",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-cupido-crop-684087.html",
+        "pid": "684087",
+        "name": "Polera mujer cupido crop",
+        "price": 2990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-dibujo-mujer-686388.html",
+        "pid": "686388",
+        "name": "Polera mujer dibujo mujer",
+        "price": 3990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-jacquard-nudo-686661.html",
+        "pid": "686661",
+        "name": "Polera mujer jacquard nudo",
+        "price": 3990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-ojo-bordado-684107.html",
+        "pid": "684107",
+        "name": "Polera mujer ojo bordado",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-rayas-nudo-686660.html",
+        "pid": "686660",
+        "name": "Polera mujer rayas nudo",
+        "price": 3990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-bicolor-milano-686385.html",
+        "pid": "686385",
+        "name": "Polera mujer bicolor milano",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-libelulas-bordadas-684454.html",
+        "pid": "684454",
+        "name": "Polera mujer libélulas bordadas",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-lunares-684432.html",
+        "pid": "684432",
+        "name": "Polera mujer lunares",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-top-broderie-684367.html",
+        "pid": "684367",
+        "name": "Polera mujer top broderie",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-aplicaciones-encaje-686410.html",
+        "pid": "686410",
+        "name": "Polera mujer aplicaciones encaje",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-lunares-cuello-recogido-684431.html",
+        "pid": "684431",
+        "name": "Polera mujer lunares cuello recogido",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-top-corset-686663.html",
+        "pid": "686663",
+        "name": "Polera mujer top corset",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-rayas-irregular-686347.html",
+        "pid": "686347",
+        "name": "Polera mujer rayas irregular",
+        "price": 3990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-cuello-irregular-botones-686637.html",
+        "pid": "686637",
+        "name": "Polera mujer cuello irregular botones",
+        "price": 3990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-macaroons-686332.html",
+        "pid": "686332",
+        "name": "Polera mujer macaroons",
+        "price": 3990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-mujer-accesorio-lateral-686372.html",
+        "pid": "686372",
+        "name": "Polera mujer accesorio lateral",
+        "price": 3990,
+        "normal": 13990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-09T04:51:29+00:00",
+    "path": "/calzado/mujer/zapatillas",
+    "final_url": "https://www.tricot.cl/calzado/mujer/zapatillas",
+    "bytes": 1433197,
+    "tile_nodes": 56,
+    "linked_nodes": 56,
+    "unique_urls": 56,
+    "unique_pids": 56,
+    "declared_total": 56,
+    "pagination": [
+      "1"
+    ],
+    "rows": [
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-vintage-pink-412859.html",
+        "pid": "412859",
+        "name": "Zapatilla mujer vintage pink",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-vintage-burdeo-412836.html",
+        "pid": "412836",
+        "name": "Zapatilla mujer vintage burdeo",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-floreada-412856.html",
+        "pid": "412856",
+        "name": "Zapatilla mujer floreada",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-blanca-272903.html",
+        "pid": "272903",
+        "name": "Zapatilla mujer blanca",
+        "price": 7990,
+        "normal": 19990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-lona-floreada-negra-412818.html",
+        "pid": "412818",
+        "name": "Zapatilla mujer lona floreada negra",
+        "price": 6990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-vintage-silver-412845.html",
+        "pid": "412845",
+        "name": "Zapatilla mujer vintage silver",
+        "price": 5990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-tornasol-412862.html",
+        "pid": "412862",
+        "name": "Zapatilla mujer tornasol",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-textura-blanca-412843.html",
+        "pid": "412843",
+        "name": "Zapatilla mujer textura blanca",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-menta-silver-412839.html",
+        "pid": "412839",
+        "name": "Zapatilla mujer menta silver",
+        "price": 5990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-urbana-color-412849.html",
+        "pid": "412849",
+        "name": "Zapatilla mujer urbana color",
+        "price": 6990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-urbana-velcro-412847.html",
+        "pid": "412847",
+        "name": "Zapatilla mujer urbana velcro",
+        "price": 6990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-urbana-mujer-vintage-verde-412860.html",
+        "pid": "412860",
+        "name": "Zapatilla urbana mujer vintage verde",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-rafia-lineas-412865.html",
+        "pid": "412865",
+        "name": "Zapatilla mujer rafia líneas",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-rafia-negra-412852.html",
+        "pid": "412852",
+        "name": "Zapatilla mujer rafia negra",
+        "price": 8990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-rafia-blanca-412851.html",
+        "pid": "412851",
+        "name": "Zapatilla mujer rafia blanca",
+        "price": 7990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-rafia-beige-412850.html",
+        "pid": "412850",
+        "name": "Zapatilla mujer rafia beige",
+        "price": 8990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-vintage-black-412835.html",
+        "pid": "412835",
+        "name": "Zapatilla mujer vintage black",
+        "price": 9990,
+        "normal": 35990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-vintage-contraste-412857.html",
+        "pid": "412857",
+        "name": "Zapatilla mujer vintage contraste",
+        "price": 9990,
+        "normal": 35990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-vintage-charol-412858.html",
+        "pid": "412858",
+        "name": "Zapatilla mujer vintage charol",
+        "price": 6990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-animal-print-412861.html",
+        "pid": "412861",
+        "name": "Zapatilla mujer animal print",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-vintage-animal-print-412838.html",
+        "pid": "412838",
+        "name": "Zapatilla mujer vintage animal print",
+        "price": 6990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-canvas-roja-273873.html",
+        "pid": "273873",
+        "name": "Zapatilla mujer canvas roja",
+        "price": 7990,
+        "normal": 19990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-lona-blanca-floreada-412855.html",
+        "pid": "412855",
+        "name": "Zapatilla mujer lona blanca floreada",
+        "price": 6990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-bordada-412844.html",
+        "pid": "412844",
+        "name": "Zapatilla mujer bordada",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-lona-silver-412853.html",
+        "pid": "412853",
+        "name": "Zapatilla mujer lona silver",
+        "price": 5990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-full-black-273868.html",
+        "pid": "273868",
+        "name": "Zapatilla mujer full black",
+        "price": 7990,
+        "normal": 19990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-basica-blanca-412841.html",
+        "pid": "412841",
+        "name": "Zapatilla mujer básica blanca",
+        "price": 6990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-lona-negra-412854.html",
+        "pid": "412854",
+        "name": "Zapatilla mujer lona negra",
+        "price": 6990,
+        "normal": 17990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-lona-negra-273357.html",
+        "pid": "273357",
+        "name": "Zapatilla mujer lona negra",
+        "price": 8990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-lona-cana-baja-411171.html",
+        "pid": "411171",
+        "name": "Zapatilla mujer lona caña baja",
+        "price": 4990,
+        "normal": 19990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-cana-alta-lisa-140623.html",
+        "pid": "140623",
+        "name": "Zapatilla mujer caña alta lisa",
+        "price": 4990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-tricolor-273875.html",
+        "pid": "273875",
+        "name": "Zapatilla deportiva mujer tricolor",
+        "price": 11990,
+        "normal": 37990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-gris-273872.html",
+        "pid": "273872",
+        "name": "Zapatilla deportiva mujer gris",
+        "price": 9990,
+        "normal": 31990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/cordon-zapatilla-bicolor-411159.html",
+        "pid": "411159",
+        "name": "Cordón zapatilla bicolor",
+        "price": 490,
+        "normal": 2990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-plataforma-degrade-274399.html",
+        "pid": "274399",
+        "name": "Zapatilla deportiva mujer plataforma degradé",
+        "price": 12990,
+        "normal": 37990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-acolchada-274400.html",
+        "pid": "274400",
+        "name": "Zapatilla deportiva mujer acolchada",
+        "price": 12990,
+        "normal": 37990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-fluor-274404.html",
+        "pid": "274404",
+        "name": "Zapatilla deportiva mujer fluor",
+        "price": 11990,
+        "normal": 37990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-degrade-lila-274403.html",
+        "pid": "274403",
+        "name": "Zapatilla deportiva mujer degradé lila",
+        "price": 12990,
+        "normal": 37990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-cinta-malla-274373.html",
+        "pid": "274373",
+        "name": "Zapatilla deportiva mujer cinta malla",
+        "price": 7990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-blanca-274406.html",
+        "pid": "274406",
+        "name": "Zapatilla deportiva mujer blanca",
+        "price": 12990,
+        "normal": 37990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-mujer-cana-alta-blanca-412728.html",
+        "pid": "412728",
+        "name": "Zapatilla mujer caña alta blanca",
+        "price": 8990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-negra-glitter-274402.html",
+        "pid": "274402",
+        "name": "Zapatilla deportiva mujer negra glitter",
+        "price": 12990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/cordones-zapatilla-animal-print-411157.html",
+        "pid": "411157",
+        "name": "Cordones zapatilla animal print",
+        "price": 490,
+        "normal": 2990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-negra-274407.html",
+        "pid": "274407",
+        "name": "Zapatilla deportiva mujer negra",
+        "price": 12990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-detalle-lila-274420.html",
+        "pid": "274420",
+        "name": "Zapatilla deportiva mujer detalle lila",
+        "price": 9990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-malla-lila-274377.html",
+        "pid": "274377",
+        "name": "Zapatilla deportiva mujer malla lila",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-navy-274380.html",
+        "pid": "274380",
+        "name": "Zapatilla deportiva mujer navy",
+        "price": 9990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-celeste-acolchada-274405.html",
+        "pid": "274405",
+        "name": "Zapatilla deportiva mujer celeste acolchada",
+        "price": 14990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-morada-274372.html",
+        "pid": "274372",
+        "name": "Zapatilla deportiva mujer morada",
+        "price": 9990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-plataforma-lila-274398.html",
+        "pid": "274398",
+        "name": "Zapatilla deportiva mujer plataforma lila",
+        "price": 14990,
+        "normal": 37990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-slip-on-brillos-274376.html",
+        "pid": "274376",
+        "name": "Zapatilla deportiva mujer slip on brillos",
+        "price": 9990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-bicolor-274374.html",
+        "pid": "274374",
+        "name": "Zapatilla deportiva mujer bicolor",
+        "price": 9990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-negra-fucsia-274379.html",
+        "pid": "274379",
+        "name": "Zapatilla deportiva mujer negra fucsia",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-blue-274375.html",
+        "pid": "274375",
+        "name": "Zapatilla deportiva mujer blue",
+        "price": 9990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-slip-on-negra-274371.html",
+        "pid": "274371",
+        "name": "Zapatilla deportiva mujer slip on negra",
+        "price": 9990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/zapatilla-deportiva-mujer-detalles-fucsia-274378.html",
+        "pid": "274378",
+        "name": "Zapatilla deportiva mujer detalles fucsia",
+        "price": 9990,
+        "normal": 29990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-09T04:51:32+00:00",
+    "path": "/mujer/jeans",
+    "final_url": "https://www.tricot.cl/mujer/jeans",
+    "bytes": 1495885,
+    "tile_nodes": 60,
+    "linked_nodes": 60,
+    "unique_urls": 60,
+    "unique_pids": 60,
+    "declared_total": 96,
+    "pagination": [
+      "1 2"
+    ],
+    "rows": [
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-skinny-fit-clasico-682153.html",
+        "pid": "682153",
+        "name": "Jeans mujer skinny fit clásico",
+        "price": 9990,
+        "normal": 31990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-skinny-fit-desgastado-340549.html",
+        "pid": "340549",
+        "name": "Jeans mujer skinny fit desgastado",
+        "price": 9990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-skinny-fit-clasicos-682189.html",
+        "pid": "682189",
+        "name": "Jeans mujer skinny fit clásicos",
+        "price": 9990,
+        "normal": 31990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-skinny-fit-botones-340550.html",
+        "pid": "340550",
+        "name": "Jeans mujer skinny fit botones",
+        "price": 9990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-682195.html",
+        "pid": "682195",
+        "name": "Jeans mujer straight",
+        "price": 14990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-682191.html",
+        "pid": "682191",
+        "name": "Jeans mujer straight",
+        "price": 14990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-flores-brillos-682181.html",
+        "pid": "682181",
+        "name": "Jeans mujer straight flores brillos",
+        "price": 14990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-bicolor-682199.html",
+        "pid": "682199",
+        "name": "Jeans mujer wide leg bicolor",
+        "price": 12990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-barrell-682187.html",
+        "pid": "682187",
+        "name": "Jeans mujer straight barrell",
+        "price": 14990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-flores-crochet-682183.html",
+        "pid": "682183",
+        "name": "Jeans mujer wide leg flores crochet",
+        "price": 14990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-rojo-682208.html",
+        "pid": "682208",
+        "name": "Jeans mujer wide leg rojo",
+        "price": 12990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-682188.html",
+        "pid": "682188",
+        "name": "Jeans mujer wide leg",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-blanco-682194.html",
+        "pid": "682194",
+        "name": "Jeans mujer wide leg blanco",
+        "price": 12990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-tachas-laterales-682151.html",
+        "pid": "682151",
+        "name": "Jeans mujer straight tachas laterales",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-florcitas-bordadas-682172.html",
+        "pid": "682172",
+        "name": "Jeans mujer wide leg florcitas bordadas",
+        "price": 14990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-flores-bordadas-lateral-682162.html",
+        "pid": "682162",
+        "name": "Jeans mujer wide leg flores bordadas lateral",
+        "price": 14990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-rojos-682210.html",
+        "pid": "682210",
+        "name": "Jeans mujer wide leg rojos",
+        "price": 12990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-navy-682209.html",
+        "pid": "682209",
+        "name": "Jeans mujer wide leg navy",
+        "price": 12990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-estrellas-brillantes-682202.html",
+        "pid": "682202",
+        "name": "Jeans mujer wide leg estrellas brillantes",
+        "price": 14990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-flare-682197.html",
+        "pid": "682197",
+        "name": "Jeans mujer flare",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-342084.html",
+        "pid": "342084",
+        "name": "Jeans mujer wide leg",
+        "price": 11990,
+        "normal": 31990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-682182.html",
+        "pid": "682182",
+        "name": "Jeans mujer wide leg",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-cortes-682161.html",
+        "pid": "682161",
+        "name": "Jeans mujer wide leg cortes",
+        "price": 12990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-skinny-fit-cintura-elasticada-186803.html",
+        "pid": "186803",
+        "name": "Jeans mujer skinny fit cintura elasticada",
+        "price": 11990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-flare-682185.html",
+        "pid": "682185",
+        "name": "Jeans mujer flare",
+        "price": 14990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-bolsillo-botones-682190.html",
+        "pid": "682190",
+        "name": "Jeans mujer wide leg bolsillo botones",
+        "price": 14990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-skinny-fit-bordado-estrellas-682174.html",
+        "pid": "682174",
+        "name": "Jeans mujer skinny fit bordado estrellas",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-orquidea-bordada-682155.html",
+        "pid": "682155",
+        "name": "Jeans mujer straight orquídea bordada",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-brillos-superior-682148.html",
+        "pid": "682148",
+        "name": "Jeans mujer wide leg brillos superior",
+        "price": 14990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-flare-bolsillos-pequenos-682991.html",
+        "pid": "682991",
+        "name": "Jeans mujer flare bolsillos pequeños",
+        "price": 12990,
+        "normal": 35990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-bordado-lateral-682163.html",
+        "pid": "682163",
+        "name": "Jeans mujer straight bordado lateral",
+        "price": 12990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-cinturon-682168.html",
+        "pid": "682168",
+        "name": "Jeans mujer wide leg cinturón",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-682184.html",
+        "pid": "682184",
+        "name": "Jeans mujer wide leg",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-costuras-negro-391543.html",
+        "pid": "391543",
+        "name": "Jeans mujer wide leg costuras negro",
+        "price": 12990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-flare-costuras-estrella-682152.html",
+        "pid": "682152",
+        "name": "Jeans mujer flare costuras estrella",
+        "price": 12990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-flare-bolsillo-bordado-682150.html",
+        "pid": "682150",
+        "name": "Jeans mujer flare bolsillo bordado",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-682192.html",
+        "pid": "682192",
+        "name": "Jeans mujer wide leg",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-rivets-682171.html",
+        "pid": "682171",
+        "name": "Jeans mujer wide leg rivets",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-blancos-basta-682180.html",
+        "pid": "682180",
+        "name": "Jeans mujer wide leg blancos basta",
+        "price": 14990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-bolsillo-boton-682158.html",
+        "pid": "682158",
+        "name": "Jeans mujer straight bolsillo botón",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-estrellas-brillos-682149.html",
+        "pid": "682149",
+        "name": "Jeans mujer wide leg estrellas brillos",
+        "price": 12990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-tachas-diagonal-680901.html",
+        "pid": "680901",
+        "name": "Jeans mujer wide leg tachas diagonal",
+        "price": 7990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-estrella-dyed-682154.html",
+        "pid": "682154",
+        "name": "Jeans mujer straight estrella dyed",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-estampados-682177.html",
+        "pid": "682177",
+        "name": "Jeans mujer wide leg estampados",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-flare-bolsillo-ojal-682159.html",
+        "pid": "682159",
+        "name": "Jeans mujer flare bolsillo ojal",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-flores-bordadas-682164.html",
+        "pid": "682164",
+        "name": "Jeans mujer straight flores bordadas",
+        "price": 12990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-clasicos-682160.html",
+        "pid": "682160",
+        "name": "Jeans mujer straight clásicos",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-bolsillo-parche-682157.html",
+        "pid": "682157",
+        "name": "Jeans mujer wide leg bolsillo parche",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-brillos-682173.html",
+        "pid": "682173",
+        "name": "Jeans mujer wide leg brillos",
+        "price": 12990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-cinturon-682166.html",
+        "pid": "682166",
+        "name": "Jeans mujer wide leg cinturón",
+        "price": 11990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-brillos-683062.html",
+        "pid": "683062",
+        "name": "Jeans mujer wide leg brillos",
+        "price": 7990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-diseno-brillos-682147.html",
+        "pid": "682147",
+        "name": "Jeans mujer wide leg diseño brillos",
+        "price": 12990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-wide-leg-costuras-bolsillo-682167.html",
+        "pid": "682167",
+        "name": "Jeans mujer wide leg costuras bolsillo",
+        "price": 11990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-flare-corte-lateral-682990.html",
+        "pid": "682990",
+        "name": "Jeans mujer flare corte lateral",
+        "price": 11990,
+        "normal": 31990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-estrellas-costuras-682992.html",
+        "pid": "682992",
+        "name": "Jeans mujer straight estrellas costuras",
+        "price": 7990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-skinny-fit-liso-botones-340545.html",
+        "pid": "340545",
+        "name": "Jeans mujer skinny fit liso botones",
+        "price": 9990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-flare-bolsillo-bordado-683055.html",
+        "pid": "683055",
+        "name": "Jeans mujer flare bolsillo bordado",
+        "price": 6990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-straight-twill-cinturon-683063.html",
+        "pid": "683063",
+        "name": "Jeans mujer straight twill cinturón",
+        "price": 6990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-flare-detalles-bordados-683057.html",
+        "pid": "683057",
+        "name": "Jeans mujer flare detalles bordados",
+        "price": 7990,
+        "normal": 41990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-mujer-flare-diseno-tachas-680915.html",
+        "pid": "680915",
+        "name": "Jeans mujer flare diseño tachas",
+        "price": 7990,
+        "normal": 45990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-09T04:51:34+00:00",
+    "path": "/hombre/jeans",
+    "final_url": "https://www.tricot.cl/hombre/jeans",
+    "bytes": 1141505,
+    "tile_nodes": 39,
+    "linked_nodes": 39,
+    "unique_urls": 39,
+    "unique_pids": 39,
+    "declared_total": 39,
+    "pagination": [
+      "1"
+    ],
+    "rows": [
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-clasico-31539.html",
+        "pid": "31539",
+        "name": "Jeans hombre clásico",
+        "price": 9990,
+        "normal": 22990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-clasico-161603.html",
+        "pid": "161603",
+        "name": "Jeans hombre clásico",
+        "price": 9990,
+        "normal": 22990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-clasico-31516.html",
+        "pid": "31516",
+        "name": "Jeans hombre clásico",
+        "price": 9990,
+        "normal": 22990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-cargo-azul-720301.html",
+        "pid": "720301",
+        "name": "Jeans hombre cargo azul",
+        "price": 14990,
+        "normal": 47990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-black-690031.html",
+        "pid": "690031",
+        "name": "Jeans hombre black",
+        "price": 9990,
+        "normal": 22990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-gris-recto-690032.html",
+        "pid": "690032",
+        "name": "Jeans hombre gris recto",
+        "price": 9990,
+        "normal": 22990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-clasico-slim-fit-221472.html",
+        "pid": "221472",
+        "name": "Jeans hombre clásico slim fit",
+        "price": 11990,
+        "normal": 32990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-gris-casual-690113.html",
+        "pid": "690113",
+        "name": "Jeans hombre gris casual",
+        "price": 12990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-224031.html",
+        "pid": "224031",
+        "name": "Jeans hombre desgastado slim fit",
+        "price": 12990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-217382.html",
+        "pid": "217382",
+        "name": "Jeans hombre desgastado slim fit",
+        "price": 11990,
+        "normal": 32990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-cargo-black-720300.html",
+        "pid": "720300",
+        "name": "Jeans hombre cargo black",
+        "price": 14990,
+        "normal": 47990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-straight-azul-690817.html",
+        "pid": "690817",
+        "name": "Jeans hombre straight azul",
+        "price": 12990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-slim-gris-oscuro-720297.html",
+        "pid": "720297",
+        "name": "Jeans hombre slim gris oscuro",
+        "price": 11990,
+        "normal": 37990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-skinny-azul-690815.html",
+        "pid": "690815",
+        "name": "Jeans hombre skinny azul",
+        "price": 12990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-black-skinny-690034.html",
+        "pid": "690034",
+        "name": "Jeans hombre black skinny",
+        "price": 12990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-skinny-gris-oscuro-690814.html",
+        "pid": "690814",
+        "name": "Jeans hombre skinny gris oscuro",
+        "price": 11990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-clasico-straight-690035.html",
+        "pid": "690035",
+        "name": "Jeans hombre clásico straight",
+        "price": 12990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-slim-azul-720299.html",
+        "pid": "720299",
+        "name": "Jeans hombre slim azul",
+        "price": 11990,
+        "normal": 37990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-skinny-gris-690816.html",
+        "pid": "690816",
+        "name": "Jeans hombre skinny gris",
+        "price": 11990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-skinny-negro-690813.html",
+        "pid": "690813",
+        "name": "Jeans hombre skinny negro",
+        "price": 11990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-213938.html",
+        "pid": "213938",
+        "name": "Jeans hombre desgastado slim fit",
+        "price": 11990,
+        "normal": 32990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-clasico-slim-fit-221688.html",
+        "pid": "221688",
+        "name": "Jeans hombre clásico slim fit",
+        "price": 12990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-221691.html",
+        "pid": "221691",
+        "name": "Jeans hombre desgastado slim fit",
+        "price": 12990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-217381.html",
+        "pid": "217381",
+        "name": "Jeans hombre desgastado slim fit",
+        "price": 11990,
+        "normal": 32990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-213940.html",
+        "pid": "213940",
+        "name": "Jeans hombre desgastado slim fit",
+        "price": 11990,
+        "normal": 31990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-clasico-slim-fit-213941.html",
+        "pid": "213941",
+        "name": "Jeans hombre clásico slim fit",
+        "price": 11990,
+        "normal": 32990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-215372.html",
+        "pid": "215372",
+        "name": "Jeans hombre desgastado slim fit",
+        "price": 12990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-cargo-style-690908676.html",
+        "pid": "690908676",
+        "name": "Jeans hombre cargo style",
+        "price": 16990,
+        "normal": 49990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-cargo-style-690907964.html",
+        "pid": "690907964",
+        "name": "Jeans hombre cargo style",
+        "price": 16990,
+        "normal": 49990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantalon-de-jean-hombre-clasico-33671.html",
+        "pid": "33671",
+        "name": "Pantalón de jean hombre clásico",
+        "price": 9990,
+        "normal": 22990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-slim-720671565.html",
+        "pid": "720671565",
+        "name": "Jeans hombre slim",
+        "price": 9990,
+        "normal": 35990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-slim-720673137.html",
+        "pid": "720673137",
+        "name": "Jeans hombre slim",
+        "price": 9990,
+        "normal": 35990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-cargo-costuras-720767895.html",
+        "pid": "720767895",
+        "name": "Jeans hombre cargo costuras",
+        "price": 14990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-slim-720672252.html",
+        "pid": "720672252",
+        "name": "Jeans hombre slim",
+        "price": 9990,
+        "normal": 35990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-jogger-color-720637710.html",
+        "pid": "720637710",
+        "name": "Jeans hombre jogger color",
+        "price": 14990,
+        "normal": 47990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-cargo-costuras-720766994.html",
+        "pid": "720766994",
+        "name": "Jeans hombre cargo costuras",
+        "price": 14990,
+        "normal": 43990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-slim-720670894.html",
+        "pid": "720670894",
+        "name": "Jeans hombre slim",
+        "price": 9990,
+        "normal": 35990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-jogger-color-720636185.html",
+        "pid": "720636185",
+        "name": "Jeans hombre jogger color",
+        "price": 14990,
+        "normal": 47990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/jeans-hombre-straight-negro-690818.html",
+        "pid": "690818",
+        "name": "Jeans hombre straight negro",
+        "price": 12990,
+        "normal": 39990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-09T04:51:37+00:00",
+    "path": "/infantil/ninas/poleras",
+    "final_url": "https://www.tricot.cl/infantil/ninas/poleras",
+    "bytes": 1504808,
+    "tile_nodes": 60,
+    "linked_nodes": 60,
+    "unique_urls": 60,
+    "unique_pids": 60,
+    "declared_total": 72,
+    "pagination": [
+      "1 2"
+    ],
+    "rows": [
+      {
+        "url": "https://www.tricot.cl/polera-nina-doble-lazos-fucsia-552038.html",
+        "pid": "552038",
+        "name": "Polera niña doble lazos fucsia",
+        "price": 2990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-lineas-552039.html",
+        "pid": "552039",
+        "name": "Polera niña líneas",
+        "price": 2990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-good-vibes-nudo-552037.html",
+        "pid": "552037",
+        "name": "Polera niña good vibes nudo",
+        "price": 2990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-pacific-coast-552042.html",
+        "pid": "552042",
+        "name": "Polera niña pacific coast",
+        "price": 2990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-vuelos-552276.html",
+        "pid": "552276",
+        "name": "Polera niña vuelos",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-good-day-552292.html",
+        "pid": "552292",
+        "name": "Polera niña good day",
+        "price": 2990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-canale-cerezas-552277.html",
+        "pid": "552277",
+        "name": "Polera niña canalé cerezas",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-basica-blanca-552034.html",
+        "pid": "552034",
+        "name": "Polera niña básica blanca",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-cerezas-sin-mangas-552302.html",
+        "pid": "552302",
+        "name": "Polera niña cerezas sin mangas",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-florcitas-canale-552303.html",
+        "pid": "552303",
+        "name": "Polera niña florcitas canalé",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-lazos-552278.html",
+        "pid": "552278",
+        "name": "Polera niña lazos",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-capibara-fun-552289.html",
+        "pid": "552289",
+        "name": "Polera niña capibara fun",
+        "price": 2990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-doble-linea-551512.html",
+        "pid": "551512",
+        "name": "Polera niña doble línea",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-loved-552294.html",
+        "pid": "552294",
+        "name": "Polera niña loved",
+        "price": 2990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-anime-frase-552279.html",
+        "pid": "552279",
+        "name": "Polera niña animé frase",
+        "price": 2990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-good-vibes-552290.html",
+        "pid": "552290",
+        "name": "Polera niña good vibes",
+        "price": 2990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-estrellas-552304.html",
+        "pid": "552304",
+        "name": "Polera niña estrellas",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-basica-negra-552035.html",
+        "pid": "552035",
+        "name": "Polera niña básica negra",
+        "price": 3990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-morada-sin-mangas-552300.html",
+        "pid": "552300",
+        "name": "Polera niña morada sin mangas",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-basica-rosada-552033.html",
+        "pid": "552033",
+        "name": "Polera niña básica rosada",
+        "price": 3990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-rosada-sin-mangas-552301.html",
+        "pid": "552301",
+        "name": "Polera niña rosada sin mangas",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-spring-552288.html",
+        "pid": "552288",
+        "name": "Polera niña spring",
+        "price": 2990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-more-love-552293.html",
+        "pid": "552293",
+        "name": "Polera niña more love",
+        "price": 2990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-cintitas-552237.html",
+        "pid": "552237",
+        "name": "Polera niña cintitas",
+        "price": 3990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-negra-sin-mangas-552299.html",
+        "pid": "552299",
+        "name": "Polera niña negra sin mangas",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-refreshing-552274.html",
+        "pid": "552274",
+        "name": "Polera niña refreshing",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-stars-and-bows-552282.html",
+        "pid": "552282",
+        "name": "Polera niña stars and bows",
+        "price": 2990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-estampillas-552231.html",
+        "pid": "552231",
+        "name": "Polera niña estampillas",
+        "price": 2990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-vuelos-552036.html",
+        "pid": "552036",
+        "name": "Polera niña vuelos",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-cherry-552273.html",
+        "pid": "552273",
+        "name": "Polera niña cherry",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-numero-9-552270.html",
+        "pid": "552270",
+        "name": "Polera niña número 9",
+        "price": 2990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-estrellas-552267.html",
+        "pid": "552267",
+        "name": "Polera niña estrellas",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-flor-552306.html",
+        "pid": "552306",
+        "name": "Polera niña flor",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-osito-552305.html",
+        "pid": "552305",
+        "name": "Polera niña osito",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-kindness-552271.html",
+        "pid": "552271",
+        "name": "Polera niña kindness",
+        "price": 2990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-viaje-lazo-552232.html",
+        "pid": "552232",
+        "name": "Polera niña viaje lazo",
+        "price": 3990,
+        "normal": 15990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-diseno-acanalado-552272.html",
+        "pid": "552272",
+        "name": "Polera niña diseño acanalado",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-oversize-berry-552298.html",
+        "pid": "552298",
+        "name": "Polera niña oversize berry",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-oversize-california-552297.html",
+        "pid": "552297",
+        "name": "Polera niña oversize california",
+        "price": 3990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-dibujos-552235.html",
+        "pid": "552235",
+        "name": "Polera niña dibujos",
+        "price": 3990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-sweet-552041.html",
+        "pid": "552041",
+        "name": "Polera niña sweet",
+        "price": 3990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-frase-cerezas-552286.html",
+        "pid": "552286",
+        "name": "Polera niña frase cerezas",
+        "price": 3990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-canale-florcitas-551511.html",
+        "pid": "551511",
+        "name": "Polera niña canalé florcitas",
+        "price": 3990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-sandias-552265.html",
+        "pid": "552265",
+        "name": "Polera niña sandías",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-hola-552040.html",
+        "pid": "552040",
+        "name": "Polera niña hola",
+        "price": 3990,
+        "normal": 11990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-basica-manga-larga-108919454.html",
+        "pid": "108919454",
+        "name": "Polera niña básica manga larga",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-cintas-off-shoulders-552275.html",
+        "pid": "552275",
+        "name": "Polera niña cintas off shoulders",
+        "price": 3990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-sweet-summer-552281.html",
+        "pid": "552281",
+        "name": "Polera niña sweet summer",
+        "price": 3990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-ramos-de-flores-552268.html",
+        "pid": "552268",
+        "name": "Polera niña ramos de flores",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-corazones-552236.html",
+        "pid": "552236",
+        "name": "Polera niña corazones",
+        "price": 3990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-cerezas-552269.html",
+        "pid": "552269",
+        "name": "Polera niña cerezas",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-courtside-club-552291.html",
+        "pid": "552291",
+        "name": "Polera niña courtside club",
+        "price": 2990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-world-tour-552284.html",
+        "pid": "552284",
+        "name": "Polera niña world tour",
+        "price": 3990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-oversize-new-york-city-552296.html",
+        "pid": "552296",
+        "name": "Polera niña oversize new york city",
+        "price": 3990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-lineas-lazos-552234.html",
+        "pid": "552234",
+        "name": "Polera niña líneas lazos",
+        "price": 3990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-new-york-552228.html",
+        "pid": "552228",
+        "name": "Polera niña new york",
+        "price": 3990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-love-day-552283.html",
+        "pid": "552283",
+        "name": "Polera niña love day",
+        "price": 3990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-oversize-love-graffiti-552295.html",
+        "pid": "552295",
+        "name": "Polera niña oversize love graffiti",
+        "price": 3990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-anime-552287.html",
+        "pid": "552287",
+        "name": "Polera niña animé",
+        "price": 3990,
+        "normal": 10990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/polera-nina-basica-manga-larga-103967787.html",
+        "pid": "103967787",
+        "name": "Polera niña básica manga larga",
+        "price": 2990,
+        "normal": 14990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-09T04:51:40+00:00",
+    "path": "/mujer/ropa-interior/calzones",
+    "final_url": "https://www.tricot.cl/mujer/ropa-interior/calzones",
+    "bytes": 1597947,
+    "tile_nodes": 60,
+    "linked_nodes": 60,
+    "unique_urls": 60,
+    "unique_pids": 60,
+    "declared_total": 193,
+    "pagination": [
+      "1 2 ... 4"
+    ],
+    "rows": [
+      {
+        "url": "https://www.tricot.cl/colaless-mujer-negro-folk-644451.html",
+        "pid": "644451",
+        "name": "Colaless mujer negro folk",
+        "price": 4990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-encajes-gold-644445.html",
+        "pid": "644445",
+        "name": "Calzón bikini mujer encajes gold",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/colaless-mujer-bicolor-satinado-644425.html",
+        "pid": "644425",
+        "name": "Colaless mujer bicolor satinado",
+        "price": 3990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/colaless-mujer-big-flores-bordadas-644441.html",
+        "pid": "644441",
+        "name": "Colaless mujer big flores bordadas",
+        "price": 3990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-encajes-bicolor-644427.html",
+        "pid": "644427",
+        "name": "Calzón bikini mujer encajes bicolor",
+        "price": 3990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-mesh-mix-flores-644437.html",
+        "pid": "644437",
+        "name": "Calzón bikini mujer mesh mix flores",
+        "price": 1990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/colaless-mujer-full-encajes-negro-644449.html",
+        "pid": "644449",
+        "name": "Colaless mujer full encajes negro",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/colaless-mujer-mesh-puntos-644453.html",
+        "pid": "644453",
+        "name": "Colaless mujer mesh puntos",
+        "price": 4990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/tanga-mujer-mesh-mix-flores-644435.html",
+        "pid": "644435",
+        "name": "Tanga mujer mesh mix flores",
+        "price": 1990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-encaje-transparente-308477.html",
+        "pid": "308477",
+        "name": "Pantaleta mujer encaje transparente",
+        "price": 1990,
+        "normal": 4990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/tanga-mujer-encaje-posterior-307513.html",
+        "pid": "307513",
+        "name": "Tanga mujer encaje posterior",
+        "price": 1990,
+        "normal": 7990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/tanga-mujer-encaje-lateral-308476.html",
+        "pid": "308476",
+        "name": "Tanga mujer encaje lateral",
+        "price": 1990,
+        "normal": 4990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/colaless-mujer-seamless-microfibra-307523.html",
+        "pid": "307523",
+        "name": "Colaless mujer seamless microfibra",
+        "price": 1990,
+        "normal": 7990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-mujer-grabados-308485.html",
+        "pid": "308485",
+        "name": "Calzón mujer grabados",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-seamless-microfibra-307524.html",
+        "pid": "307524",
+        "name": "Pantaleta mujer seamless microfibra",
+        "price": 1990,
+        "normal": 7990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-seamless-308489.html",
+        "pid": "308489",
+        "name": "Pantaleta mujer seamless",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-encaje-transparente-308474.html",
+        "pid": "308474",
+        "name": "Pantaleta mujer encaje transparente",
+        "price": 1990,
+        "normal": 4990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-cruzado-308475.html",
+        "pid": "308475",
+        "name": "Calzón bikini mujer cruzado",
+        "price": 1990,
+        "normal": 4990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-seamless-307521.html",
+        "pid": "307521",
+        "name": "Calzón bikini mujer seamless",
+        "price": 1990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-encaje-cintas-308496.html",
+        "pid": "308496",
+        "name": "Calzón bikini mujer encaje cintas",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/tanga-mujer-encajes-308500.html",
+        "pid": "308500",
+        "name": "Tanga mujer encajes",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/colaless-mujer-seamless-307520.html",
+        "pid": "307520",
+        "name": "Colaless mujer seamless",
+        "price": 1990,
+        "normal": 7990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-disenos-147483.html",
+        "pid": "147483",
+        "name": "Pantaleta mujer diseños",
+        "price": 2990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-mujer-costuras-308521.html",
+        "pid": "308521",
+        "name": "Calzón mujer costuras",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-mujer-seamless-307515.html",
+        "pid": "307515",
+        "name": "Calzón mujer seamless",
+        "price": 1990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-talle-medio-308502.html",
+        "pid": "308502",
+        "name": "Pantaleta mujer talle medio",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-disenos-301521.html",
+        "pid": "301521",
+        "name": "Calzón bikini mujer diseños",
+        "price": 2990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-seamless-microfibra-307525.html",
+        "pid": "307525",
+        "name": "Pantaleta mujer seamless microfibra",
+        "price": 1990,
+        "normal": 7990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-maternal-blanco-encajes-641901.html",
+        "pid": "641901",
+        "name": "Calzón maternal blanco encajes",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-maternal-negro-641903.html",
+        "pid": "641903",
+        "name": "Calzón maternal negro",
+        "price": 2990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/boxer-mujer-seamless-talle-alto-307516.html",
+        "pid": "307516",
+        "name": "Boxer mujer seamless talle alto",
+        "price": 1990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-push-up-lisa-308484.html",
+        "pid": "308484",
+        "name": "Pantaleta mujer push up lisa",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-push-up-seamless-308482.html",
+        "pid": "308482",
+        "name": "Calzón bikini mujer push up seamless",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-mujer-textura-seamless-308483.html",
+        "pid": "308483",
+        "name": "Calzón mujer textura seamless",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-cintura-satinada-308498.html",
+        "pid": "308498",
+        "name": "Calzón bikini mujer cintura satinada",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-seamless-lisa-308487.html",
+        "pid": "308487",
+        "name": "Pantaleta mujer seamless lisa",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-encajes-y-transparencias-308491.html",
+        "pid": "308491",
+        "name": "Pantaleta mujer encajes y transparencias",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-grabados-308481.html",
+        "pid": "308481",
+        "name": "Calzón bikini mujer grabados",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/colaless-mujer-seamless-308488.html",
+        "pid": "308488",
+        "name": "Colaless mujer seamless",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-seamless-307518.html",
+        "pid": "307518",
+        "name": "Pantaleta mujer seamless",
+        "price": 1990,
+        "normal": 7990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/colaless-mujer-mesh-flores-bordadas-644443.html",
+        "pid": "644443",
+        "name": "Colaless mujer mesh flores bordadas",
+        "price": 3990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/colaless-mujer-encaje-bordado-644431.html",
+        "pid": "644431",
+        "name": "Colaless mujer encaje bordado",
+        "price": 3990,
+        "normal": 9990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-faja-push-up-308486.html",
+        "pid": "308486",
+        "name": "Pantaleta mujer faja push up",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-diseno-encaje-308531.html",
+        "pid": "308531",
+        "name": "Calzón bikini mujer diseño encaje",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-costuras-308493.html",
+        "pid": "308493",
+        "name": "Pantaleta mujer costuras",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-bikini-mujer-liso-flor-bordada-64671.html",
+        "pid": "64671",
+        "name": "Calzón bikini mujer liso flor bordada",
+        "price": 3990,
+        "normal": 7990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-mujer-encaje-frontal-308522.html",
+        "pid": "308522",
+        "name": "Calzón mujer encaje frontal",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/pantaleta-mujer-seamless-microfibra-307514.html",
+        "pid": "307514",
+        "name": "Pantaleta mujer seamless microfibra",
+        "price": 1990,
+        "normal": 7990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/calzon-mujer-encajes-y-transparencias-125620.html",
+        "pid": "125620",
+        "name": "Calzón mujer encajes y transparencias",
+        "price": 3990,
+        "normal": 7990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203012765.html",
+        "pid": "203012765",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203010572.html",
+        "pid": "203010572",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203009445.html",
+        "pid": "203009445",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203020588.html",
+        "pid": "203020588",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203011290.html",
+        "pid": "203011290",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203016650.html",
+        "pid": "203016650",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203015944.html",
+        "pid": "203015944",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203017682.html",
+        "pid": "203017682",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203018622.html",
+        "pid": "203018622",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203014391.html",
+        "pid": "203014391",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/bikini-mujer-encajes-colores-203019724.html",
+        "pid": "203019724",
+        "name": "Bikini mujer encajes colores",
+        "price": 1990,
+        "normal": 5990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-09T04:51:42+00:00",
+    "path": "/hombre/camisas",
+    "final_url": "https://www.tricot.cl/hombre/camisas",
+    "bytes": 1505892,
+    "tile_nodes": 60,
+    "linked_nodes": 60,
+    "unique_urls": 60,
+    "unique_pids": 60,
+    "declared_total": 78,
+    "pagination": [
+      "1 2"
+    ],
+    "rows": [
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-patron-geometrico-lino-690785.html",
+        "pid": "690785",
+        "name": "Camisa hombre patrón geométrico lino",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-tropical-viscosa-690787.html",
+        "pid": "690787",
+        "name": "Camisa hombre tropical viscosa",
+        "price": 5990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-hojas-viscosa-690789.html",
+        "pid": "690789",
+        "name": "Camisa hombre hojas viscosa",
+        "price": 5990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-navy-puntos-circulos-720567.html",
+        "pid": "720567",
+        "name": "Camisa hombre navy puntos círculos",
+        "price": 6990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-cuadrille-azul-negro-720937.html",
+        "pid": "720937",
+        "name": "Camisa hombre cuadrille azul negro",
+        "price": 5990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-cuadrille-rojo-720938.html",
+        "pid": "720938",
+        "name": "Camisa hombre cuadrille rojo",
+        "price": 5990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-dibujos-lino-690795.html",
+        "pid": "690795",
+        "name": "Camisa hombre dibujos lino",
+        "price": 5990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-figuras-lino-690796.html",
+        "pid": "690796",
+        "name": "Camisa hombre figuras lino",
+        "price": 5990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-flechas-manga-corta-720572.html",
+        "pid": "720572",
+        "name": "Camisa hombre flechas manga corta",
+        "price": 6990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lineas-mix-720563.html",
+        "pid": "720563",
+        "name": "Camisa hombre líneas mix",
+        "price": 6990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-hojas-flores-viscosa-690788.html",
+        "pid": "690788",
+        "name": "Camisa hombre hojas flores viscosa",
+        "price": 5990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lineas-doble-lino-690800.html",
+        "pid": "690800",
+        "name": "Camisa hombre líneas doble lino",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-dibujos-viscosa-690786.html",
+        "pid": "690786",
+        "name": "Camisa hombre dibujos viscosa",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-patron-navy-690794.html",
+        "pid": "690794",
+        "name": "Camisa hombre patrón navy",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-bordado-720652518.html",
+        "pid": "720652518",
+        "name": "Camisa hombre lino bordado",
+        "price": 7990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-bordado-720654501.html",
+        "pid": "720654501",
+        "name": "Camisa hombre lino bordado",
+        "price": 7990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-bordado-720653205.html",
+        "pid": "720653205",
+        "name": "Camisa hombre lino bordado",
+        "price": 7990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-bordado-720655758.html",
+        "pid": "720655758",
+        "name": "Camisa hombre lino bordado",
+        "price": 7990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-bordado-720658203.html",
+        "pid": "720658203",
+        "name": "Camisa hombre lino bordado",
+        "price": 7990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-bordado-720657515.html",
+        "pid": "720657515",
+        "name": "Camisa hombre lino bordado",
+        "price": 7990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-bordado-720656615.html",
+        "pid": "720656615",
+        "name": "Camisa hombre lino bordado",
+        "price": 7990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-bordado-720651315.html",
+        "pid": "720651315",
+        "name": "Camisa hombre lino bordado",
+        "price": 7990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lineas-lino-celeste-690801.html",
+        "pid": "690801",
+        "name": "Camisa hombre líneas lino celeste",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-hojas-720565.html",
+        "pid": "720565",
+        "name": "Camisa hombre hojas",
+        "price": 6990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-palmeras-lino-690783.html",
+        "pid": "690783",
+        "name": "Camisa hombre palmeras lino",
+        "price": 5990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-monstera-690781.html",
+        "pid": "690781",
+        "name": "Camisa hombre lino monstera",
+        "price": 5990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-bordado-plantas-lino-690793.html",
+        "pid": "690793",
+        "name": "Camisa hombre bordado plantas lino",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lineas-bicolor-lino-690779.html",
+        "pid": "690779",
+        "name": "Camisa hombre líneas bicolor lino",
+        "price": 7990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-print-viscosa-690790.html",
+        "pid": "690790",
+        "name": "Camisa hombre print viscosa",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-hojas-algodon-690797.html",
+        "pid": "690797",
+        "name": "Camisa hombre hojas algodón",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-floral-lineal-690792.html",
+        "pid": "690792",
+        "name": "Camisa hombre lino floral lineal",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-tropical-lino-690782.html",
+        "pid": "690782",
+        "name": "Camisa hombre tropical lino",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-patron-verde-lino-690780.html",
+        "pid": "690780",
+        "name": "Camisa hombre patrón verde lino",
+        "price": 5990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lineas-lino-beige-690778.html",
+        "pid": "690778",
+        "name": "Camisa hombre líneas lino beige",
+        "price": 7990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-viscosa-negra-690791.html",
+        "pid": "690791",
+        "name": "Camisa hombre viscosa negra",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-hojas-lino-690784.html",
+        "pid": "690784",
+        "name": "Camisa hombre hojas lino",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-diseno-690799.html",
+        "pid": "690799",
+        "name": "Camisa hombre lino diseño",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-blanca-manga-larga-611243.html",
+        "pid": "611243",
+        "name": "Camisa hombre blanca manga larga",
+        "price": 12990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-negra-manga-larga-611242.html",
+        "pid": "611242",
+        "name": "Camisa hombre negra manga larga",
+        "price": 12990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-navy-manga-larga-611244.html",
+        "pid": "611244",
+        "name": "Camisa hombre navy manga larga",
+        "price": 12990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-blanca-puntitos-560319.html",
+        "pid": "560319",
+        "name": "Camisa hombre blanca puntitos",
+        "price": 9990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-blanca-560317.html",
+        "pid": "560317",
+        "name": "Camisa hombre blanca",
+        "price": 9990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lisa-104755.html",
+        "pid": "104755",
+        "name": "Camisa hombre lisa",
+        "price": 12990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-blanca-710265.html",
+        "pid": "710265",
+        "name": "Camisa hombre lino blanca",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-celeste-710266.html",
+        "pid": "710266",
+        "name": "Camisa hombre lino celeste",
+        "price": 9990,
+        "normal": 33990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-azul-560318.html",
+        "pid": "560318",
+        "name": "Camisa hombre azul",
+        "price": 9990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-gris-560316.html",
+        "pid": "560316",
+        "name": "Camisa hombre gris",
+        "price": 9990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lisa-manga-larga-104756.html",
+        "pid": "104756",
+        "name": "Camisa hombre lisa manga larga",
+        "price": 12990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-celeste-manga-larga-611241.html",
+        "pid": "611241",
+        "name": "Camisa hombre celeste manga larga",
+        "price": 12990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lisa-lino-725610188.html",
+        "pid": "725610188",
+        "name": "Camisa hombre lisa lino",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lisa-lino-725608899.html",
+        "pid": "725608899",
+        "name": "Camisa hombre lisa lino",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lisa-lino-725609441.html",
+        "pid": "725609441",
+        "name": "Camisa hombre lisa lino",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-lino-palmeras-720810.html",
+        "pid": "720810",
+        "name": "Camisa hombre lino palmeras",
+        "price": 6990,
+        "normal": 21990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-cuadrille-azul-720939.html",
+        "pid": "720939",
+        "name": "Camisa hombre cuadrillé azul",
+        "price": 5990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-diseno-puntos-720564.html",
+        "pid": "720564",
+        "name": "Camisa hombre diseño puntos",
+        "price": 7990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-palmeras-720566.html",
+        "pid": "720566",
+        "name": "Camisa hombre palmeras",
+        "price": 7990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-flores-690738.html",
+        "pid": "690738",
+        "name": "Camisa hombre flores",
+        "price": 6990,
+        "normal": 25990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-puntos-manga-corta-720573.html",
+        "pid": "720573",
+        "name": "Camisa hombre puntos manga corta",
+        "price": 7990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-rosada-720569.html",
+        "pid": "720569",
+        "name": "Camisa hombre rosada",
+        "price": 7990,
+        "normal": 27990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      },
+      {
+        "url": "https://www.tricot.cl/camisa-hombre-formal-navy-720488.html",
+        "pid": "720488",
+        "name": "Camisa hombre formal navy",
+        "price": 9990,
+        "normal": 23990,
+        "stock_text": false,
+        "has_cart_button": false,
+        "gtin": false
+      }
+    ]
+  }
+]
