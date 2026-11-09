@@ -18,8 +18,8 @@ todas existen porque alguien ya probó el camino obvio.
 **B.** Elegir las llaves: catálogo o vitrina, y solapamiento — 10 trampas. Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
 **C.** Paginación y completitud — 11 trampas. Cómo se enumera un catálogo entero, y cuándo el canario exacto es sostenible.
 **D.** Precio, stock e identidad del producto — 18 trampas. Qué número se guarda como `price_effective`, y qué cosa es un listing.
-**E.** Las guardas: canario, agujero y volumen — 11 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
-**F.** Infraestructura, Docker y verificación — 13 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
+**E.** Las guardas: canario, agujero y volumen — 12 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
+**F.** Infraestructura, Docker y verificación — 14 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
 **G.** Detector, θ, backtest y publicación — 10 trampas. Lo que decide si una señal es una oferta de verdad, y cómo se mide.
 
 
@@ -677,6 +677,38 @@ re-medir cuando tenga unos días de holgura.
   SKUs recién llegados en el denominador y hace ver igual a la tienda que crece
   su catálogo y a la que lo rota (Easy: 34% transversal, 96% por cohorte).
 
+- **La alerta de una guarda puede ser rechazada por larga, y entonces la guarda
+  falla JUSTO en el caso grave.** Es el cuarto fallo de esta familia después del
+  agujero, la pasada flaca y el canario por target, y el más irónico: la guarda
+  corrió, detectó y armó el aviso. Medido el 2026-11-07, cuando una pasada perdió
+  202 de 727 objetivos por inestabilidad de la red saliente:
+
+      telegram_http_error method=sendMessage status=400
+      body={'description': 'Bad Request: message is too long'}
+      ERROR alerts no se pudo enviar la alerta; queda solo en el log
+
+  `alerts.py` tenía `MAX_LINES = 25` con un comentario que citaba el límite de
+  Telegram — pero **acota líneas y el límite es de caracteres**. Con las URLs
+  percent-encodeadas de los `FetchError`, la mediana de línea era 163 y el máximo
+  435: 28 líneas dieron **5.766 caracteres** contra los 4.096 permitidos. La
+  relación es perversa — pocos fallos dan mensaje corto que sí llega, muchos
+  fallos dan mensaje largo que no.
+  ⚠️ **Y había un test que decía cubrirlo**:
+  `test_mensaje_acotado_para_no_exceder_el_limite_de_telegram` afirmaba
+  `len(cuerpo) == MAX_LINES + 1` —cuenta líneas— con un error de fixture de 11
+  caracteres (`"canario: X"`). Con ese error las dos cosas coinciden y el test
+  pasa sin ejercitar nada. **Un test cuyo nombre promete un límite y cuya
+  aserción mide otra unidad es un falso verde con nombre tranquilizador**, que es
+  peor que no tenerlo. Al arreglarlo, el fixture pasó a llevar un `FetchError`
+  real de 435 caracteres.
+  El arreglo son dos capas, porque una sola no alcanzaba: recortar cada error a
+  `MAX_ERROR_CHARS` (5.766 → 4.512) y un tope duro de caracteres en el camino de
+  salida, `recortar_para_telegram` dentro de `send_alert` (4.512 → 4.077),
+  preservando siempre la primera línea, que es la que trae los conteos. El tope
+  va en el envío y no en cada sección a propósito: es el único punto por el que
+  pasan todos los avisos, así que se cumple sin importar qué sección lo armó ni
+  cuántas se agreguen después.
+
 ---
 
 ## F. Infraestructura, Docker y verificación
@@ -854,12 +886,45 @@ Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son 
   (`git archive <tree> | tar -x -C <dir>` y `pytest` ahí): el 6-nov dio
   **954 passed** con un único conflicto, dos filas de `TIENDAS.md`.
 
+- **Antes de recrear el scraper, mirá si hay una pasada EN VUELO — y el momento
+  más probable de que la haya es justo cuando desplegás.** El ciclo de 12 h
+  arranca a una hora fija derivada de la última pasada, no de cuándo desplegás
+  vos, así que la colisión no es improbable: es una lotería de 2 h sobre 12.
+  Pasó el 2026-11-09 desplegando las seis migraciones pendientes: el ciclo
+  disparó una pasada a las **04:50** y el `up -d --force-recreate` entró a las
+  **04:53**. La pasada murió en **79 de ~800 corridas** (72 `ok`, 6 `partial`) y
+  dejó **una fila huérfana en `scrape_runs` con `status='running'`**, que no se
+  cierra nunca porque el proceso que la iba a cerrar ya no existe.
+  Lo que NO se pierde: las 72 corridas escribieron sus observaciones, así que la
+  serie no tiene un hueco — tiene una pasada corta. Lo que sí se pierde es
+  `run_pricing`, que vive al final del loop: sin pasada completa no hay baselines
+  ni detector, y de ahí al canal mudo es el camino de la viñeta de abajo.
+  La guarda es una consulta antes de tocar nada:
+
+  ```bash
+  # ¿hay corridas de los últimos minutos? Entonces hay pasada en vuelo.
+  SELECT count(*), max(started_at) FROM scrape_runs
+   WHERE started_at > now() - interval '10 minutes';
+  ```
+
+  Si hay, o se esperan los ~2 h de `PASS_WINDOW`, o se acepta cortarla **sabiendo
+  que el `--once` posterior no es opcional**. Cortarla es tolerable; cortarla sin
+  saberlo es cómo se llega a un día sin publicar.
+
 - **Reiniciar el scraper le cuesta al canal hasta un DÍA de publicación, y el
   costo no es el que advierte la regla.** CLAUDE.md prohíbe reiniciarlo desde un
   worktree por la pasada que se mata a medias; el 2026-11-06 se midió el otro
-  costo, que es mayor y silencioso: **el canal publicó CERO**, contra 21-34 por
-  día la semana anterior, sin un solo error y con el `publisher` en `Up`, su
-  proceso vivo y su último log siendo el de arranque.
+  costo, que es mayor y silencioso: **el canal se quedó mudo 6 h 18 min de su
+  ventana** —primer post a las 17:18 UTC contra las 11:00 de los cinco días
+  anteriores— sin un solo error y con el `publisher` en `Up`, su proceso vivo y
+  su último log siendo el de arranque.
+  ⚠️ **Corrección del 2026-11-07**: la primera versión de esta trampa decía "el
+  canal publicó CERO". Era cierto a las 17:00, cuando se midió, y dejó de serlo a
+  las 17:18: la pasada cerró con 8 h de ventana por delante y el día terminó con
+  **23 posts**, dentro del rango normal de 21-34. El costo real fue el retraso,
+  no el día. Pero el peor caso sigue siendo el día entero: si el reinicio cae de
+  modo que la pasada termine después del cierre de ventana (23:00 de Santiago),
+  no hay nada que recupere ese día.
   La cadena, y cada eslabón es correcto por separado:
   **(1)** se reinicia el scraper a las 03:37 para que la imagen traiga un
   adaptador nuevo (lo manda §Pasos 1.7);
