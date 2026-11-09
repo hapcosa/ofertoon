@@ -270,3 +270,72 @@ class UrbanAdapter(_WooFamilyAdapter):
     #: **desaparece del listado**, así que su serie queda con un hueco. Allá se
     #: sigue registrando un precio con `in_stock=True` inventado, que es lo que
     #: de verdad envenena la baseline.
+
+
+class MegabytesAdapter(_WooFamilyAdapter):
+    """MegaBytes. `store_key` = el **id numérico** de la categoría de Woo.
+
+    ⚠️ **Solo responde al User-Agent identificable, y es el patrón INVERSO al de
+    Prat y al de Easy.** Verificado el 2026-11-04 aislando la variable, 4 intentos
+    de cada juego contra su home:
+
+        DEFAULT_USER_AGENT   200, 200, 200, 200
+        BROWSER_USER_AGENT   RemoteProtocolError ×4
+        BROWSER_HEADERS      RemoteProtocolError ×4
+
+    O sea lo que rompe es **parecerse a un navegador** —el servidor corta la
+    conexión—, no el token `(+ofertascl-bot)`. La familia manda el UA del
+    `HttpClient`, que es el correcto, así que no hay nada que configurar: **no le
+    agreguen un `_headers` de navegador "para que funcione mejor"**, lo rompe.
+    Regla general que deja: ante un fallo de **transporte** (y no un 403/429),
+    probar también el UA identificable.
+
+    **Orden estable**: dos recorridos completos de `Componentes PC` (153
+    productos) dieron **Jaccard 1,0000**. Es lo que esta vertical necesita — su
+    catálogo es chico (327 productos) y eso no es un defecto: un catálogo chico y
+    estable produce baselines, uno grande que rota no.
+
+    ⚠️ **No sostiene el canario exacto.** 8 de sus 28 categorías no calzan con su
+    `count` declarado, y **5 declaran productos y devuelven cero** (`Gabinetes`
+    count=18, `Más accesorios` count=28, `Monitores` count=6, `MegaDays` count=1,
+    `Memorias Ram` count=1). Eso explica también por qué la unión de su catálogo
+    da 327 cuando `X-WP-Total` declara **336**: los 9 que faltan solo cuelgan de
+    esas categorías huérfanas. No es un bug del adaptador —la Store API contesta
+    200 con lista vacía— sino `count` viejo del lado de la tienda. Con el canario
+    exacto encendido serían 5 llaves en `partial` permanente: la alarma que suena
+    siempre.
+    """
+
+    slug = "megabytes"
+    base_url = "https://www.megabytes.cl"
+
+
+class InforIngenAdapter(_WooFamilyAdapter):
+    """Infor-Ingen. `store_key` = el **id numérico** de la categoría de Woo.
+
+    La más limpia de las tres candidatas de `woo_family`:
+
+    - **Orden estable**: dos recorridos completos de `Placas Madres` (320
+      productos) dieron **Jaccard 1,0000**.
+    - 🟢 **Sostiene el canario exacto**: su `count` declarado coincide con lo
+      enumerado en **las 58** categorías.
+    - **Stock real**: 70 de 100 productos de la muestra disponibles, igual que el
+      resto de la familia.
+    - Declara un "antes" en **100 de 100** de la muestra ⇒ θ se puede fijar
+      midiendo cuando se calibre.
+
+    **Las llaves son los paraguas y no las hojas**: sus 58 categorías suman 3.431
+    productos sobre una unión de **1.615** (2,12×), y las 60 contenciones medidas
+    dan **100% exacto** — `Gabinetes s/Fuente` ⊂ `Gabinetes`, `AM5` ⊂ `Placas
+    Madres`, `Memorias Ram Pc` ⊂ `Memorias`, `Discos Duros SSD` ⊂
+    `Almacenamiento`. Con los 14 paraguas se cubre el 100% del catálogo con
+    **1,048×** de solapamiento residual.
+
+    ⚠️ De esos 14 solo **7 entran** (ver la migración 40): el sistema no tiene
+    categoría para periféricos, monitores ni redes, y `Varios` (154 productos) y
+    `Sin categoría` (4) son catch-all que no pueden llevar un θ. Quedan 1.325 de
+    1.615 SKUs (82%).
+    """
+
+    slug = "inforingen"
+    base_url = "https://store.infor-ingen.com"

@@ -130,16 +130,24 @@ def test_cuota_diaria_agotada() -> None:
 
 
 def test_tope_por_tienda() -> None:
-    """Seis ofertas de Falabella no son un canal curado, son un feed de Falabella."""
-    candidates = [make(i, store_id=1, category_id=i) for i in range(1, 6)]
+    """El tope por tienda corta, cualquiera sea su valor.
+
+    Se siembra `tope + 1` y no un número fijo: la versión anterior sembraba 5
+    candidatos contra un tope de 5, así que pasaba por coincidencia y dejaba de
+    medir el tope en cuanto el número cambiaba.
+    """
+    tope = ranker.MAX_PER_STORE_PER_DAY
+    candidates = [make(i, store_id=1, category_id=i) for i in range(1, tope + 2)]
     chosen = ranker.select(candidates, posted=PostedToday(), now=NOW, limit=None)
-    assert len(chosen) == ranker.MAX_PER_STORE_PER_DAY
+    assert len(chosen) == tope
 
 
 def test_tope_por_categoria() -> None:
-    candidates = [make(i, store_id=i, category_id=7) for i in range(1, 6)]
+    """Igual que el de tienda: se siembra `tope + 1` para que el tope sea lo que corta."""
+    tope = ranker.MAX_PER_CATEGORY_PER_DAY
+    candidates = [make(i, store_id=i, category_id=7) for i in range(1, tope + 2)]
     chosen = ranker.select(candidates, posted=PostedToday(), now=NOW, limit=None)
-    assert len(chosen) == ranker.MAX_PER_CATEGORY_PER_DAY
+    assert len(chosen) == tope
 
 
 def test_los_topes_arrastran_lo_ya_publicado_hoy() -> None:
@@ -340,11 +348,23 @@ def test_el_tope_por_tienda_no_estrangula_la_cuota():
     assert techo_real >= ranker.MAX_PER_DAY
 
 
-def test_el_tope_por_tienda_sigue_impidiendo_que_una_sola_domine():
-    """Subir el tope no puede volver el canal monotienda."""
-    candidatos = [make(i, store_id=1, category_id=i) for i in range(1, 12)]
+def test_una_sola_tienda_puede_llenar_un_tema():
+    """Desde el 2026-11-07 los topes finos NO limitan: la cuota decide sola.
+
+    Este test afirmaba lo contrario —"subir el tope no puede volver el canal
+    monotienda"— y se reescribió, no se borró, porque el cambio de criterio
+    conviene que quede visible: con `MAX_PER_STORE_PER_DAY` y
+    `MAX_PER_CATEGORY_PER_DAY` iguales a la cuota del destino, once candidatos de
+    la MISMA tienda entran los once. Es la decisión del dueño de priorizar
+    volumen de ofertas sobre variedad mientras el canal no tiene suscriptores, y
+    el comentario de los topes en `ranker.py` dice cómo revertirla.
+
+    Si alguien baja cualquiera de los dos topes por debajo de la cuota, este test
+    falla — que es exactamente lo que se quiere: el cambio tiene que ser
+    deliberado y no un efecto lateral.
+    """
+    candidatos = [make(i, store_id=1, category_id=1) for i in range(1, 12)]
 
     elegidos = ranker.select(candidatos, posted=PostedToday(), now=NOW)
-    assert len(elegidos) == ranker.MAX_PER_STORE_PER_DAY
-    # Y en proporción es más estricto que antes: 3 de 14 contra 2 de 6.
-    assert ranker.MAX_PER_STORE_PER_DAY / ranker.MAX_PER_DAY < 2 / 6
+    assert len(elegidos) == 11
+    assert {c.store_id for c in elegidos} == {1}

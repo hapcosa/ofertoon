@@ -1,0 +1,115 @@
+{
+  "captured_at_utc": "2026-11-05T19:05:06.112169+00:00",
+  "category": "lacteos-huevos-y-refrigerados",
+  "declared_initial": 719,
+  "unique_skus": 719,
+  "club_rows": 243,
+  "context": "Visitante anónimo; sin sucursal fijada. No es cobertura nacional.",
+  "pages": [
+    {
+      "page": 1,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=1",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 2,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=2",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 3,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=3",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 4,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=4",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 5,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=5",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 6,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=6",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 7,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=7",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 8,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=8",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 9,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=9",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 10,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=10",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 11,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=11",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 12,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=12",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 13,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=13",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 14,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=14",
+      "declared": 719,
+      "rows": 50,
+      "new_skus": 50
+    },
+    {
+      "page": 15,
+      "url": "https://www.unimarc.cl/category/lacteos-huevos-y-refrigerados?page=15",
+      "declared": 719,
+      "rows": 19,
+      "new_skus": 19
+    }
+  ]
+}

@@ -104,8 +104,10 @@ async def insert_price_point(
         """
         INSERT INTO price_points (listing_id, observed_at, price_effective,
                                   price_normal, price_card, in_stock,
-                                  claimed_discount, pum_price, pum_label)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                                  claimed_discount, pum_price, pum_label,
+                                  promo_qty, promo_total, promo_label,
+                                  price_condition)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         ON CONFLICT (listing_id, observed_at) DO NOTHING
         """,
         listing_id,
@@ -120,6 +122,16 @@ async def insert_price_point(
         # migración 34).
         product.pum.price if product.pum else None,
         product.pum.label if product.pum else None,
+        # Los tres juntos o ninguno, igual que el `pum` (lo hace cumplir el CHECK
+        # de la migración 46). Se guarda `qty` y `total` —los dos enteros— y no el
+        # unitario: $287,5 no es un precio que alguien pague, es un derivado.
+        product.promo.qty if product.promo else None,
+        product.promo.total if product.promo else None,
+        product.promo.label if product.promo else None,
+        # La condición del precio efectivo, verbatim. Va sola porque es ortogonal
+        # a la promo: "Club Unimarc" califica el precio de una unidad y
+        # "4 x $1.150" es otra cosa. Ver la migración 47.
+        product.price_condition,
     )
     return status.endswith("1")
 

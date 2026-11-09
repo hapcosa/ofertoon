@@ -1,0 +1,168 @@
+{
+  "at_utc": "2026-11-07T23:05:56+00:00",
+  "category": "mujer/ropa-mujer",
+  "zone": "inventory_LaPolar_whven|t_ecom_metropolitana",
+  "declared_total": 824,
+  "pages": [
+    {
+      "start": 0,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1974668
+    },
+    {
+      "start": 36,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1954689
+    },
+    {
+      "start": 72,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1957205
+    },
+    {
+      "start": 108,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1955782
+    },
+    {
+      "start": 144,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1925976
+    },
+    {
+      "start": 180,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1945096
+    },
+    {
+      "start": 216,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1951592
+    },
+    {
+      "start": 252,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1904767
+    },
+    {
+      "start": 288,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1936812
+    },
+    {
+      "start": 324,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1908883
+    },
+    {
+      "start": 360,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1910535
+    },
+    {
+      "start": 396,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1910325
+    },
+    {
+      "start": 432,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1938959
+    },
+    {
+      "start": 468,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1907709
+    },
+    {
+      "start": 504,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1904025
+    },
+    {
+      "start": 540,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1890415
+    },
+    {
+      "start": 576,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1898667
+    },
+    {
+      "start": 612,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1900905
+    },
+    {
+      "start": 648,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1904525
+    },
+    {
+      "start": 684,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1901708
+    },
+    {
+      "start": 720,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1911941
+    },
+    {
+      "start": 756,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1882519
+    },
+    {
+      "start": 792,
+      "tiles": 32,
+      "ids": 32,
+      "bytes": 1839437
+    },
+    {
+      "start": 828,
+      "tiles": 0,
+      "ids": 0,
+      "bytes": 1191644
+    }
+  ],
+  "rows": 824,
+  "unique": 824,
+  "duplicates": 0,
+  "price_count": 824,
+  "min_price": 2000,
+  "max_price": 29990,
+  "normal_count": 774,
+  "card_count": 0,
+  "gtin_count": 0,
+  "sold_out_text_count": 0,
+  "seller_markers": {
+    "marketplace": 0,
+    "vendedor": 0,
+    "vendido por": 0,
+    "seller": 0
+  }
+}

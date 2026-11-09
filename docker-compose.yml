@@ -76,9 +76,11 @@ services:
       ONBOARDING_EMAIL_CODE_MAX_ATTEMPTS: ${ONBOARDING_EMAIL_CODE_MAX_ATTEMPTS:-5}
       ONBOARDING_PAYPAL_RETURN_URL: ${ONBOARDING_PAYPAL_RETURN_URL:-}
       ONBOARDING_PAYPAL_CANCEL_URL: ${ONBOARDING_PAYPAL_CANCEL_URL:-}
+      ONBOARDING_MERCADOPAGO_RETURN_URL: ${ONBOARDING_MERCADOPAGO_RETURN_URL:-}
       PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+      MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       FROM_EMAIL: ${FROM_EMAIL:-}
     command: ["python", "-m", "subscriptions.bot.main"]
@@ -133,10 +135,24 @@ services:
       GATE_BOT_TOKEN: ${GATE_BOT_TOKEN:-}
       ONBOARDING_BOT_TOKEN: ${ONBOARDING_BOT_TOKEN:?ONBOARDING_BOT_TOKEN es obligatoria}
       PUBLISHER_BOT_TOKEN: ${PUBLISHER_BOT_TOKEN:-${ONBOARDING_BOT_TOKEN}}
+      # La guarda del canal mudo manda por el bot de alertas, no por el que
+      # postea: si el canal está mudo porque el bot del canal no responde, el
+      # aviso tiene que salir por otra vía. Son las mismas dos variables que ya
+      # usa el scraper para su resumen de pasada.
+      ALERT_BOT_TOKEN: ${ALERT_BOT_TOKEN:-}
+      ALERT_CHAT_ID: ${ALERT_CHAT_ID:-}
+      PUBLISHER_ALERTA_CANAL_MUDO: ${PUBLISHER_ALERTA_CANAL_MUDO:-false}
+      PUBLISHER_ALERTA_DEADLINE_HOUR_UTC: ${PUBLISHER_ALERTA_DEADLINE_HOUR_UTC:-13}
     command: ["python", "-m", "publisher.daemon"]
 
-  # Webhook de PayPal. Único servicio con puerto expuesto: necesita ser
-  # alcanzable desde internet (túnel/reverse proxy) para recibir los eventos.
+  # Webhook de pagos. Único servicio con puerto expuesto: necesita ser
+  # alcanzable desde internet (túnel/reverse proxy) para recibir eventos.
+  # Sigue llamándose "paypal-webhook" aunque desde subscriptions.webhooks
+  # atiende TAMBIÉN /webhook/mercadopago: el túnel Cloudflare de producción
+  # (fuera del repo, ver CLAUDE.md §Infraestructura) apunta a
+  # paypal-webhook:8080 por nombre de servicio, y renombrarlo rompería esa
+  # regla sin tocar una línea de este repo. Un solo proceso en un solo puerto
+  # evita pedirle al dueño un segundo hostname/puerto en el túnel.
   paypal-webhook:
     build:
       context: .
@@ -151,6 +167,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
       PAYPAL_WEBHOOK_PORT: 8080
+      MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN:-}
+      MERCADOPAGO_WEBHOOK_SECRET: ${MERCADOPAGO_WEBHOOK_SECRET:-}
     ports:
       - "${PAYPAL_WEBHOOK_HOST_PORT:-8086}:8080"
-    command: ["python", "-m", "subscriptions.paypal.webhook"]
+    command: ["python", "-m", "subscriptions.webhooks"]

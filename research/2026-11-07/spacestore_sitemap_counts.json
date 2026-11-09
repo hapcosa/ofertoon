@@ -1,0 +1,308 @@
+{
+  "at_utc": "2026-11-07T23:07:07+00:00",
+  "sitemaps": 60,
+  "product_url_entries": 59650,
+  "decoded_body_bytes": 27427691,
+  "files": [
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_1.xml?from=6743451500610&to=8376378753090",
+      "products": 1000,
+      "bytes": 461919
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_2.xml?from=8376378785858&to=8379776008258",
+      "products": 999,
+      "bytes": 455409
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_3.xml?from=8379776041026&to=8388186439746",
+      "products": 1000,
+      "bytes": 457272
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_4.xml?from=8388187652162&to=8398186152002",
+      "products": 1000,
+      "bytes": 451906
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_5.xml?from=8398186217538&to=8408713560130",
+      "products": 999,
+      "bytes": 468781
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_6.xml?from=8408713592898&to=8408964726850",
+      "products": 1000,
+      "bytes": 463687
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_7.xml?from=8408964759618&to=8409343492162",
+      "products": 1000,
+      "bytes": 452697
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_8.xml?from=8409343524930&to=8409387532354",
+      "products": 1000,
+      "bytes": 461322
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_9.xml?from=8409387565122&to=8409727664194",
+      "products": 1000,
+      "bytes": 461310
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_10.xml?from=8409727696962&to=8409772949570",
+      "products": 1000,
+      "bytes": 462130
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_11.xml?from=8409772982338&to=8409825902658",
+      "products": 1000,
+      "bytes": 460296
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_12.xml?from=8409825935426&to=8409882165314",
+      "products": 1000,
+      "bytes": 460045
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_13.xml?from=8409882198082&to=8419405070402",
+      "products": 1000,
+      "bytes": 460066
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_14.xml?from=8419405103170&to=8419487711298",
+      "products": 1000,
+      "bytes": 461687
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_15.xml?from=8419487744066&to=8450749366338",
+      "products": 1000,
+      "bytes": 461141
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_16.xml?from=8450749399106&to=8450787770434",
+      "products": 1000,
+      "bytes": 438662
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_17.xml?from=8450787803202&to=8450824798274",
+      "products": 1000,
+      "bytes": 446729
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_18.xml?from=8450824831042&to=8450889777218",
+      "products": 1000,
+      "bytes": 457995
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_19.xml?from=8450889809986&to=8450949185602",
+      "products": 1000,
+      "bytes": 456261
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_20.xml?from=8450949218370&to=8451050078274",
+      "products": 1000,
+      "bytes": 449277
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_21.xml?from=8451050242114&to=8451352920130",
+      "products": 1000,
+      "bytes": 456597
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_22.xml?from=8451352952898&to=8451461939266",
+      "products": 1000,
+      "bytes": 460942
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_23.xml?from=8451461972034&to=8451602055234",
+      "products": 1000,
+      "bytes": 461150
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_24.xml?from=8451602088002&to=8452221009986",
+      "products": 1000,
+      "bytes": 463361
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_25.xml?from=8452221075522&to=8452269146178",
+      "products": 1000,
+      "bytes": 462148
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_26.xml?from=8452269178946&to=8452313120834",
+      "products": 1000,
+      "bytes": 459423
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_27.xml?from=8452313153602&to=8452357816386",
+      "products": 1000,
+      "bytes": 462279
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_28.xml?from=8452357849154&to=8452393631810",
+      "products": 1000,
+      "bytes": 462186
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_29.xml?from=8452393664578&to=8452427710530",
+      "products": 1000,
+      "bytes": 463800
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_30.xml?from=8452427743298&to=8452464508994",
+      "products": 1000,
+      "bytes": 459943
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_31.xml?from=8452464541762&to=8452498718786",
+      "products": 1000,
+      "bytes": 464114
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_32.xml?from=8452498915394&to=8452532371522",
+      "products": 1000,
+      "bytes": 460421
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_33.xml?from=8452532404290&to=8452567760962",
+      "products": 1000,
+      "bytes": 461807
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_34.xml?from=8452567793730&to=8452601741378",
+      "products": 1000,
+      "bytes": 463281
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_35.xml?from=8452601774146&to=8452635656258",
+      "products": 1000,
+      "bytes": 459846
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_36.xml?from=8452635689026&to=8452679041090",
+      "products": 1000,
+      "bytes": 459619
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_37.xml?from=8452679073858&to=8452732616770",
+      "products": 1000,
+      "bytes": 462893
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_38.xml?from=8452732649538&to=8452778655810",
+      "products": 1000,
+      "bytes": 462581
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_39.xml?from=8452778688578&to=8452819845186",
+      "products": 999,
+      "bytes": 467006
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_40.xml?from=8452819877954&to=8452861263938",
+      "products": 999,
+      "bytes": 461192
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_41.xml?from=8452861296706&to=8452894261314",
+      "products": 1000,
+      "bytes": 462178
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_42.xml?from=8452894294082&to=8452928503874",
+      "products": 1000,
+      "bytes": 457633
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_43.xml?from=8452928536642&to=8452962025538",
+      "products": 1000,
+      "bytes": 461484
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_44.xml?from=8452962123842&to=8453009244226",
+      "products": 1000,
+      "bytes": 461588
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_45.xml?from=8453009309762&to=8453056036930",
+      "products": 1000,
+      "bytes": 462099
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_46.xml?from=8453056069698&to=8453106073666",
+      "products": 1000,
+      "bytes": 458550
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_47.xml?from=8453106106434&to=8453150867522",
+      "products": 1001,
+      "bytes": 464180
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_48.xml?from=8453150900290&to=8453205590082",
+      "products": 1000,
+      "bytes": 459481
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_49.xml?from=8453205655618&to=8453254709314",
+      "products": 1000,
+      "bytes": 460592
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_50.xml?from=8453254742082&to=8453298585666",
+      "products": 1000,
+      "bytes": 460389
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_51.xml?from=8453298618434&to=8453348589634",
+      "products": 1000,
+      "bytes": 459554
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_52.xml?from=8453348622402&to=8453383159874",
+      "products": 999,
+      "bytes": 456937
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_53.xml?from=8453383192642&to=8453416484930",
+      "products": 1000,
+      "bytes": 462180
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_54.xml?from=8453416517698&to=8453449646146",
+      "products": 1000,
+      "bytes": 461426
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_55.xml?from=8453449678914&to=8453484445762",
+      "products": 1000,
+      "bytes": 464568
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_56.xml?from=8453484478530&to=8453518098498",
+      "products": 999,
+      "bytes": 464297
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_57.xml?from=8453518131266&to=8454106480706",
+      "products": 1000,
+      "bytes": 454820
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_58.xml?from=8454106546242&to=8487665795138",
+      "products": 1000,
+      "bytes": 456537
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_59.xml?from=8487665827906&to=8510618239042",
+      "products": 1000,
+      "bytes": 454692
+    },
+    {
+      "sitemap": "https://spacestore.cl/sitemap_products_60.xml?from=8510618271810&to=8517868388418",
+      "products": 655,
+      "bytes": 301325
+    }
+  ]
+}

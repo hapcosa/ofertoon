@@ -1,0 +1,279 @@
+{
+  "path": "/hombre/jeans",
+  "declared_total": 39,
+  "controls": [
+    {
+      "pid": "31539",
+      "url": "https://www.tricot.cl/jeans-hombre-clasico-31539.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "161603",
+      "url": "https://www.tricot.cl/jeans-hombre-clasico-161603.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "31516",
+      "url": "https://www.tricot.cl/jeans-hombre-clasico-31516.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720301",
+      "url": "https://www.tricot.cl/jeans-hombre-cargo-azul-720301.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690031",
+      "url": "https://www.tricot.cl/jeans-hombre-black-690031.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690032",
+      "url": "https://www.tricot.cl/jeans-hombre-gris-recto-690032.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "221472",
+      "url": "https://www.tricot.cl/jeans-hombre-clasico-slim-fit-221472.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690113",
+      "url": "https://www.tricot.cl/jeans-hombre-gris-casual-690113.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "224031",
+      "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-224031.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "217382",
+      "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-217382.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720300",
+      "url": "https://www.tricot.cl/jeans-hombre-cargo-black-720300.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690817",
+      "url": "https://www.tricot.cl/jeans-hombre-straight-azul-690817.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720297",
+      "url": "https://www.tricot.cl/jeans-hombre-slim-gris-oscuro-720297.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690815",
+      "url": "https://www.tricot.cl/jeans-hombre-skinny-azul-690815.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690034",
+      "url": "https://www.tricot.cl/jeans-hombre-black-skinny-690034.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690814",
+      "url": "https://www.tricot.cl/jeans-hombre-skinny-gris-oscuro-690814.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690035",
+      "url": "https://www.tricot.cl/jeans-hombre-clasico-straight-690035.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720299",
+      "url": "https://www.tricot.cl/jeans-hombre-slim-azul-720299.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690816",
+      "url": "https://www.tricot.cl/jeans-hombre-skinny-gris-690816.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690813",
+      "url": "https://www.tricot.cl/jeans-hombre-skinny-negro-690813.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "213938",
+      "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-213938.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "221688",
+      "url": "https://www.tricot.cl/jeans-hombre-clasico-slim-fit-221688.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "221691",
+      "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-221691.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "217381",
+      "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-217381.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "213940",
+      "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-213940.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "213941",
+      "url": "https://www.tricot.cl/jeans-hombre-clasico-slim-fit-213941.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "215372",
+      "url": "https://www.tricot.cl/jeans-hombre-desgastado-slim-fit-215372.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690908676",
+      "url": "https://www.tricot.cl/jeans-hombre-cargo-style-690908676.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690907964",
+      "url": "https://www.tricot.cl/jeans-hombre-cargo-style-690907964.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "33671",
+      "url": "https://www.tricot.cl/pantalon-de-jean-hombre-clasico-33671.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720671565",
+      "url": "https://www.tricot.cl/jeans-hombre-slim-720671565.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720673137",
+      "url": "https://www.tricot.cl/jeans-hombre-slim-720673137.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720767895",
+      "url": "https://www.tricot.cl/jeans-hombre-cargo-costuras-720767895.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720672252",
+      "url": "https://www.tricot.cl/jeans-hombre-slim-720672252.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720637710",
+      "url": "https://www.tricot.cl/jeans-hombre-jogger-color-720637710.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720766994",
+      "url": "https://www.tricot.cl/jeans-hombre-cargo-costuras-720766994.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720670894",
+      "url": "https://www.tricot.cl/jeans-hombre-slim-720670894.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "720636185",
+      "url": "https://www.tricot.cl/jeans-hombre-jogger-color-720636185.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "690818",
+      "url": "https://www.tricot.cl/jeans-hombre-straight-negro-690818.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    }
+  ]
+}

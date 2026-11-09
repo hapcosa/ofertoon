@@ -1,0 +1,372 @@
+{
+  "at_utc": "2026-11-07T23:02:02+00:00",
+  "category": "mujer",
+  "zone": "inventory_LaPolar_whven|t_ecom_metropolitana",
+  "declared_total": 2042,
+  "pages": [
+    {
+      "start": 0,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1979071
+    },
+    {
+      "start": 36,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 2030967
+    },
+    {
+      "start": 72,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 2022423
+    },
+    {
+      "start": 108,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 2012336
+    },
+    {
+      "start": 144,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1997932
+    },
+    {
+      "start": 180,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1963144
+    },
+    {
+      "start": 216,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1949254
+    },
+    {
+      "start": 252,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1968673
+    },
+    {
+      "start": 288,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1980118
+    },
+    {
+      "start": 324,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1954895
+    },
+    {
+      "start": 360,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1961989
+    },
+    {
+      "start": 396,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1942036
+    },
+    {
+      "start": 432,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1932815
+    },
+    {
+      "start": 468,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1973494
+    },
+    {
+      "start": 504,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1966396
+    },
+    {
+      "start": 540,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1944337
+    },
+    {
+      "start": 576,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1932625
+    },
+    {
+      "start": 612,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1922691
+    },
+    {
+      "start": 648,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1947975
+    },
+    {
+      "start": 684,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1929270
+    },
+    {
+      "start": 720,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1923838
+    },
+    {
+      "start": 756,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1931081
+    },
+    {
+      "start": 792,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1937112
+    },
+    {
+      "start": 828,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1932671
+    },
+    {
+      "start": 864,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1923154
+    },
+    {
+      "start": 900,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1921186
+    },
+    {
+      "start": 936,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1911501
+    },
+    {
+      "start": 972,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1916905
+    },
+    {
+      "start": 1008,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1918724
+    },
+    {
+      "start": 1044,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1923588
+    },
+    {
+      "start": 1080,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1903594
+    },
+    {
+      "start": 1116,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1923881
+    },
+    {
+      "start": 1152,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1918104
+    },
+    {
+      "start": 1188,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1914604
+    },
+    {
+      "start": 1224,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1917096
+    },
+    {
+      "start": 1260,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1896203
+    },
+    {
+      "start": 1296,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1917282
+    },
+    {
+      "start": 1332,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1909998
+    },
+    {
+      "start": 1368,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1900270
+    },
+    {
+      "start": 1404,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1877698
+    },
+    {
+      "start": 1440,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1903849
+    },
+    {
+      "start": 1476,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1894945
+    },
+    {
+      "start": 1512,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1894909
+    },
+    {
+      "start": 1548,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1891403
+    },
+    {
+      "start": 1584,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1904511
+    },
+    {
+      "start": 1620,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1913062
+    },
+    {
+      "start": 1656,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1883149
+    },
+    {
+      "start": 1692,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1882774
+    },
+    {
+      "start": 1728,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1869537
+    },
+    {
+      "start": 1764,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1867223
+    },
+    {
+      "start": 1800,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1869097
+    },
+    {
+      "start": 1836,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1872982
+    },
+    {
+      "start": 1872,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1868249
+    },
+    {
+      "start": 1908,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1862938
+    },
+    {
+      "start": 1944,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1887151
+    },
+    {
+      "start": 1980,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1860724
+    },
+    {
+      "start": 2016,
+      "tiles": 24,
+      "ids": 24,
+      "bytes": 1728447
+    },
+    {
+      "start": 2052,
+      "tiles": 0,
+      "ids": 0,
+      "bytes": 1184497
+    }
+  ],
+  "rows": 2040,
+  "unique": 2040,
+  "duplicates": 0,
+  "price_count": 2040,
+  "min_price": 1500,
+  "max_price": 69990,
+  "normal_count": 1541,
+  "card_count": 0,
+  "gtin_count": 0,
+  "sold_out_text_count": 0,
+  "seller_markers": {
+    "marketplace": 0,
+    "vendedor": 0,
+    "vendido por": 0,
+    "seller": 0
+  }
+}

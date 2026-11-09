@@ -72,14 +72,24 @@ MAX_PER_DAY = 30
 #:     6 tiendas maduras × 3 = 18  < 30   ← estrangulaba
 #:     14 categorías      × 2 = 28  < 30   ← estrangulaba
 #:
-#: Hoy tienen baseline madura seis tiendas (falabella, paris, easy, sodimac,
-#: pcfactory, spdigital), así que 5 por tienda da exactamente 30. Es ajustado a
-#: propósito: cuando maduren Tottus, Nike y Andesgear habrá nueve más y este tope
-#: dejará de ser cerca del límite.
-MAX_PER_STORE_PER_DAY = 5
-#: 3 de 30 es un techo del 10% por categoría, **más** diverso en proporción que el
-#: 14% que daban 2 de 14: hacen falta diez categorías distintas para llenar el día.
-MAX_PER_CATEGORY_PER_DAY = 3
+#: **Decisión del dueño del 2026-11-07: los dos topes a 20, igual que la cuota de
+#: cada tema, para que ningún tope fino decida nada.** El pedido fue explícito —
+#: "no importa el spam, lo que importa son las ofertas" — y el motivo medido es
+#: que los topes estaban estrangulando de verdad: el 6 y el 7-nov el canal publicó
+#: 22 y 23 de 33, y los 10-11 lugares que sobraban no los limitaba el detector
+#: sino estos dos números y los temas sin candidatos maduros. Con 8 tiendas
+#: produciendo aceptados, el tope de 5 por tienda ponía el techo real en 40 — muy
+#: por debajo de los 160 que dan ocho temas a 20.
+#:
+#: ⚠️ **Lo que esto abandona a propósito**: con los topes iguales a la cuota, una
+#: sola tienda o una sola categoría puede llenar un tema entero. Antes eso estaba
+#: prohibido por diseño y hay un test que lo documenta
+#: (`test_una_sola_tienda_puede_llenar_un_tema`). Falabella es el 46% del canal y
+#: tiene 64 mil listings, así que es el resultado probable, no el extremo. **Es el
+#: primer número a revisar cuando el canal tenga suscriptores**: bajar cualquiera
+#: de los dos a menos de la cuota devuelve la variedad al instante.
+MAX_PER_STORE_PER_DAY = 20
+MAX_PER_CATEGORY_PER_DAY = 20
 
 #: Espaciado mínimo entre posts. El pipeline produce en dos ráfagas de 12 h; sin
 #: esto el canal escupiría la cuota entera en cuatro minutos y quedaría mudo el
@@ -148,6 +158,19 @@ class Candidate:
     #: que falte no puede frenar una oferta.
     pum_price: Decimal | None = None
     pum_label: str | None = None
+    #: Promoción de multicompra de ESA observación. Los tres juntos o ninguno (lo
+    #: hace cumplir el CHECK de la migración 46). ⚠️ Cuando vienen, el
+    #: `discount_real` del candidato se midió contra el precio unitario **bajo la
+    #: condición**, así que el copy **tiene** que declararla: ver
+    #: `pricing.detector.evaluate` y `publisher.formatter.promo_line`.
+    promo_qty: int | None = None
+    promo_total: Decimal | None = None
+    promo_label: str | None = None
+    #: Condición del precio de ESA observación, verbatim de la tienda
+    #: ("Club Unimarc"). Es independiente de la promo de multicompra: califica el
+    #: precio unitario, no el total por N. Cuando viene, el copy la declara — un
+    #: descuento con letra chica escondida es una oferta falsa (migración 47).
+    price_condition: str | None = None
 
 
 @dataclass(frozen=True)
@@ -265,6 +288,13 @@ _CANDIDATES_SQL = """
            b.p10_60d       AS p10,
            pum.pum_price,
            pum.pum_label,
+           -- La promo de multicompra sale del MISMO join que el pum: es la misma
+           -- fila de `price_points` (la observación que se publica), así que no
+           -- hace falta otro join. Ver la migración 46.
+           pum.promo_qty,
+           pum.promo_total,
+           pum.promo_label,
+           pum.price_condition,
            (SELECT MIN(pp.price_effective)
               FROM price_points AS pp
              WHERE pp.listing_id = l.id
@@ -297,6 +327,9 @@ _CANDIDATES_SQL = """
       LEFT JOIN price_points      AS pum ON pum.listing_id  = l.id
                                         AND pum.observed_at = dc.detected_at
      WHERE dc.verdict = 'accepted'
+       -- También protege candidatos ya aceptados si se cierra la publicación
+       -- después de detectarlos: la ingesta y sus series siguen intactas.
+       AND s.publish_enabled
        -- Agotado en la ficha: no se publica. `NULL` (no se verificó, tienda sin
        -- verificador, o la ficha no respondió) sí pasa — la duda no bloquea.
        -- Ver `publisher/stock.py` y la migración 30.

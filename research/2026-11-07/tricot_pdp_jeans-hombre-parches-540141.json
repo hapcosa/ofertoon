@@ -1,0 +1,72 @@
+{
+  "url": "https://www.tricot.cl/jeans-hombre-parches-540141.html",
+  "status": 200,
+  "bytes": 501207,
+  "title": "\n    Jeans hombre parches - TRICOT\n",
+  "stock_words": [
+    [
+      "OutOfStock",
+      1,
+      [
+        "8% Algodón, 2% Elastano\",\"color\":\"Azul\",\"offers\":{\"@type\":\"Offer\",\"availability\":\"http://schema.org/OutOfStock\",\"itemCondition\":\"https://schema.org/NewCondition\",\"seller\":{\"@type\":\"Organization\",\"@id\":\"https://www.tricot.cl/#organization\",\"name\":\"Tri"
+      ]
+    ],
+    [
+      "InStock",
+      0,
+      []
+    ],
+    [
+      "sin stock",
+      2,
+      [
+        "lable\" value=\"No hay stock disponible\" /> <input type=\"hidden\" id=\"js-msg-without-stock\" value=\"sin stock\" /> <input type=\"hidden\" id=\"js-msg-size-select-text\" value=\"Select Talla\" /> <input type=\"hidden\" id=\"js-msg-select-for-stock\" val",
+        " disponibilidad\" /> <input type=\"hidden\" id=\"js-msg-quantity-bigger-than-stock\" value=\"Producto sin stock suficiente\" /> </div> </div> </div> <div class=\"d-none\" data-ga=\"null\"></div> "
+      ]
+    ],
+    [
+      "agotado",
+      1,
+      [
+        "ext-one d-flex flex-column\"> <span> El producto que buscas está <strong>AGOTADO</strong>. </span> <span> Gracias por tu comprensi&oacute;n. </span> </p> "
+      ]
+    ],
+    [
+      "no disponible",
+      0,
+      []
+    ],
+    [
+      "disponible",
+      2,
+      [
+        "ute;culos en stock.\" /> <input type=\"hidden\" id=\"js-msg-no-stock-available\" value=\"No hay stock disponible\" /> <input type=\"hidden\" id=\"js-msg-without-stock\" value=\"sin stock\" /> <input type=\"hidden\" id=\"js-msg-size-select-text\" value=\"Se",
+        "n\"> <h5>&iquest;Necesitas ayuda?</h5> <p>Nuestro equipo de atenci&oacute;n al cliente est&aacute; disponible para lo que necesites</p> </div> <div class=\"footer-customer-service-divider\"></div> <div class=\"footer-customer-service-section\"> <h5>"
+      ]
+    ]
+  ],
+  "breadcrumbs": [
+    [
+      "Hombre",
+      "/hombre"
+    ],
+    [
+      "Hombre",
+      "/hombre"
+    ]
+  ],
+  "canonical": "https://www.tricot.cl/jeans-hombre-parches-540141.html",
+  "gtin_nodes": [],
+  "buttons": [
+    [
+      "add-to-cart js-size-modal-btn tri-btn tri-w-100",
+      "Agregar",
+      true
+    ],
+    [
+      "add-to-cart js-embedded-btn tri-btn ",
+      "Agregar",
+      true
+    ]
+  ]
+}

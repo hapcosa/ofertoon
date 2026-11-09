@@ -1,0 +1,78 @@
+{
+  "at_utc": "2026-11-07T23:08:36+00:00",
+  "category": "calzado/zapatos-mujer",
+  "zone": "inventory_LaPolar_whven|t_ecom_metropolitana",
+  "declared_total": 284,
+  "pages": [
+    {
+      "start": 0,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1797845
+    },
+    {
+      "start": 36,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1789954
+    },
+    {
+      "start": 72,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1785904
+    },
+    {
+      "start": 108,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1788718
+    },
+    {
+      "start": 144,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1786309
+    },
+    {
+      "start": 180,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1791412
+    },
+    {
+      "start": 216,
+      "tiles": 36,
+      "ids": 36,
+      "bytes": 1788624
+    },
+    {
+      "start": 252,
+      "tiles": 32,
+      "ids": 32,
+      "bytes": 1735104
+    },
+    {
+      "start": 288,
+      "tiles": 0,
+      "ids": 0,
+      "bytes": 1184688
+    }
+  ],
+  "rows": 284,
+  "unique": 284,
+  "duplicates": 0,
+  "price_count": 284,
+  "min_price": 3990,
+  "max_price": 69990,
+  "normal_count": 228,
+  "card_count": 0,
+  "gtin_count": 0,
+  "sold_out_text_count": 0,
+  "seller_markers": {
+    "marketplace": 0,
+    "vendedor": 0,
+    "vendido por": 0,
+    "seller": 0
+  }
+}

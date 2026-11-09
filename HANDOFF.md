@@ -1,5 +1,55 @@
 # Handoff Ofertoon — estado al 2026-10-01
 
+## Actualización de producción 2026-11-06 — acumulación iniciada
+
+El cuerpo antiguo de este handoff es una fotografía del 1-oct. El estado actual
+se comprobó en producción después de aplicar **migraciones 40–46** y de iniciar
+una ingesta dirigida para las 14 tiendas nuevas. Hay **31 tiendas activas, 727
+llaves activas y 46 migraciones aplicadas**, sin pendientes ni diferencias de
+checksum. Las 17 categorías tenían `min_history_days = 30` al escribirse esto
+(se había revertido el experimento temporal de 10 días) — ⚠️ **corregido en el
+merge del 6-nov**: la migración 48 las dejó en **20** el mismo día, a las 13:52
+UTC. `scraper` y `publisher` están corriendo. La
+primera ingesta agregó **13.668 `price_points`**, uno por SKU/listing observado:
+La suite completa pasó con **912 tests** contra una base de prueba separada;
+`git diff --check` pasó.
+
+| Tienda | Puntos iniciales | Estado de primera pasada |
+|---|---:|---|
+| Colloky | 4.016 | 6 ok |
+| Lippi | 3.437 | 62 ok, 13 partial, 1 failed: llave vacía `cortavientos-kids` |
+| The North Face | 1.393 | 94 ok, 6 partial por llaves vacías |
+| Infor Ingen | 1.325 | 7 ok |
+| New Balance | 824 | 28 ok, 26 partial; límite de paginación por robots |
+| TrekBikesChile | 510 | 64 ok, 7 partial |
+| Mammut | 480 | 89 ok, 8 partial por llaves vacías |
+| PC Express | 458 | 8 ok; publicación desactivada |
+| Speedo | 351 | 25 ok, 14 partial; límite de paginación por robots |
+| Marmot | 325 | 41 ok, 34 partial por llaves vacías |
+| Nómades | 280 | 24 ok |
+| MegaBytes | 156 | 2 ok, 1 partial (llave de un ítem) |
+| Ripley | 95 | 1 partial: 928/940 SKU enumerados, 95 venta directa; publicación desactivada |
+| Hites | 18 | 1 ok |
+
+`ripley` y `pc-express` tienen `is_active = true` y `publish_enabled = false`: el
+scraper acumula su historia, pero detector **y** curador excluyen sus candidatos.
+La compuerta de PC Express depende de validar el stock con una ficha agotada; la
+de Ripley depende de estabilizar la cobertura y conservar solo venta directa.
+Las otras doce tiendas tienen publicación habilitada, pero deben cumplir los 30
+días observados y los controles normales. Una primera observación del 6-nov no
+es una oferta. La próxima pasada automática debe volver a observar las tiendas;
+revisar `scrape_runs` y el aumento real de `price_points`, no solo el log.
+
+**Cuidado al integrar worktrees:** el archivo `migrations/40_ripley_hites.sql`
+del worktree principal se amplió con `publish_enabled` y PC Express **antes de
+aplicarlo en producción**. Esa versión exacta tiene el checksum registrado.
+Otro worktree conserva una versión anterior de la 40: reemplazar el archivo
+produciría `checksum_mismatch`. Conservar la versión aplicada y usar migraciones
+nuevas para cambios posteriores. Unimarc está en el worktree
+`ofertoon-unimarc`, con migración 47 aún no integrada ni aplicada; **no tiene
+historia en producción todavía**. Imperial devolvió 403 estable y tampoco tiene
+fuente de precios. No se hizo commit ni push.
+
 Pegá el bloque de abajo como primer mensaje de la próxima sesión.
 
 ---
@@ -1953,3 +2003,67 @@ for c in scraper bot gate publisher paypal-webhook; do
     && echo "$c: OK" || echo "$c: DESFASADO"
 done
 ```
+
+---
+
+## 2026-11-06 — rama `feat/unimarc`: la 47 arreglada y el merge verificado
+
+Estado de la base **medido** (`schema_migrations`, no el árbol): **47
+migraciones aplicadas, 01-46 y 48 — falta la 47**. 31 tiendas, `ripley` y
+`pc-express` con `publish_enabled = false`, las 17 categorías en
+`min_history_days = 20`, y `price_points.price_condition` **todavía no existe**.
+⚠️ `main` y los otros worktrees no tienen los archivos 47-48, así que ahí
+`migrate.py --status` contesta "sin pendientes" **falsamente**: verificar siempre
+contra la base.
+
+### Unimarc nace sin publicar
+
+La 47 creaba Unimarc publicando. Con el piso de historia en 20 días podría
+emitir su primer candidato el **2026-11-26**, diez días antes de su evaluación de
+aceptación del 2026-12-06 — la fecha sola no se hacía cumplir. Como la 47 no
+está aplicada, se corrigió **en el lugar**: `publish_enabled = FALSE` en el
+INSERT y una §6 nueva en el header. El `ON CONFLICT` **no** incluye la columna,
+así que una reaplicación no vuelve a cerrar una tienda que el dueño ya abrió.
+
+Verificado aplicando la secuencia 01-48 completa sobre una base descartable
+(`ofertas_test_unimarc_keys`, ya borrada), porque las `store_categories` no las
+puede ver ningún test —el `_truncate_state` del conftest las trunca entre
+tests— y porque `migrate.py` dice "0 aplicadas" igual en una corrida sana y en
+una imagen vieja:
+
+    unimarc  publish_enabled=false  is_active=true
+    8 llaves: 7 a supermercado + perfumeria -> belleza
+    price_condition  character varying(48)
+    control: hites sigue en publish_enabled=true (29 de 32 publican)
+    control del CHECK: 'Club Unimarc' entra; '' y '   ' son rechazados
+
+### El merge de las dos ramas está verificado, no supuesto
+
+Simulado con `git merge-tree` contra un commit sintético del árbol de trabajo de
+`main` (sin tocar su índice ni sus archivos). **Un solo conflicto**: dos filas
+adyacentes de `TIENDAS.md` (`unimarc` y `pc-express`) que las dos ramas
+reescribieron. Se resuelve quedándose con la fila de `unimarc` de esta rama y la
+de `pc-express` de la otra — las dos describen su propio trabajo.
+
+`curation/ranker.py` **mergea solo y bien**: conviven el `AND s.publish_enabled`
+del WHERE y el `pum.price_condition` del SELECT. La suite sobre el árbol
+mergeado da **954 passed** (948 de esta rama + los de `pc_express`).
+
+El orden del despliegue, que no es intercambiable: **primero** que el trabajo de
+`main` entre a un commit, **después** mergear esta rama, **una** build y **una**
+sola aplicación desde el checkout de despliegue. Las dos ramas son
+interdependientes a través de la base — aplicar la 47 sin este código deja las 8
+llaves de Unimarc en `failed` cada pasada, y desplegar este código solo rompe
+`pc-express`, que ya está en la base apuntando a un módulo que esta rama no
+tiene.
+
+### Lo que espera decisión del dueño
+
+- **Los θ**: tabla medida en `research/2026-11-06/BACKTEST_theta.md`. El
+  limitante es el **volumen**, no la precisión: 7 categorías medibles, casi todas
+  entre 90% y 100% contra el 80% del gate, y 5 por debajo de las 3 ofertas/día.
+- **Abrir Unimarc al canal** después del 2026-12-06:
+  `UPDATE stores SET publish_enabled = TRUE WHERE slug = 'unimarc'`.
+- **El desfase 20/30 entre producción y backtest** es permanente desde la
+  migración 48 y todavía no tiene consecuencia medible; recién se puede medir
+  sobre noviembre (~diciembre). El cambio y su costo están en el mismo archivo.

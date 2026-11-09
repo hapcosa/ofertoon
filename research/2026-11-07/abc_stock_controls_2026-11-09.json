@@ -1,0 +1,173 @@
+{
+  "at_utc": "2026-11-09T04:40:49.946876+00:00",
+  "pdps": [
+    {
+      "requested": "https://www.abc.cl/chaqueta-mujer-zibel/28147376.html/?zone=inventory_LaPolar_whven%7Ct_ecom_metropolitana",
+      "final_url": "https://www.abc.cl/chaqueta-mujer-zibel/28147376.html/?zone=inventory_LaPolar_whven%7Ct_ecom_metropolitana",
+      "status": 200,
+      "bytes": 1246948,
+      "title": "Chaqueta Mujer Zibel | Abc",
+      "availability": null,
+      "sold_out_text": [],
+      "buttons": [
+        {
+          "text": "Agotado",
+          "disabled": true,
+          "class": "add-to-cart lp-button lp-button--medium lp-button--inverted lp-button--borderless lp-button--no-hover lp-font--barlow ms-full-width"
+        },
+        {
+          "text": "Agotado",
+          "disabled": true,
+          "class": "add-to-cart lp-button lp-button--medium lp-button--inverted lp-button--borderless lp-button--no-hover lp-font--barlow ms-full-width"
+        }
+      ],
+      "breadcrumbs": [
+        "Mujer",
+        "Ropa Mujer",
+        "Chaquetas y Parkas",
+        "Mujer",
+        "Ropa Mujer",
+        "Chaquetas y Parkas",
+        "Mujer",
+        "Ropa Mujer",
+        "Chaquetas y Parkas"
+      ],
+      "sellers": [],
+      "product_ids": [
+        "28147376",
+        "28147376",
+        "28147376",
+        "28147376"
+      ],
+      "canonical": "https://www.abc.cl/chaqueta-mujer-zibel/621190.html"
+    },
+    {
+      "requested": "https://www.abc.cl/chaqueta-mujer-alma/611179.html?zone=inventory_LaPolar_whven%7Ct_ecom_metropolitana",
+      "final_url": "https://www.abc.cl/chaqueta-mujer-alma/611179.html?zone=inventory_LaPolar_whven%7Ct_ecom_metropolitana",
+      "status": 200,
+      "bytes": 1248690,
+      "title": "Chaqueta Mujer Alma | Abc",
+      "availability": null,
+      "sold_out_text": [],
+      "buttons": [
+        {
+          "text": "Agotado",
+          "disabled": true,
+          "class": "add-to-cart lp-button lp-button--medium lp-button--inverted lp-button--borderless lp-button--no-hover lp-font--barlow ms-full-width"
+        },
+        {
+          "text": "Agotado",
+          "disabled": true,
+          "class": "add-to-cart lp-button lp-button--medium lp-button--inverted lp-button--borderless lp-button--no-hover lp-font--barlow ms-full-width"
+        }
+      ],
+      "breadcrumbs": [
+        "Mujer",
+        "Ropa Mujer",
+        "Chaquetas y Parkas",
+        "Mujer",
+        "Ropa Mujer",
+        "Chaquetas y Parkas",
+        "Mujer",
+        "Ropa Mujer",
+        "Chaquetas y Parkas"
+      ],
+      "sellers": [],
+      "product_ids": [
+        "611179",
+        "611179",
+        "611179",
+        "611179"
+      ],
+      "canonical": "https://www.abc.cl/chaqueta-mujer-alma/611179.html"
+    },
+    {
+      "requested": "https://www.abc.cl/chaqueta-mujer-zibel/640962.html?zone=inventory_LaPolar_whven%7Ct_ecom_metropolitana",
+      "final_url": "https://www.abc.cl/chaqueta-mujer-zibel/640962.html?zone=inventory_LaPolar_whven%7Ct_ecom_metropolitana",
+      "status": 410,
+      "bytes": 1176637,
+      "title": "Chaqueta Mujer Zibel",
+      "availability": null,
+      "sold_out_text": [],
+      "buttons": [],
+      "breadcrumbs": [],
+      "sellers": [],
+      "product_ids": [],
+      "canonical": "https://www.abc.cl/"
+    },
+    {
+      "requested": "https://www.abc.cl/vestido-mujer-extralindas/625505.html?zone=inventory_LaPolar_whven%7Ct_ecom_metropolitana",
+      "final_url": "https://www.abc.cl/vestido-mujer-extralindas/625505.html?zone=inventory_LaPolar_whven%7Ct_ecom_metropolitana",
+      "status": 200,
+      "bytes": 1242962,
+      "title": "Vestido Mujer Extralindas | Abc",
+      "availability": null,
+      "sold_out_text": [],
+      "buttons": [
+        {
+          "text": "Agotado",
+          "disabled": true,
+          "class": "add-to-cart lp-button lp-button--medium lp-button--inverted lp-button--borderless lp-button--no-hover lp-font--barlow ms-full-width"
+        },
+        {
+          "text": "Agotado",
+          "disabled": true,
+          "class": "add-to-cart lp-button lp-button--medium lp-button--inverted lp-button--borderless lp-button--no-hover lp-font--barlow ms-full-width"
+        }
+      ],
+      "breadcrumbs": [
+        "Moda",
+        "Moda",
+        "Moda"
+      ],
+      "sellers": [],
+      "product_ids": [
+        "625505",
+        "625505",
+        "625505",
+        "625505"
+      ],
+      "canonical": "https://www.abc.cl/vestido-mujer-extralindas/625505.html"
+    },
+    {
+      "requested": "https://www.abc.cl/chaqueta-deportiva-mujer-alpinextrem/28679580.html?zone=inventory_LaPolar_whven%7Ct_ecom_metropolitana",
+      "final_url": "https://www.abc.cl/chaqueta-deportiva-mujer-alpinextrem/28679580.html?zone=inventory_LaPolar_whven%7Ct_ecom_metropolitana",
+      "status": 200,
+      "bytes": 1250822,
+      "title": "Chaqueta Deportiva Mujer Alpinextrem | Abc",
+      "availability": null,
+      "sold_out_text": [],
+      "buttons": [
+        {
+          "text": "Agotado",
+          "disabled": true,
+          "class": "add-to-cart lp-button lp-button--medium lp-button--inverted lp-button--borderless lp-button--no-hover lp-font--barlow ms-full-width"
+        },
+        {
+          "text": "Agotado",
+          "disabled": true,
+          "class": "add-to-cart lp-button lp-button--medium lp-button--inverted lp-button--borderless lp-button--no-hover lp-font--barlow ms-full-width"
+        }
+      ],
+      "breadcrumbs": [
+        "Mujer",
+        "Ropa Deportiva Mujer",
+        "Chaquetas y Parkas",
+        "Mujer",
+        "Ropa Deportiva Mujer",
+        "Chaquetas y Parkas",
+        "Mujer",
+        "Ropa Deportiva Mujer",
+        "Chaquetas y Parkas"
+      ],
+      "sellers": [],
+      "product_ids": [
+        "28679580",
+        "28679580",
+        "28679580",
+        "28679580"
+      ],
+      "canonical": "https://www.abc.cl/chaqueta-deportiva-mujer-alpinextrem/636946.html"
+    }
+  ]
+}

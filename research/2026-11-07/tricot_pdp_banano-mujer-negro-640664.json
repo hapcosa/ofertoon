@@ -1,0 +1,88 @@
+{
+  "url": "https://www.tricot.cl/banano-mujer-negro-640664.html",
+  "status": 200,
+  "bytes": 485807,
+  "title": "\n    Banano mujer negro - TRICOT\n",
+  "stock_words": [
+    [
+      "OutOfStock",
+      1,
+      [
+        "Poliéster\",\"color\":\"Negro\",\"size\":\"S/T\",\"offers\":{\"@type\":\"Offer\",\"availability\":\"http://schema.org/OutOfStock\",\"itemCondition\":\"https://schema.org/NewCondition\",\"seller\":{\"@type\":\"Organization\",\"@id\":\"https://www.tricot.cl/#organization\",\"name\":\"Tri"
+      ]
+    ],
+    [
+      "InStock",
+      0,
+      []
+    ],
+    [
+      "sin stock",
+      2,
+      [
+        "lable\" value=\"No hay stock disponible\" /> <input type=\"hidden\" id=\"js-msg-without-stock\" value=\"sin stock\" /> <input type=\"hidden\" id=\"js-msg-size-select-text\" value=\"Select Talla\" /> <input type=\"hidden\" id=\"js-msg-select-for-stock\" val",
+        " disponibilidad\" /> <input type=\"hidden\" id=\"js-msg-quantity-bigger-than-stock\" value=\"Producto sin stock suficiente\" /> </div> </div> </div> <div class=\"d-none\" data-ga=\"null\"></div> "
+      ]
+    ],
+    [
+      "agotado",
+      1,
+      [
+        "ext-one d-flex flex-column\"> <span> El producto que buscas está <strong>AGOTADO</strong>. </span> <span> Gracias por tu comprensi&oacute;n. </span> </p> "
+      ]
+    ],
+    [
+      "no disponible",
+      0,
+      []
+    ],
+    [
+      "disponible",
+      3,
+      [
+        " <p class=\"tri-like-a-h3 m-0\">Este producto a&uacute;n no tiene una gu&iacute;a de tallas disponible.</p> <span class=\"sizechart-footnote d-block\">* Estos datos se obtienen de la medici&oacute;n manual del producto, las me",
+        "ute;culos en stock.\" /> <input type=\"hidden\" id=\"js-msg-no-stock-available\" value=\"No hay stock disponible\" /> <input type=\"hidden\" id=\"js-msg-without-stock\" value=\"sin stock\" /> <input type=\"hidden\" id=\"js-msg-size-select-text\" value=\"Se"
+      ]
+    ]
+  ],
+  "breadcrumbs": [
+    [
+      "Mujer",
+      "/mujer"
+    ],
+    [
+      "Accesorios",
+      "/mujer/accesorios"
+    ],
+    [
+      "Mochilas y bolsos",
+      "/mujer/accesorios/mochilas-y-bolsos"
+    ],
+    [
+      "Mujer",
+      "/mujer"
+    ],
+    [
+      "Accesorios",
+      "/mujer/accesorios"
+    ],
+    [
+      "Mochilas y bolsos",
+      "/mujer/accesorios/mochilas-y-bolsos"
+    ]
+  ],
+  "canonical": "https://www.tricot.cl/banano-mujer-negro-640664.html",
+  "gtin_nodes": [],
+  "buttons": [
+    [
+      "add-to-cart js-size-modal-btn tri-btn tri-w-100",
+      "Agregar",
+      true
+    ],
+    [
+      "add-to-cart js-embedded-btn tri-btn ",
+      "Agregar",
+      true
+    ]
+  ]
+}

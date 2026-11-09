@@ -8,11 +8,14 @@ y el detector solo conocen `RawProduct`.
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
+
+logger = logging.getLogger(__name__)
 
 
 #: Techo de plausibilidad para un precio en CLP. Falabella publica productos sin
@@ -27,6 +30,36 @@ MAX_PLAUSIBLE_CLP = Decimal("100000000")
 #: `10GR`, `100UN`), así que algo más largo que esto no es una unidad de medida y
 #: no vale la pena arriesgar un error de inserción por él.
 PUM_LABEL_MAX_CHARS = 16
+
+#: Largo máximo del GTIN. Es el ancho de `listings.gtin_raw` (VARCHAR(14)) y a
+#: la vez el largo del GTIN más largo que existe, el GTIN-14 — así que la
+#: coincidencia no es casual: cualquier cosa más larga **no puede ser un GTIN**.
+#:
+#: A diferencia de `price_condition` y del label del `pum`, esto NO lanza: se
+#: descarta el valor y el producto entra sin GTIN. La razón es de quién es el
+#: error. Una condición larga es un bug del adaptador y conviene que grite; un
+#: GTIN largo es ruido conocido de las tiendas —`catalog.normalize.normalize_gtin`
+#: lo documenta como el tercero de sus tres modos de suciedad— y hacerlo gritar
+#: cuesta **la llave entera de esa pasada**.
+#:
+#: Medido el 2026-11-09: una llave de `unimarc/supermercado` venía fallando en
+#: cada pasada con `StringDataRightTruncationError: value too long for type
+#: character varying(14)`, o sea ~1.700 observaciones perdidas por pasada por un
+#: campo que ni alimenta al detector. El GTIN solo sirve para el matching
+#: cross-store; perderlo degrada el copy, perder la llave pierde la serie.
+GTIN_MAX_CHARS = 14
+
+#: Largo máximo de `price_condition`. Es el ancho de
+#: `price_points.price_condition` (VARCHAR(48)): las etiquetas observadas son
+#: `"Club Unimarc"` y `"Exclusivo .cl"`, así que algo más largo que esto no es
+#: una condición, es un párrafo de marketing — y se descarta en vez de truncarse,
+#: porque media condición puede decir lo contrario de la condición.
+PRICE_CONDITION_MAX_CHARS = 48
+
+#: Largo máximo de `promo_label`. La promo más larga medida en Unimarc es
+#: `"4 x $2.360"` (10 caracteres); 48 deja margen para `"3 x $1.000 Club Unimarc"`
+#: sin ser un cheque en blanco.
+PROMO_LABEL_MAX_CHARS = 48
 
 
 @dataclass(frozen=True)
@@ -83,6 +116,60 @@ class ListingRef:
 
 
 @dataclass(frozen=True)
+class PromoCantidad:
+    """Promoción de multicompra: "4 x $1.000". Los tres campos juntos o ninguno.
+
+    **El ahorro es por cantidad y NO es una rebaja unitaria**, y esa distinción es
+    todo el punto de esta clase. Medido el 2026-11-05 sobre las 107 promociones de
+    multicompra de una raíz de Unimarc: en **las 107** el precio unitario
+    publicado es **igual** al de lista. O sea no hay descuento si compras una; el
+    13-20% de ahorro existe solo si compras N.
+
+    Consecuencia de dominio: si el copy dijera "−17%" sin la condición, el canal
+    estaría publicando una rebaja que no existe para quien compra una unidad —
+    exactamente el tipo de oferta falsa que este proyecto existe para no ser. Por
+    eso `label` va **verbatim** y el formatter lo imprime siempre.
+
+    `unitario` es **derivado y no es un precio que alguien pague**: nadie paga
+    $287,5. Es la misma naturaleza que el `pum` —una normalización a una base para
+    poder comparar— y por eso no se persiste ni se le aplica
+    `MAX_PLAUSIBLE_CLP`. Lo que se guarda son `qty` y `total`, los dos enteros,
+    así la regla de CLP entero se cumple en la capa de datos y el decimal vive
+    solo en el cálculo.
+    """
+
+    #: Unidades que exige la promoción (2, 3, 4…).
+    qty: int
+    #: Lo que se paga por esas `qty` unidades, en CLP entero.
+    total: Decimal
+    #: El texto tal como lo publica la tienda: `"4 x $1.000"`. Va verbatim porque
+    #: es la condición que el suscriptor tiene que leer, no un número a reformatear.
+    label: str
+
+    def __post_init__(self) -> None:
+        if self.qty < 2:
+            raise ValueError(
+                f"promo_qty tiene que ser >= 2 (una promo de 1 unidad no es "
+                f"multicompra, es el precio), llegó {self.qty!r}"
+            )
+        if not 0 < self.total <= MAX_PLAUSIBLE_CLP:
+            raise ValueError(f"promo_total fuera de rango: {self.total!r}")
+        if not self.label or len(self.label) > PROMO_LABEL_MAX_CHARS:
+            raise ValueError(f"promo_label inválido: {self.label!r}")
+
+    @property
+    def unitario(self) -> Decimal:
+        """Precio por unidad **bajo la condición**. Derivado, no almacenado.
+
+        No se redondea a entero: `4 x $1.150` da 287,5 y redondearlo arriba o
+        abajo cambiaría el descuento que se publica. Se mantiene la precisión en
+        el cálculo y el entero queda donde tiene que estar — en `total`, que es lo
+        que de verdad se paga.
+        """
+        return self.total / Decimal(self.qty)
+
+
+@dataclass(frozen=True)
 class RawProduct:
     """Producto normalizado, listo para persistir.
 
@@ -114,12 +201,30 @@ class RawProduct:
     #: Descuento que la tienda declara ("-22%"). Se guarda solo como evidencia
     #: para contrastarlo contra el descuento real; nunca alimenta el detector.
     claimed_discount: str | None = None
+    #: Condición que hay que cumplir para pagar `price_effective`, verbatim de la
+    #: tienda ("Club Unimarc"). `None` cuando no hay ninguna, que es el caso de
+    #: casi todo el catálogo del sistema.
+    #:
+    #: No es `price_card`: la distinción es si el precio exige un **medio de pago**
+    #: —eso es `price_card`, se muestra y no se compara— o solo un trámite que
+    #: cualquiera puede hacer. Ser Club Unimarc es dar el RUT, así que ese precio
+    #: lo paga cualquiera y es `price_effective`; pero publicar "−12%" sin decir
+    #: "Club Unimarc" sería anunciar un precio con letra chica escondida, que es
+    #: la clase de oferta que este proyecto existe para no ser. Decisión del dueño
+    #: del 2026-11-05; el copy la imprime (migración 47).
+    price_condition: str | None = None
     #: Precio por unidad de medida (`$3.242 el KG`), cuando la tienda lo declara.
     #: Opcional de verdad: lo trae el 95% del catálogo de supermercado de Tottus y
     #: ~nadie más, y **que falte no puede frenar una oferta**. No alimenta al
     #: detector —la señal sigue siendo `1 − price_today / p50_60d` y nada más—:
     #: existe para el copy.
     pum: Pum | None = None
+    #: Promoción de multicompra, cuando la tienda la declara. **No alimenta la
+    #: serie**: `price_effective` sigue siendo el precio unitario sin condición,
+    #: así que el p50 se construye con precios comparables entre sí. Lo que sí
+    #: hace es cambiar el numerador del descuento y obligar al copy a declarar la
+    #: condición — ver `PromoCantidad` y `pricing.detector.evaluate`.
+    promo: PromoCantidad | None = None
     raw_payload: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -128,6 +233,21 @@ class RawProduct:
                 f"{self.store_slug}/{self.store_sku}: price_effective fuera del rango "
                 f"(0, {MAX_PLAUSIBLE_CLP}], llegó {self.price_effective!r}"
             )
+        if self.price_condition is not None and (
+            not self.price_condition or len(self.price_condition) > PRICE_CONDITION_MAX_CHARS
+        ):
+            raise ValueError(
+                f"{self.store_slug}/{self.store_sku}: price_condition inválida: "
+                f"{self.price_condition!r}"
+            )
+        # Un GTIN que no cabe en la columna no es un GTIN: se descarta y el
+        # producto entra sin él. Ver `GTIN_MAX_CHARS` para por qué esto no lanza.
+        if self.gtin is not None and len(self.gtin) > GTIN_MAX_CHARS:
+            logger.warning(
+                "gtin_descartado store=%s sku=%s largo=%d — no puede ser un GTIN",
+                self.store_slug, self.store_sku, len(self.gtin),
+            )
+            object.__setattr__(self, "gtin", None)
 
 
 @runtime_checkable

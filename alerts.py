@@ -26,6 +26,17 @@ nunca llegaron acá— y los 62 objetivos que no corrieron no dejaron fila en
 `scrape_runs`, que es lo único que el canario por target mira. Tres guardas y
 ninguna disparó.
 
+**Y el cuarto caso es el propio mensaje** (ver `recortar_para_telegram`). El
+7 de noviembre de 2026 una pasada perdió 202 de 727 objetivos por inestabilidad
+de la red saliente; `flacas` la detectó, armó el aviso con sus 202 fallos y
+Telegram contestó `400 Bad Request: message is too long`. El aviso quedó solo en
+el log. El tope que existía era `MAX_LINES = 25`, que acota **líneas** y no
+caracteres: con las URLs percent-encodeadas de los `FetchError` la mediana de
+línea era 163 y el máximo 435, así que 28 líneas daban 5.766 caracteres. O sea la
+guarda fallaba **justo en el caso grave**, porque es el que produce el mensaje
+largo — la misma forma de los tres casos de arriba: la guarda existe, corre, y no
+avisa.
+
 Configuración (ambas opcionales; sin ellas el módulo es un no-op y solo loguea):
     ALERT_BOT_TOKEN   token del bot que manda el aviso
     ALERT_CHAT_ID     chat destino (tu DM o un canal privado de operación)
@@ -41,9 +52,21 @@ from datetime import date, datetime
 logger = logging.getLogger("alerts")
 
 #: Cuántos targets degradados se listan antes de resumir el resto en una línea.
-#: Si se rompe el adaptador de una tienda entera son ~10 líneas por tienda y el
-#: mensaje excedería el límite de Telegram (4096 chars).
+#: Si se rompe el adaptador de una tienda entera son ~10 líneas por tienda.
 MAX_LINES = 25
+
+#: Tope duro de `sendMessage`. **Es el que manda**: `MAX_LINES` no alcanza para
+#: respetarlo porque cada línea lleva la URL que falló, y esas URLs llevan query
+#: strings percent-encodeadas. Medido el 2026-11-07 sobre la pasada que lo
+#: destapó: 28 líneas, **5.766 caracteres**, mediana de línea 163 y máximo 435.
+#: Telegram contestó `400 Bad Request: message is too long` y la alerta quedó
+#: solo en el log — o sea la guarda falló **justo** en el caso grave, porque es
+#: el que produce el mensaje largo. Un tope en líneas no acota caracteres.
+TELEGRAM_MAX_CHARS = 4096
+
+#: Cuánto de un error se transcribe. Sin esto una sola línea podía ocupar 435 de
+#: los 4096 y `MAX_LINES` quedaba decorativo.
+MAX_ERROR_CHARS = 110
 
 
 @dataclass(frozen=True)
@@ -71,6 +94,49 @@ class PasadaFlaca:
 def _miles(n: float) -> str:
     """16509 → '16.509'. Separador chileno, igual que el resto del proyecto."""
     return f"{int(n):,}".replace(",", ".")
+
+
+def _recortar_error(error: str) -> str:
+    """El error sin la cola, que en un `FetchError` es la query string."""
+    error = error.strip()
+    if len(error) <= MAX_ERROR_CHARS:
+        return error
+    return error[: MAX_ERROR_CHARS - 1] + "…"
+
+
+def recortar_para_telegram(text: str) -> str:
+    """Deja el mensaje dentro de `TELEGRAM_MAX_CHARS`, cortando por línea.
+
+    Va en el camino de salida y no en cada sección a propósito: es el único
+    punto por el que pasan todos los avisos, así que acá el límite se cumple sin
+    importar qué sección lo haya armado ni cuántas se agreguen después. La
+    primera línea —los conteos— es lo que no se puede perder: dice cuántos
+    fallaron, que es la parte que decide si alguien mira.
+    """
+    if len(text) <= TELEGRAM_MAX_CHARS:
+        return text
+
+    lineas = text.split("\n")
+    aviso = "… mensaje recortado: {} línea(s) más en el log del scraper"
+    # El aviso ocupa lugar, así que se reserva ANTES de elegir cuántas entran.
+    presupuesto = TELEGRAM_MAX_CHARS - len(aviso.format(len(lineas))) - 1
+
+    salida: list[str] = []
+    usado = 0
+    for linea in lineas:
+        costo = len(linea) + (1 if salida else 0)
+        if usado + costo > presupuesto:
+            break
+        salida.append(linea)
+        usado += costo
+
+    # Si ni la primera línea entra en el presupuesto, se manda recortada: un
+    # aviso mutilado sigue siendo mejor que ninguno.
+    if not salida:
+        return lineas[0][:TELEGRAM_MAX_CHARS]
+
+    salida.append(aviso.format(len(lineas) - len(salida)))
+    return "\n".join(salida)
 
 
 def format_summary(
@@ -133,7 +199,7 @@ def format_summary(
             lines.append(
                 f"{icon} {outcome.store_slug}/{outcome.category_slug} "
                 f"[{outcome.store_key}] — {outcome.items_seen} items"
-                + (f": {outcome.error}" if outcome.error else "")
+                + (f": {_recortar_error(outcome.error)}" if outcome.error else "")
             )
             if len(lines) - 2 >= MAX_LINES:
                 lines.append(f"… y {len(bad) - MAX_LINES} más")
@@ -169,7 +235,7 @@ async def send_alert(text: str | None) -> bool:
     from subscriptions.telegram_client import TelegramClient
 
     client = TelegramClient(token)
-    message_id = await client.send_message(chat_id, text)
+    message_id = await client.send_message(chat_id, recortar_para_telegram(text))
     if message_id is None:
         logger.error("no se pudo enviar la alerta; queda solo en el log:\n%s", text)
         return False
