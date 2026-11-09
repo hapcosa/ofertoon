@@ -135,6 +135,14 @@ services:
       GATE_BOT_TOKEN: ${GATE_BOT_TOKEN:-}
       ONBOARDING_BOT_TOKEN: ${ONBOARDING_BOT_TOKEN:?ONBOARDING_BOT_TOKEN es obligatoria}
       PUBLISHER_BOT_TOKEN: ${PUBLISHER_BOT_TOKEN:-${ONBOARDING_BOT_TOKEN}}
+      # La guarda del canal mudo manda por el bot de alertas, no por el que
+      # postea: si el canal está mudo porque el bot del canal no responde, el
+      # aviso tiene que salir por otra vía. Son las mismas dos variables que ya
+      # usa el scraper para su resumen de pasada.
+      ALERT_BOT_TOKEN: ${ALERT_BOT_TOKEN:-}
+      ALERT_CHAT_ID: ${ALERT_CHAT_ID:-}
+      PUBLISHER_ALERTA_CANAL_MUDO: ${PUBLISHER_ALERTA_CANAL_MUDO:-false}
+      PUBLISHER_ALERTA_DEADLINE_HOUR_UTC: ${PUBLISHER_ALERTA_DEADLINE_HOUR_UTC:-13}
     command: ["python", "-m", "publisher.daemon"]
 
   # Webhook de pagos. Único servicio con puerto expuesto: necesita ser

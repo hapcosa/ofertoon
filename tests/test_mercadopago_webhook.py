@@ -389,15 +389,56 @@ async def test_rejected_payment_moves_membership_to_past_due(mp, db_conn):
     ) == "past_due"
 
 
+# -----------------------------------------------------------------------------
+# La firma de verdad
+# -----------------------------------------------------------------------------
+#
+# ⚠️ Estos tests se escribieron de nuevo el 2026-11-09. La versión anterior
+# construía el `ts` **en segundos** y se lo pasaba a un `now` también en
+# segundos: pasaba en verde midiendo la implementación contra sí misma, mientras
+# MercadoPago firma con un `ts` en **milisegundos** y en producción el webhook
+# habría rechazado el 100% de las notificaciones reales con un 401. El esquema
+# está verificado contra `pkg/webhook/webhook.go` del SDK oficial de
+# MercadoPago, no contra memoria.
+#
+# Por eso el `ts` de acá abajo se arma SIEMPRE como `int(now * 1000)`: si alguien
+# vuelve a tratarlo como segundos, estos tests se ponen rojos.
+
+
+def _firmar(*, data_id: str, request_id: str, ts: str) -> str:
+    manifest = mp_webhook_api._build_manifest(
+        data_id=data_id, request_id=request_id, ts=ts
+    )
+    return hmac.new(_SECRET.encode("utf-8"), manifest, hashlib.sha256).hexdigest()
+
+
+def test_el_manifiesto_es_el_del_sdk_oficial():
+    """Las tres formas que `buildManifest` puede producir, literales.
+
+    Es el único test que no depende de nuestro propio HMAC: compara el string
+    firmado contra el formato documentado, que es lo que MercadoPago usa del
+    otro lado.
+    """
+    assert mp_webhook_api._build_manifest(
+        data_id="123456", request_id="req-1", ts="1742505638683"
+    ) == b"id:123456;request-id:req-1;ts:1742505638683;"
+    # Sin `x-request-id` el par se OMITE, no se manda vacío.
+    assert mp_webhook_api._build_manifest(
+        data_id="123456", request_id="", ts="1742505638683"
+    ) == b"id:123456;ts:1742505638683;"
+    assert mp_webhook_api._build_manifest(
+        data_id="", request_id="req-1", ts="1742505638683"
+    ) == b"request-id:req-1;ts:1742505638683;"
+
+
 def test_real_signature_verifier_accepts_valid_and_rejects_tampered(monkeypatch):
     monkeypatch.setenv("MERCADOPAGO_WEBHOOK_SECRET", _SECRET)
     verifier = mp_webhook_api.MercadoPagoWebhookVerifier()
     now = time.time()
-    ts = str(int(now))
+    ts = str(int(now * 1000))  # MILISEGUNDOS, como manda MercadoPago
     data_id = "123456"
     request_id = "req-1"
-    manifest = f"id:{data_id};request-id:{request_id};ts:{ts};".encode("utf-8")
-    signature = hmac.new(_SECRET.encode("utf-8"), manifest, hashlib.sha256).hexdigest()
+    signature = _firmar(data_id=data_id, request_id=request_id, ts=ts)
     headers = {"x-signature": f"ts={ts},v1={signature}", "x-request-id": request_id}
     query = {"data.id": data_id}
 
@@ -405,5 +446,50 @@ def test_real_signature_verifier_accepts_valid_and_rejects_tampered(monkeypatch)
     # El id firmado era 123456; si el query trajera otro, el manifiesto deja
     # de calzar con la firma.
     assert verifier.verify(headers, {"data.id": "999999"}, now=now) is False
-    # ts fuera de la ventana de tolerancia.
+    # ts fuera de la ventana de tolerancia (una hora, contra 10 min de ventana).
     assert verifier.verify(headers, query, now=now + 3600) is False
+
+
+def test_un_ts_en_segundos_se_rechaza(monkeypatch):
+    """La regresión, explícita: un `ts` de 10 dígitos NO es una firma válida.
+
+    Este es el caso que la implementación vieja aceptaba y MercadoPago nunca
+    manda. Está como test para que el bug no pueda volver sin que algo se ponga
+    rojo — y para que quede dicho cuál era, no solo que había uno.
+    """
+    monkeypatch.setenv("MERCADOPAGO_WEBHOOK_SECRET", _SECRET)
+    verifier = mp_webhook_api.MercadoPagoWebhookVerifier()
+    now = time.time()
+    ts_en_segundos = str(int(now))
+    signature = _firmar(data_id="123456", request_id="req-1", ts=ts_en_segundos)
+    headers = {
+        "x-signature": f"ts={ts_en_segundos},v1={signature}",
+        "x-request-id": "req-1",
+    }
+    assert verifier.verify(headers, {"data.id": "123456"}, now=now) is False
+
+
+def test_sin_request_id_la_firma_sigue_validando(monkeypatch):
+    """`x-request-id` es opcional y su ausencia cambia el manifiesto.
+
+    Antes se exigía, así que una notificación legítima sin ese header se
+    rechazaba — y si solo se hubiera dejado pasar vacío, el HMAC tampoco habría
+    calzado, porque el par se omite entero.
+    """
+    monkeypatch.setenv("MERCADOPAGO_WEBHOOK_SECRET", _SECRET)
+    verifier = mp_webhook_api.MercadoPagoWebhookVerifier()
+    now = time.time()
+    ts = str(int(now * 1000))
+    signature = _firmar(data_id="123456", request_id="", ts=ts)
+    headers = {"x-signature": f"ts={ts},v1={signature}"}
+    assert verifier.verify(headers, {"data.id": "123456"}, now=now) is True
+
+
+def test_la_clave_del_header_se_compara_en_minusculas(monkeypatch):
+    monkeypatch.setenv("MERCADOPAGO_WEBHOOK_SECRET", _SECRET)
+    verifier = mp_webhook_api.MercadoPagoWebhookVerifier()
+    now = time.time()
+    ts = str(int(now * 1000))
+    signature = _firmar(data_id="123456", request_id="req-1", ts=ts)
+    headers = {"x-signature": f"TS={ts},V1={signature}", "x-request-id": "req-1"}
+    assert verifier.verify(headers, {"data.id": "123456"}, now=now) is True
