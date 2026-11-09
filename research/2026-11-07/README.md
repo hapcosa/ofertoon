@@ -14,6 +14,14 @@ fecha, no conclusiones permanentes.
 | [La Polar](la_polar.md) | **investigada** | Ápex con TLS expirado; `www` redirige a ABC, no catálogo independiente. |
 | [Decathlon](decathlon.md), [Nice One](nice_one.md), [MTS](mts.md), [Adidas](adidas.md) | **investigadas** | Una confirmación por tienda: 403. Solicitar feed/acceso; sin evasión. |
 
+## Continuación del 2026-11-07
+
+| Frente | Estado | Hallazgo nuevo |
+|---|---|---|
+| [Tricot y ABC](salesforce.md) | **investigadas** | Tricot prohíbe hoy `?start` en robots; ABC permite la ruta limpia con zona fijada, pero el listado no expone stock y el total declarado difiere en dos del recorrido completo. Sin migración 54. |
+| [Imperial](imperial.md) | **investigada** | Home 200/200; API de colecciones 520/520, productos 520 y categoría 520/520. |
+| [Spacestore](spacestore.md) | **fuente comprobada parcial** | Sitemap: 59.650 URLs de producto; `all` topa en 25.000. Tres colecciones pequeñas completas suman 1.291 IDs disjuntos. Falta partición exhaustiva y categorías internas apropiadas. |
+
 Ninguna migración se aplicó ni se reinició un servicio desde este worktree.
 
 ## Integración del 2026-11-07
@@ -48,3 +56,12 @@ La rama `feat/unimarc` está subida a GitHub; abrir su PR espera autenticación 
 credenciales y plan del dueño, según
 el runbook en preparación en `feat/mercadopago`; integrar la migración 51 no
 inicia cobros.
+
+## Continuación del 2026-11-09
+
+[Salesforce](salesforce.md) cambió de veredicto con controles de stock y dos
+instantáneas Tricot separadas 15 minutos: **ABC y Tricot tienen adaptador
+probado**, con 820 y 465 observaciones respectivamente en la pasada de lectura
+final. La migración 54 está escrita, sin aplicar, y deja publicación apagada.
+La fecha de conexión será la primera ingesta real tras integrarla. Ningún
+servicio se reinició ni se hizo commit desde esta continuación.

@@ -204,3 +204,32 @@ atemporal.
 | **Imperial** | **Investigada.** Home 200 con `BROWSER_HEADERS`, firma OCC; `/ccstore/v1/collections`, `/products` y una categoría devolvieron 520 de origen Cloudflare. | Re-medir cuando el origen esté estable; no llamar a esto 403 duro ni construir sobre una API caída. |
 | **La Polar** | **Investigada.** Ápex con TLS expirado; `www` tiene TLS válido pero redirige a `abc.cl`. | No hay catálogo La Polar independiente en ese host; ABC merece investigación propia. |
 | **Decathlon**, **Nice One**, **MTS**, **Adidas** | **Investigadas.** Una sonda con `BROWSER_HEADERS` cada una: 403 (Cloudflare challenge en las dos primeras, Attention Required en MTS, Akamai en Adidas). | Mantener en 🔴 por esta medición; pedir feed o API acordada, sin escalada técnica. |
+
+### Re-medición del 2026-11-07
+
+Tricot cambia de estado por **política de rutas**: su `robots.txt` actual
+prohíbe `?start`/`&start`, necesarios para paginar el listado limpio. El
+diagnóstico anterior de Salesforce con esa ruta permitida quedó obsoleto.
+ABC sí permite esa ruta con zona Metropolitana explícita, pero aún carece de
+control de stock en el listado y de llaves disjuntas verificadas; no se conecta.
+Imperial mantuvo home 200 y rutas de catálogo 520. En Spacestore se confirmó
+que `all` supera el límite Shopify de 25.000 y tres colecciones de tipo de
+producto tienen 1.291 IDs disjuntos; no representan el catálogo completo.
+Datos y comandos: [`research/2026-11-07/`](research/2026-11-07/README.md).
+
+### Revisión del 2026-11-09 — Tricot y ABC
+
+El diagnóstico anterior de Tricot sobre `?start` sigue cierto: robots lo
+prohíbe. La categoría **sin query** es, sin embargo, una tajada utilizable:
+nueve hojas limpias dieron 465 IDs disjuntos y Jaccard 1,0000 en dos pasadas
+separadas 15 minutos. Su techo observado es 465/1.122 y queda declarado; no se
+pagina. En dos hojas completas, 49/49 PDPs listados dieron InStock, y PDPs
+agotados seguían accesibles pero no figuraban en esas hojas. **Estado:
+adaptador probado**, migración 54 escrita sin aplicar, publicación apagada.
+
+ABC dio 820/820 IDs en la hoja `/mujer/ropa-mujer/` con zona Metropolitana
+fija. La ficha agotada 611179, con breadcrumb de esa hoja, no estaba en los
+820 IDs; una ficha listada tuvo botón de compra habilitado. **Estado:
+adaptador probado**, en la misma migración 54 sin aplicar. El detalle y los
+límites de stock, cobertura y categorías están en
+[`research/2026-11-07/salesforce.md`](research/2026-11-07/salesforce.md).

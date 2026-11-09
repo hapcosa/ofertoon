@@ -1,0 +1,76 @@
+{
+  "path": "/accesorios/mujer/bananos",
+  "declared_total": 10,
+  "controls": [
+    {
+      "pid": "643048",
+      "url": "https://www.tricot.cl/banano-mujer-liso-643048.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "268953",
+      "url": "https://www.tricot.cl/banano-deportivo-running-268953.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "643027",
+      "url": "https://www.tricot.cl/banano-mujer-rafia-643027.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "643026",
+      "url": "https://www.tricot.cl/banano-mujer-animal-print-643026.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "645910",
+      "url": "https://www.tricot.cl/banano-mujer-tachas-cafe-645910.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "645162",
+      "url": "https://www.tricot.cl/banano-mujer-cross-negro-645162.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "643025",
+      "url": "https://www.tricot.cl/banano-mujer-verde-643025.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "643024",
+      "url": "https://www.tricot.cl/banano-mujer-animal-print-643024.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "267944",
+      "url": "https://www.tricot.cl/banano-deportivo-bolsillos-267944.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    },
+    {
+      "pid": "645163",
+      "url": "https://www.tricot.cl/banano-mujer-textura-645163.html",
+      "status": 200,
+      "availability": "InStock",
+      "agotado": false
+    }
+  ]
+}
