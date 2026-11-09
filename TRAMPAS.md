@@ -15,10 +15,10 @@ todas existen porque alguien ya probó el camino obvio.
 ## Índice
 
 **A.** Llegar al catálogo: robots, User-Agent y bloqueos — 9 trampas. Todo lo que hace que una tienda parezca inaccesible sin estarlo — y al revés.
-**B.** Elegir las llaves: catálogo o vitrina, y solapamiento — 9 trampas. Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
+**B.** Elegir las llaves: catálogo o vitrina, y solapamiento — 10 trampas. Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
 **C.** Paginación y completitud — 11 trampas. Cómo se enumera un catálogo entero, y cuándo el canario exacto es sostenible.
 **D.** Precio, stock e identidad del producto — 18 trampas. Qué número se guarda como `price_effective`, y qué cosa es un listing.
-**E.** Las guardas: canario, agujero y volumen — 11 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
+**E.** Las guardas: canario, agujero y volumen — 12 trampas. Tres alturas distintas, y los modos de falla que no veía ninguna.
 **F.** Infraestructura, Docker y verificación — 13 trampas. Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son el mismo.
 **G.** Detector, θ, backtest y publicación — 10 trampas. Lo que decide si una señal es una oferta de verdad, y cómo se mide.
 
@@ -225,6 +225,17 @@ Una llave mal elegida construye 30 días de serie equivocada sin un solo error.
   chica: es inocuo **solo mientras las llaves que se solapan mapeen a la misma
   categoría interna**, porque gana la primera del orden de `db.load_store_targets`
   y `belleza` ordena antes que `supermercado`.
+
+- **En Sparta, el dedupe entre categorías cambia el θ de un producto.** Las
+  nueve raíces sugeridas por la investigación del 2026-11-04 se solapan 1,72×
+  y algunas cruzan `deporte-vestuario` con `deporte-equipamiento`.
+  `db.load_store_targets` ordena por `category_slug` **antes** que por
+  `store_key`: equipamiento gana alfabéticamente, así que una prenda compartida
+  podría puntuarse con θ=0,250 en vez de 0,350. Ordenar las llaves no lo
+  corrige. La primera tajada de la migración 52 elige 63 hojas que dieron
+  **cero SKUs cruzados** entre sus tres categorías internas en dos mediciones
+  (2026-11-04 y 2026-11-06; 1.208 SKUs únicos en la segunda). El dedupe queda
+  dentro de cada categoría. Ver `research/2026-11-07/sparta.md`.
 
 
 ---
@@ -666,6 +677,38 @@ re-medir cuando tenga unos días de holgura.
   SKUs recién llegados en el denominador y hace ver igual a la tienda que crece
   su catálogo y a la que lo rota (Easy: 34% transversal, 96% por cohorte).
 
+- **La alerta de una guarda puede ser rechazada por larga, y entonces la guarda
+  falla JUSTO en el caso grave.** Es el cuarto fallo de esta familia después del
+  agujero, la pasada flaca y el canario por target, y el más irónico: la guarda
+  corrió, detectó y armó el aviso. Medido el 2026-11-07, cuando una pasada perdió
+  202 de 727 objetivos por inestabilidad de la red saliente:
+
+      telegram_http_error method=sendMessage status=400
+      body={'description': 'Bad Request: message is too long'}
+      ERROR alerts no se pudo enviar la alerta; queda solo en el log
+
+  `alerts.py` tenía `MAX_LINES = 25` con un comentario que citaba el límite de
+  Telegram — pero **acota líneas y el límite es de caracteres**. Con las URLs
+  percent-encodeadas de los `FetchError`, la mediana de línea era 163 y el máximo
+  435: 28 líneas dieron **5.766 caracteres** contra los 4.096 permitidos. La
+  relación es perversa — pocos fallos dan mensaje corto que sí llega, muchos
+  fallos dan mensaje largo que no.
+  ⚠️ **Y había un test que decía cubrirlo**:
+  `test_mensaje_acotado_para_no_exceder_el_limite_de_telegram` afirmaba
+  `len(cuerpo) == MAX_LINES + 1` —cuenta líneas— con un error de fixture de 11
+  caracteres (`"canario: X"`). Con ese error las dos cosas coinciden y el test
+  pasa sin ejercitar nada. **Un test cuyo nombre promete un límite y cuya
+  aserción mide otra unidad es un falso verde con nombre tranquilizador**, que es
+  peor que no tenerlo. Al arreglarlo, el fixture pasó a llevar un `FetchError`
+  real de 435 caracteres.
+  El arreglo son dos capas, porque una sola no alcanzaba: recortar cada error a
+  `MAX_ERROR_CHARS` (5.766 → 4.512) y un tope duro de caracteres en el camino de
+  salida, `recortar_para_telegram` dentro de `send_alert` (4.512 → 4.077),
+  preservando siempre la primera línea, que es la que trae los conteos. El tope
+  va en el envío y no en cada sección a propósito: es el único punto por el que
+  pasan todos los avisos, así que se cumple sin importar qué sección lo armó ni
+  cuántas se agreguen después.
+
 ---
 
 ## F. Infraestructura, Docker y verificación
@@ -846,9 +889,17 @@ Los fallos silenciosos: donde el mensaje de éxito y el de «no hizo nada» son 
 - **Reiniciar el scraper le cuesta al canal hasta un DÍA de publicación, y el
   costo no es el que advierte la regla.** CLAUDE.md prohíbe reiniciarlo desde un
   worktree por la pasada que se mata a medias; el 2026-11-06 se midió el otro
-  costo, que es mayor y silencioso: **el canal publicó CERO**, contra 21-34 por
-  día la semana anterior, sin un solo error y con el `publisher` en `Up`, su
-  proceso vivo y su último log siendo el de arranque.
+  costo, que es mayor y silencioso: **el canal se quedó mudo 6 h 18 min de su
+  ventana** —primer post a las 17:18 UTC contra las 11:00 de los cinco días
+  anteriores— sin un solo error y con el `publisher` en `Up`, su proceso vivo y
+  su último log siendo el de arranque.
+  ⚠️ **Corrección del 2026-11-07**: la primera versión de esta trampa decía "el
+  canal publicó CERO". Era cierto a las 17:00, cuando se midió, y dejó de serlo a
+  las 17:18: la pasada cerró con 8 h de ventana por delante y el día terminó con
+  **23 posts**, dentro del rango normal de 21-34. El costo real fue el retraso,
+  no el día. Pero el peor caso sigue siendo el día entero: si el reinicio cae de
+  modo que la pasada termine después del cierre de ventana (23:00 de Santiago),
+  no hay nada que recupere ese día.
   La cadena, y cada eslabón es correcto por separado:
   **(1)** se reinicia el scraper a las 03:37 para que la imagen traiga un
   adaptador nuevo (lo manda §Pasos 1.7);

@@ -31,7 +31,7 @@ Lo que necesitás leer depende de lo que vas a hacer. **No leas todo.**
 | retomar una sesión | [`HANDOFF.md`](HANDOFF.md) · [`HANDOFF_MERCADOPAGO.md`](HANDOFF_MERCADOPAGO.md) |
 | saber qué está LOCKED | `~/.claude/plans/aprovechancho-el-sistema-de-toasty-squid.md` — **fuera del repo** |
 
-[`TRAMPAS.md`](TRAMPAS.md) son **81 trampas verificadas contra producción**,
+[`TRAMPAS.md`](TRAMPAS.md) son **83 trampas verificadas contra producción**,
 agrupadas por situación. Cada una existe porque alguien ya probó el camino obvio
 y perdió tiempo. Buscá tu sección, no leas el archivo.
 
@@ -211,8 +211,12 @@ el de "no hizo nada" son idénticos.
 - 🔴 **Después de un despliegue que reinicie el scraper, disparar la pasada a
   mano**: `docker compose exec scraper python -m scrapers.runner --once`. Sin eso
   el runner duerme hasta que toque el ciclo de 12 h, el pipeline no corre —viaja
-  dentro del loop—, los candidatos vencen a las 13 h y **el canal publica cero
-  sin un solo error**. Medido el 2026-11-06: 0 publicaciones contra 21-34 diarias.
+  dentro del loop—, los candidatos vencen a las 13 h y **el canal se queda mudo
+  hasta que termine la pasada siguiente, sin un solo error**. Medido el
+  2026-11-06: cero publicaciones durante 6 h 18 min de ventana (primer post
+  17:18 UTC contra las 11:00 de todos los días), y 23 en vez de 25 porque la
+  pasada alcanzó a cerrar con 8 h de ventana por delante. **Si el reinicio cae de
+  modo que la pasada termine después del cierre, el día entero es cero.**
   Ver [`TRAMPAS.md`](TRAMPAS.md) **F**.
 - **Hay filas que ningún test puede ver.** El `_truncate_state` del conftest
   preserva solo `categories`, `stores` y `schema_migrations`, así que las
@@ -401,10 +405,24 @@ desactualizó de este archivo es justo esta sección.
 | Destino | grupo-foro `-1003735174401`, **8 temas** cableados, cuota 33/día |
 | θ | re-medidos el 6-nov: el gate se cumple en **2 de las 7** categorías medibles, y el limitante es el volumen |
 
-⚠️ **El piso de 20 días todavía no produjo ni un candidato**: el último pipeline
-corrió el **5-nov 18:51 UTC** y la migración 48 se aplicó a las 13:52 del 6. Lo
-que la base muestra hoy (323 / 666 / 757 aceptados los días 3, 4 y 5) es el
-detector con el piso viejo. La primera corrida con 20 es la que hay que mirar.
+**El piso de 20 días ya corrió, medido el 2026-11-07.** Tres corridas del
+detector con él puesto: 349 aceptados (6-nov 17:13), 332 (7-nov madrugada) y 249
+(7-nov tarde). De los 249 de la última, **23 vienen de la cohorte de 20-29 días
+de historia** y 226 de 30 o más — o sea el piso aporta un 9% de los aceptados.
+En lo publicado: **4 de 23 posts el 6-nov y 4 de 22 el 7-nov** salen de esa
+cohorte.
+
+⚠️ **Pero esos números no significan lo que parecen, y la cuenta que importa es
+otra.** `listing_baselines.n_days` se sobreescribe en cada corrida y cuenta días
+dentro de los últimos 60, así que **se mueve** — leerlo hoy no dice con cuánta
+historia se detectó una oferta de anteayer. La forma correcta es recomputarlo
+desde `price_points`, que guarda la serie cruda: días distintos **con stock** en
+los 60 previos a `detected_at`. Hecho así, lo que se ve es que la 48 **apretó**
+el piso (ver la §Corrección de `research/2026-11-06/BACKTEST_theta.md`), no que
+lo aflojó.
+**La regla que dejó**: el estado anterior de una columna derivada no se deduce
+del código ni se lee en la columna de hoy — se mide en lo que el sistema ya
+produjo. `price_points` y `deal_posts` lo tienen escrito.
 
 **Decisiones del dueño abiertas** (ninguna la toma un agente):
 
@@ -429,11 +447,16 @@ detector con el piso viejo. La primera corrida con 20 es la que hay que mirar.
   mismo tope de 3, y 1 de `viajes-tours`. No los limita el detector: los limitan
   los topes finos y las categorías sin candidatos maduros. Ver
   `research/2026-11-06/BACKTEST_theta.md`.
-- **El piso de 20 días no agrega ofertas publicadas: desplaza un tercio del
-  canal.** Con 20 y con 30 se publican 25, pero con 20 **ocho de esas 25** se
-  miden contra un p50 de 20 a 29 días, y el reparto entre categorías cambia
-  (`tecno-notebooks` pierde sus tres lugares, `tecno-audio` los gana). Es un
-  efecto de composición y no se ve mirando el total publicado.
+- ~~**El piso de 20 días no agrega ofertas publicadas: desplaza un tercio del
+  canal.**~~ **Falso, corregido el 2026-11-07 y ya no es una decisión abierta.**
+  Ese análisis comparó 20 contra 30, y **el 30 existió unas horas sin producir un
+  solo post**: el contrafáctico real era **10**, el que la migración 32 había
+  dejado en siete categorías. Medido en lo publicado, con la historia que cada
+  oferta tenía al detectarse: hasta el 5-nov el canal publicaba contra baselines
+  de **10 u 11 días** (5 a 11 posts diarios por debajo de 21), y desde el 48 el
+  mínimo es 20 y la cola corta desaparece — la fracción medida contra menos de 30
+  días cae de **44-56% a 23-30%**. **La 48 fue un apriete, no un aflojamiento.**
+  Detalle en `research/2026-11-06/BACKTEST_theta.md` §Corrección.
 - **El ritmo del chat**: `MIN_MINUTES_BETWEEN = 30` es por destino, así que con 8
   temas el chat puede recibir hasta 13 mensajes/hora y agotar la cuota en ~2,5 h.
 - **`UMBRAL_ESTABILIDAD = 0.40` manda apagar Falabella (8%) y Paris (15%)**, que
