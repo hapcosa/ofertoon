@@ -62,11 +62,18 @@ producto que este proyecto existe para no ser.
    `MIN_DAYS=30` el p50 es una opinión. Un SKU nuevo cuyo precio de lanzamiento
    se "descuenta" a los 10 días no tiene contra qué contrastarse → `history`.
    El piso efectivo lo pone `categories.min_history_days` (migración 32) y desde
-   la **migración 48 es 20 en las 17 categorías**: un solo piso, sin excepciones
-   por categoría y **sin fecha de reversión**. Decisión del dueño del 2026-11-06,
-   tomada con los números delante y sabiendo que ninguna sube y que las 17 bajan
-   de 30. La excepción temporal de 10 días para las siete de octubre **ya no
-   existe**; si un documento viejo te manda revertirla, está desactualizado.
+   la **migración 53 es 10 en las 17 categorías**. Pasó por 20 en la 48 y antes
+   por una excepción de 10 en siete categorías (la 32), así que si un documento
+   te dice otro número, mirá la columna.
+   ⚠️ **Los 10 días son una concesión explícita de período de prueba, no el
+   criterio del producto.** Decisión del dueño del 2026-11-07: el servicio no se
+   ofrece a nadie todavía —cero suscriptores activos—, así que lo que el canal
+   publica es material de observación, y las series maduran solas sin que nadie
+   toque nada. El costo está medido en el header de la 53: con el piso en 10,
+   entre 5 y 11 publicaciones por día se miden contra un p50 de unas 20
+   observaciones. **Es la primera migración a revertir el día que el canal se
+   ofrezca**, y la reversión es una línea:
+   `UPDATE categories SET min_history_days = 20;`
    ⚠️ Eso dejó un **desfase permanente con el backtest**, que sigue midiendo con
    30: `replay_listing` llama a `evaluate` sin `min_history_days` y cae en el
    `MIN_DAYS` de `baselines.py`. O sea **el θ que sale del backtest describe un
@@ -160,6 +167,16 @@ migraciones 26, 35 y 38.
 - **Al mover una cuota hay que recalcular los topes finos**, o el limitante pasa
   a ser el tope: `categorías × MAX_PER_CATEGORY_PER_DAY ≥ cuota` y
   `tiendas_maduras × MAX_PER_STORE_PER_DAY ≥ cuota`.
+  Desde la **migración 55** (2026-11-07) los tres números son **20**: cuota de
+  cada tema, tope por tienda y tope por categoría. Así la cuota decide sola y el
+  techo del canal son **8 temas × 20 = 160/día**. ⚠️ El precio es que **una sola
+  tienda o categoría puede llenar un tema**: se aceptó a propósito con el canal
+  sin suscriptores, y es el primer número a revisar cuando los haya. Bajar
+  cualquiera de los dos topes por debajo de la cuota devuelve la variedad, y hay
+  un test que falla si alguien lo hace sin querer.
+  **Y la mitad de ese cambio es código**, así que mover una cuota puede necesitar
+  rebuild del publisher: los topes viven en `curation/ranker.py`, la cuota en la
+  base.
 - Un cambio de θ, de cuota o de umbral **es una decisión de producto**: se mide,
   se reporta y la toma el dueño.
 
